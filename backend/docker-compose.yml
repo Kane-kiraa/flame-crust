@@ -1,0 +1,18 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: flame-crust-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: flame_crust
+      MYSQL_USER: flame
+      MYSQL_PASSWORD: flame_password
+      MYSQL_ROOT_PASSWORD: root_password
+    # Keep the Linux mysql.service free to use the default port 3306.
+    ports:
+      - "3307:3306"
+    volumes:
+      - flame_crust_mysql:/var/lib/mysql
+
+volumes:
+  flame_crust_mysql:
