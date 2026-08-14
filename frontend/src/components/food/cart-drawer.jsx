@@ -9,7 +9,9 @@ import {
   Trash2,
   X,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  Ticket,
+  Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
@@ -20,9 +22,12 @@ const DELIVERY_FEE = 3.99;
 const FREE_DELIVERY_THRESHOLD = 25;
 const SERVICE_FEE = 0.99;
 function CartDrawer() {
-  const { isOpen, closeCart, lines, increment, decrement, removeItem, clear } = useCart();
+  const { isOpen, closeCart, lines, increment, decrement, removeItem, clear, coupon, applyCoupon, clearCoupon } = useCart();
   const [mounted, setMounted] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponError, setCouponError] = useState("");
+  const [isApplying, setIsApplying] = useState(false);
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -35,7 +40,11 @@ function CartDrawer() {
       };
     }
   }, [isOpen]);
-  const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
+  const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
+  const discountAmount = coupon 
+    ? (coupon.discount_type === "PERCENTAGE" ? grossSubtotal * (coupon.discount_value / 100) : coupon.discount_value)
+    : 0;
+  const subtotal = Math.max(0, grossSubtotal - discountAmount);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
   const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE;
   const total = subtotal + deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
@@ -51,6 +60,27 @@ function CartDrawer() {
     clear();
     setPaymentOpen(false);
     closeCart();
+  };
+  const handleApplyCoupon = async (e) => {
+    e.preventDefault();
+    if (!couponCode) return;
+    setIsApplying(true);
+    setCouponError("");
+    try {
+      const { list } = await import("@/lib/api");
+      const coupons = await list("coupons");
+      const found = coupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
+      if (!found || !found.is_active) {
+        setCouponError("Invalid or inactive promo code.");
+      } else {
+        applyCoupon(found);
+        setCouponCode("");
+      }
+    } catch {
+      setCouponError("Failed to apply code.");
+    } finally {
+      setIsApplying(false);
+    }
   };
   if (!mounted) return null;
   return /* @__PURE__ */ jsx(AnimatePresence, { children: isOpen && /* @__PURE__ */ jsxs(Fragment, { children: [
@@ -114,7 +144,6 @@ function CartDrawer() {
           ] }),
           paymentOpen && /* @__PURE__ */ jsx(PaymentForm, { total, onBack: () => setPaymentOpen(false), onSuccess: handlePaymentSuccess }),
           lines.length === 0 ? (
-            /* Empty state */
             /* @__PURE__ */ jsxs("div", { className: "flex-1 flex flex-col items-center justify-center px-8 text-center gap-4", children: [
               /* @__PURE__ */ jsxs("div", { className: "relative", children: [
                 /* @__PURE__ */ jsx("div", { className: "size-28 rounded-full bg-secondary flex items-center justify-center", children: /* @__PURE__ */ jsx(ShoppingBag, { className: "size-12 text-muted-foreground" }) }),
@@ -224,12 +253,27 @@ function CartDrawer() {
             )) }) }),
             /* @__PURE__ */ jsxs("div", { className: "border-t border-border/60 px-5 sm:px-6 py-4 bg-card space-y-3", children: [
               /* @__PURE__ */ jsxs("div", { className: "space-y-1.5 text-sm", children: [
+                /* Coupon section */
+                /* @__PURE__ */ jsxs("div", { className: "pb-2 mb-2 border-b border-border/60", children: [
+                  coupon ? /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between p-2 rounded bg-green-500/10 text-green-600 text-xs", children: [
+                    /* @__PURE__ */ jsxs("span", { className: "font-semibold flex items-center gap-1", children: [/* @__PURE__ */ jsx(Ticket, { className: "size-3" }), coupon.code] }),
+                    /* @__PURE__ */ jsx("button", { onClick: clearCoupon, className: "p-1 hover:bg-green-500/20 rounded-full", children: /* @__PURE__ */ jsx(X, { className: "size-3" }) })
+                  ] }) : /* @__PURE__ */ jsxs("form", { onSubmit: handleApplyCoupon, className: "flex gap-2", children: [
+                    /* @__PURE__ */ jsx("input", { type: "text", value: couponCode, onChange: (e) => setCouponCode(e.target.value), placeholder: "Promo code", className: "flex-1 h-8 px-2 rounded bg-background border border-border/60 text-xs uppercase" }),
+                    /* @__PURE__ */ jsx(Button, { type: "submit", disabled: !couponCode || isApplying, size: "sm", className: "h-8 px-3 rounded text-xs", children: isApplying ? /* @__PURE__ */ jsx(Loader2, { className: "size-3 animate-spin" }) : "Apply" })
+                  ] }),
+                  couponError && /* @__PURE__ */ jsx("p", { className: "text-[10px] text-destructive mt-1", children: couponError })
+                ] }),
                 /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
                   /* @__PURE__ */ jsx("span", { children: "Subtotal" }),
                   /* @__PURE__ */ jsxs("span", { className: "font-medium text-foreground", children: [
                     "$",
-                    subtotal.toFixed(2)
+                    grossSubtotal.toFixed(2)
                   ] })
+                ] }),
+                coupon && /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-green-600", children: [
+                  /* @__PURE__ */ jsx("span", { children: "Discount" }),
+                  /* @__PURE__ */ jsxs("span", { className: "font-medium", children: ["-$", discountAmount.toFixed(2)] })
                 ] }),
                 /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
                   /* @__PURE__ */ jsx("span", { children: "Delivery fee" }),

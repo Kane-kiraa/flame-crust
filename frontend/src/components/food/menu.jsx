@@ -3,16 +3,23 @@ import { jsx, jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { foodItems, categoryMeta, categoryOrder } from "@/lib/food-data";
-import { fetchFoodItems } from "@/lib/food-api";
+import { getProducts } from "@/lib/api";
 import { FoodCard } from "./food-card";
 import { cn } from "@/lib/utils";
 function Menu() {
   const [active, setActive] = useState("pizza");
   const [itemsFromApi, setItemsFromApi] = useState(foodItems);
   useEffect(() => {
-    const controller = new AbortController();
-    fetchFoodItems(controller.signal).then(setItemsFromApi).catch(() => void 0);
-    return () => controller.abort();
+    let mounted = true;
+    getProducts()
+      .then((data) => {
+         if (!mounted) return;
+         setItemsFromApi(Array.isArray(data) ? data : (data.products || []));
+      })
+      .catch(() => void 0);
+    return () => {
+      mounted = false;
+    };
   }, []);
   const items = itemsFromApi.filter((i) => i.category === active);
   const meta = categoryMeta[active];

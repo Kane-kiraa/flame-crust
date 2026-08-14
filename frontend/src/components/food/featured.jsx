@@ -1,6 +1,7 @@
 "use client";
 import { jsx, jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Star, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -35,7 +36,7 @@ function Featured() {
           variant: "outline",
           asChild: true,
           className: "self-start sm:self-auto rounded-full border-foreground/15 hover:border-foreground/30 hover:bg-secondary",
-          children: /* @__PURE__ */ jsxs("a", { href: "#menu", className: "flex items-center gap-1", children: [
+          children: /* @__PURE__ */ jsxs(Link, { to: "/menu", className: "flex items-center gap-1", children: [
             "See full menu",
             /* @__PURE__ */ jsx(ArrowRight, { className: "size-4" })
           ] })

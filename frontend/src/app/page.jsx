@@ -9,7 +9,6 @@ import { Features } from "@/components/food/features";
 import { Testimonials } from "@/components/food/testimonials";
 import { Footer } from "@/components/food/footer";
 import { CartDrawer } from "@/components/food/cart-drawer";
-import { DatabaseDashboard } from "@/components/food/database-dashboard.jsx";
 function Home() {
   return /* @__PURE__ */ jsxs("div", { className: "min-h-screen flex flex-col bg-background", children: [
     /* @__PURE__ */ jsx(Navbar, {}),
@@ -21,7 +20,6 @@ function Home() {
       /* @__PURE__ */ jsx(HowItWorks, {}),
       /* @__PURE__ */ jsx(Features, {}),
       /* @__PURE__ */ jsx(Testimonials, {})
-      , /* @__PURE__ */ jsx(DatabaseDashboard, {})
     ] }),
     /* @__PURE__ */ jsx(Footer, {})
   ] });

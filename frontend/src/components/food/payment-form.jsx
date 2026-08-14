@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowLeft, CheckCircle2, CreditCard, Landmark, QrCode, Wallet } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { QRCodeCanvas } from "qrcode.react";
+import { BakongKHQR, MerchantInfo } from "bakong-khqr";
 
 const methods = [
   { id: "CARD", label: "Card", icon: CreditCard },
@@ -14,6 +16,31 @@ const methods = [
 export function PaymentForm({ total, onBack, onSuccess }) {
   const [method, setMethod] = useState("CARD");
   const [card, setCard] = useState({ name: "", number: "", expiry: "", cvv: "" });
+  const [qrCodeString, setQrCodeString] = useState("");
+
+  // Generate KHQR when total changes
+  useEffect(() => {
+    try {
+      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "kanekira@acleda";
+      const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
+      const qrInfo = new MerchantInfo(
+        accountId,
+        merchantName,
+        "Phnom Penh",
+        Number(total),
+        "USD",
+        "STORE1",
+        "TERM1"
+      );
+      const khqr = new BakongKHQR();
+      const res = khqr.generateMerchant(qrInfo);
+      if (res && res.data && res.data.qr) {
+        setQrCodeString(res.data.qr);
+      }
+    } catch (e) {
+      console.error("Failed to generate KHQR", e);
+    }
+  }, [total]);
 
   const submitPayment = (event) => {
     event.preventDefault();
@@ -76,14 +103,12 @@ export function PaymentForm({ total, onBack, onSuccess }) {
 
         {method === "KHQR" && (
           <div className="rounded-2xl border border-border/60 bg-card p-5 text-center">
-            <div className="mx-auto grid size-44 grid-cols-11 gap-1 rounded-xl bg-white p-3 shadow-inner" aria-label="KHQR payment code">
-              {Array.from({ length: 121 }, (_, index) => {
-                const row = Math.floor(index / 11);
-                const column = index % 11;
-                const finder = (startRow, startColumn) => row >= startRow && row < startRow + 4 && column >= startColumn && column < startColumn + 4;
-                const filled = finder(0, 0) || finder(0, 7) || finder(7, 0) || (index * 17 + row * 5 + column) % 7 < 3;
-                return <span key={index} className={filled ? "rounded-[1px] bg-black" : "rounded-[1px] bg-white"} />;
-              })}
+            <div className="mx-auto flex size-44 items-center justify-center rounded-xl bg-white shadow-inner overflow-hidden" aria-label="KHQR payment code">
+              {qrCodeString ? (
+                <QRCodeCanvas value={qrCodeString} size={176} includeMargin={false} />
+              ) : (
+                <QrCode className="size-24 text-zinc-900 opacity-50" />
+              )}
             </div>
             <p className="mt-3 font-semibold text-foreground">Scan with any KHQR app</p>
             <p className="mt-1 text-sm text-muted-foreground">Flame &amp; Crust · Total ${total.toFixed(2)}</p>

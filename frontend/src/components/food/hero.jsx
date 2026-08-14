@@ -1,5 +1,6 @@
 "use client";
 import { jsx, jsxs } from "react/jsx-runtime";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Star, Truck, Clock, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -65,7 +66,7 @@ function Hero() {
                   size: "lg",
                   asChild: true,
                   className: "h-13 sm:h-14 px-7 sm:px-8 text-base rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-warm group",
-                  children: /* @__PURE__ */ jsxs("a", { href: "#menu", className: "flex items-center gap-2", children: [
+                  children: /* @__PURE__ */ jsxs(Link, { to: "/menu", className: "flex items-center gap-2", children: [
                     "Order now",
                     /* @__PURE__ */ jsx(ArrowRight, { className: "size-5 group-hover:translate-x-1 transition-transform" })
                   ] })
@@ -78,7 +79,7 @@ function Hero() {
                   variant: "outline",
                   asChild: true,
                   className: "h-13 sm:h-14 px-7 sm:px-8 text-base rounded-full bg-background/60 backdrop-blur border-foreground/15 hover:border-foreground/30 hover:bg-secondary",
-                  children: /* @__PURE__ */ jsx("a", { href: "#features", children: "See what's cooking" })
+                  children: /* @__PURE__ */ jsx(Link, { to: "/menu", children: "See what's cooking" })
                 }
               )
             ] }),

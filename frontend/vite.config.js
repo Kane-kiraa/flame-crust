@@ -4,9 +4,15 @@ import path from "node:path";
 
 export default defineConfig({
   plugins: [react()],
+  server: {
+    port: 3000,
+    headers: {
+      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+    },
+  },
   resolve: {
     alias: {
-      "@": path.resolve(process.cwd(), "src"),
+      "@": path.resolve(__dirname, "./src"),
     },
   },
 });

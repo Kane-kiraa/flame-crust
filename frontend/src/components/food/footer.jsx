@@ -1,16 +1,41 @@
 "use client";
 import { jsx, jsxs } from "react/jsx-runtime";
+import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Instagram, Twitter, Facebook, Mail, Phone, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+
 const footerLinks = {
-  Menu: ["Pizza", "Pizza Bagels", "Burgers", "Sides", "Drinks", "Desserts"],
-  Company: ["Our story", "Careers", "Press", "Franchising", "Gift cards"],
-  Support: ["Help center", "Track order", "Contact us", "Allergens", "FAQs"],
-  Legal: ["Privacy", "Terms", "Cookies", "Accessibility"]
+  Menu: [
+    { label: "Pizza", to: "/menu?category=pizza" },
+    { label: "Pizza Bagels", to: "/menu?category=pizza-bagels" },
+    { label: "Burgers", to: "/menu?category=burgers" },
+    { label: "Sides", to: "/menu?category=sides" },
+  ],
+  Company: [
+    { label: "Our story", to: "/#features" },
+    { label: "Careers", to: "#" },
+    { label: "Press", to: "#" },
+    { label: "Franchising", to: "#" },
+    { label: "Gift cards", to: "#" },
+  ],
+  Support: [
+    { label: "Help center", to: "#" },
+    { label: "Track order", to: "#" },
+    { label: "Contact us", to: "#" },
+    { label: "Allergens", to: "#" },
+    { label: "FAQs", to: "#" },
+  ],
+  Legal: [
+    { label: "Privacy", to: "#" },
+    { label: "Terms", to: "#" },
+    { label: "Cookies", to: "#" },
+    { label: "Accessibility", to: "#" },
+  ],
 };
+
 function Footer() {
   return /* @__PURE__ */ jsxs("footer", { className: "relative bg-background text-foreground overflow-hidden mt-auto pt-14 lg:pt-14 border-t border-border/60", children: [
     /* @__PURE__ */ jsx("div", { className: "hidden" }),
@@ -34,7 +59,7 @@ function Footer() {
               {
                 onSubmit: (e) => {
                   e.preventDefault();
-                  toast.success("You&apos;re in! Check your inbox for the deal.");
+                  toast.success("You're in! Check your inbox for the deal.");
                   e.target.reset();
                 },
                 className: "flex flex-col sm:flex-row gap-2",
@@ -68,7 +93,7 @@ function Footer() {
       ),
       /* @__PURE__ */ jsxs("div", { className: "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-10 pt-12 lg:pt-16 pb-12", children: [
           /* @__PURE__ */ jsxs("div", { className: "col-span-2 lg:col-span-2", children: [
-          /* @__PURE__ */ jsx("a", { href: "#", className: "flex items-center", children: /* @__PURE__ */ jsx("img", { src: "/images/library/logo.jpg", alt: "Flame & Crust logo", className: "h-20 w-40 object-contain" }) }),
+          /* @__PURE__ */ jsx(Link, { to: "/", className: "flex items-center", children: /* @__PURE__ */ jsx("img", { src: "/images/library/logo.jpg", alt: "Flame & Crust logo", className: "h-20 w-40 object-contain" }) }),
           /* @__PURE__ */ jsx("p", { className: "mt-5 text-sm text-muted-foreground max-w-xs leading-relaxed", children: "Wood-fired pizzas, hand-rolled pizza bagels, and smashed Angus burgers. Crafted with care, delivered hot." }),
           /* @__PURE__ */ jsx("div", { className: "mt-6 flex items-center gap-2", children: [Instagram, Twitter, Facebook].map((Icon, i) => /* @__PURE__ */ jsx(
             "a",
@@ -84,13 +109,13 @@ function Footer() {
         Object.entries(footerLinks).map(([title, links]) => /* @__PURE__ */ jsxs("div", { children: [
           /* @__PURE__ */ jsx("h4", { className: "font-serif text-sm font-bold text-foreground uppercase tracking-wider mb-4", children: title }),
           /* @__PURE__ */ jsx("ul", { className: "space-y-2.5", children: links.map((l) => /* @__PURE__ */ jsx("li", { children: /* @__PURE__ */ jsx(
-            "a",
+            Link,
             {
-              href: "#",
+              to: l.to,
               className: "text-sm text-muted-foreground hover:text-accent transition-colors",
-              children: l
+              children: l.label
             }
-          ) }, l)) })
+          ) }, l.label)) })
         ] }, title))
       ] }),
       /* @__PURE__ */ jsx("div", { className: "grid sm:grid-cols-3 gap-6 py-8 border-t border-border/60", children: [

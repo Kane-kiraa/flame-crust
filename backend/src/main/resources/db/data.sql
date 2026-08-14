@@ -200,13 +200,18 @@ INSERT INTO products (name, description, price, category, image, tags, rating, p
 SELECT 'Chef''s Sharing Box', 'A generous mix of our favorite bites, sauces and freshly baked sides for sharing.', 24.00, 'sides', '/images/products/product-055.jpg', 'New,Shareable', 4.9, TRUE, FALSE, FALSE
 WHERE NOT EXISTS (SELECT 1 FROM products WHERE name = 'Chef''s Sharing Box');
 
+-- Give every seeded product a stable business identifier. The nullable column
+-- allows this idempotent legacy seed format to insert first, then normalize.
+UPDATE products
+SET sku = CONCAT('FC-', LPAD(id, 6, '0'))
+WHERE sku IS NULL OR sku = '';
+
 -- Every product receives its own local image path.
 UPDATE products
 SET image = CONCAT('/images/products/product-', LPAD(id, 3, '0'), '.jpg');
 
 -- Keep the catalogue aligned with the 25 images in frontend/public/images/library.
-DELETE FROM products
-WHERE id NOT IN (SELECT id FROM (SELECT id FROM products ORDER BY id LIMIT 25) AS keep_products);
+-- Do not delete catalog rows here: products may already be referenced by orders.
 
 CREATE TEMPORARY TABLE product_library_images (
     position_no INT PRIMARY KEY,
@@ -254,7 +259,7 @@ DROP TEMPORARY TABLE product_library_images;
 -- Match each product to a different local image from its own item category.
 -- This final mapping overrides the catalogue-order fallback above and keeps
 -- the database aligned with frontend/public/images/library.
-UPDATE products SET category = 'sides' WHERE name IN ('Mushroom Swiss Burger', 'Firecracker Burger');
+UPDATE products SET category = 'burgers' WHERE name IN ('Mushroom Swiss Burger', 'Firecracker Burger');
 UPDATE products SET image = '/images/products/001-margherita.jpg' WHERE name = 'Margherita Classica';
 UPDATE products SET image = '/images/products/002-pepperoni.jpg' WHERE name = 'Pepperoni Diavola';
 UPDATE products SET image = '/images/products/003-classic-pizza-bagel.jpg' WHERE name = 'Classic Pizza Bagel';
@@ -280,3 +285,10 @@ UPDATE products SET image = '/images/products/022-garlic-butter-bites.jpg' WHERE
 UPDATE products SET image = '/images/products/023-crispy-chicken-burger.jpg' WHERE name = 'Crispy Chicken Burger';
 UPDATE products SET image = '/images/products/024-mushroom-swiss-burger.jpg' WHERE name = 'Mushroom Swiss Burger';
 UPDATE products SET image = '/images/products/025-firecracker-burger.jpg' WHERE name = 'Firecracker Burger';
+
+-- Populate the normalized catalogue fields after the product seed has run.
+UPDATE products p
+JOIN categories c ON c.slug = p.category
+SET p.category_id = c.id
+WHERE p.category_id IS NULL;
+UPDATE products SET base_price = price WHERE base_price IS NULL;

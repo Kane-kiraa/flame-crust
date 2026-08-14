@@ -1,9 +1,8 @@
 import { foodItems } from "./food-data";
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8080/api";
+import { getDashboard, getProducts } from "./api";
+
 async function fetchDashboard(signal) {
-  const response = await fetch(`${API_URL}/dashboard`, { signal, headers: { Accept: "application/json" } });
-  if (!response.ok) throw new Error(`Dashboard request failed with status ${response.status}`);
-  return response.json();
+  return getDashboard({ signal });
 }
 function normalizeProduct(product) {
   return {
@@ -14,14 +13,7 @@ function normalizeProduct(product) {
   };
 }
 async function fetchFoodItems(signal) {
-  const response = await fetch(`${API_URL}/products`, {
-    signal,
-    headers: { Accept: "application/json" }
-  });
-  if (!response.ok) {
-    throw new Error(`Menu request failed with status ${response.status}`);
-  }
-  const products = await response.json();
+  const products = await getProducts(undefined, { signal });
   return products.map(normalizeProduct);
 }
 export {

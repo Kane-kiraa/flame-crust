@@ -1,5 +1,6 @@
 package com.flamecrust.api.product;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -13,6 +14,8 @@ public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+    @Column(unique = true, length = 40)
+    private String sku;
     private String name;
     private String description;
     private BigDecimal price;
@@ -23,6 +26,7 @@ public class Product {
     private boolean popular;
     private boolean spicy;
     private boolean vegetarian;
+    private boolean active = true;
 
     protected Product() {}
 
@@ -42,6 +46,7 @@ public class Product {
     }
 
     public Long getId() { return id; }
+    public String getSku() { return sku; }
     public String getName() { return name; }
     public String getDescription() { return description; }
     public BigDecimal getPrice() { return price; }
@@ -52,4 +57,5 @@ public class Product {
     public boolean isPopular() { return popular; }
     public boolean isSpicy() { return spicy; }
     public boolean isVegetarian() { return vegetarian; }
+    public boolean isActive() { return active; }
 }

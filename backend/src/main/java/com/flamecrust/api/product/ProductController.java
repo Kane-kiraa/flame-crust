@@ -18,11 +18,13 @@ public class ProductController {
 
     @GetMapping
     public List<Product> all() {
-        return products.findAll();
+        return products.findByActiveTrueOrderByIdAsc();
     }
 
     @GetMapping("/{category}")
     public ResponseEntity<List<Product>> byCategory(@PathVariable String category) {
-        return ResponseEntity.ok(products.findByCategoryIgnoreCase(category));
+        return ResponseEntity.ok(products.findByCategoryIgnoreCase(category).stream()
+                .filter(Product::isActive)
+                .toList());
     }
 }
