@@ -99,9 +99,17 @@ function ProductDetailPage() {
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = (e) => {
     if (!product) return;
     
+    if (e && e.preventDefault) {
+      e.preventDefault();
+      const rect = e.currentTarget.getBoundingClientRect();
+      window.dispatchEvent(new CustomEvent("fly-to-cart", {
+        detail: { image: product.image, startRect: rect }
+      }));
+    }
+
     let finalPrice = product.price;
     const selectedVariantDetails = {};
     
@@ -197,6 +205,7 @@ function ProductDetailPage() {
                     >
                       <div className="relative aspect-[4/3] sm:aspect-[4/3] overflow-hidden rounded-3xl bg-secondary/80 shadow-warm-lg">
                         <img
+                          id="product-main-image"
                           src={product.image}
                           alt={product.name}
                           onLoad={() => setImgLoaded(true)}
@@ -450,8 +459,6 @@ function ProductDetailPage() {
           </div>
         </div>
       )}
-
-      <Footer hideNewsletter />
     </div>
   );
 }

@@ -16,10 +16,10 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
-import { Footer } from "@/components/food/footer";
 import { PageTransition } from "@/components/shared/page-transition";
 import { list, get } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import { foodItems } from "@/lib/food-data";
+import { cn, formatDate } from "@/lib/utils";
 
 const STATUS_STEPS = [
   { id: "PENDING", label: "Order Placed", icon: Clock },
@@ -60,7 +60,7 @@ export default function OrderTrackingPage() {
 
       try {
         const allItems = await list("order_items");
-        setItems(allItems.filter(item => String(item.order_id) === String(orderId)));
+        setItems(allItems.filter(item => String(item.order_id) === String(orderData.id)));
       } catch(e) {}
 
       setError(null);
@@ -109,7 +109,7 @@ export default function OrderTrackingPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-24 sm:pt-28">
+      <main className="flex-1 pt-24 sm:pt-32 pb-16">
         <PageTransition>
           <div className="mx-auto max-w-3xl px-4 py-8">
             <Button
@@ -129,7 +129,7 @@ export default function OrderTrackingPage() {
                     Order #{order.order_number}
                   </h1>
                   <p className="text-muted-foreground mt-1">
-                    Placed on {new Date(order.created_at).toLocaleString()}
+                    Placed on <span className="font-medium text-foreground">{formatDate(order.created_at)}</span>
                   </p>
                 </div>
                 <div className="text-right">
@@ -146,10 +146,10 @@ export default function OrderTrackingPage() {
                   <p className="text-sm mt-1">This order was cancelled and will not be delivered.</p>
                 </div>
               ) : (
-                <div className="relative mb-12 mt-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto pb-8 sm:pb-0">
-                  <div className="min-w-[480px] sm:min-w-0 relative">
+                <div className="relative mb-12 mt-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto pb-10">
+                  <div className="min-w-[480px] sm:min-w-0 relative px-8 sm:px-12 pt-6">
                     {/* Progress Line */}
-                    <div className="absolute top-6 left-0 right-0 h-1 bg-secondary rounded-full overflow-hidden">
+                    <div className="absolute top-12 left-8 right-8 sm:left-12 sm:right-12 h-1 bg-secondary rounded-full overflow-hidden">
                       <motion.div 
                         className="h-full bg-primary shadow-[0_0_10px_2px_rgba(239,68,68,0.7)]"
                         initial={{ width: 0 }}
@@ -222,12 +222,12 @@ export default function OrderTrackingPage() {
                   <motion.div 
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    className="space-y-4"
+                    className="space-y-4 flex flex-col h-full"
                   >
                     <h3 className="font-serif text-lg font-bold flex items-center gap-2 text-foreground">
                       <Home className="size-5 text-primary" /> Delivery Address
                     </h3>
-                    <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300">
+                    <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1">
                       <p className="font-medium text-foreground mb-1">{address.address_line}</p>
                       <p className="text-sm text-muted-foreground mb-3">{address.city}</p>
                       {address.notes && (
@@ -243,21 +243,48 @@ export default function OrderTrackingPage() {
                 <motion.div 
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className="space-y-4"
+                  className="space-y-4 flex flex-col h-full"
                 >
                   <h3 className="font-serif text-lg font-bold flex items-center gap-2 text-foreground">
                     <Receipt className="size-5 text-primary" /> Order Summary
                   </h3>
-                  <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300">
-                    <div className="space-y-3 mb-4">
-                      {items.map(item => (
-                        <div key={item.id} className="flex justify-between items-start text-sm">
-                          <div>
-                            <span className="font-medium text-foreground">{item.quantity}x</span> <span className="text-muted-foreground">{item.product_name}</span>
+                  <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1 flex flex-col">
+                    <div className="space-y-3 mb-4 flex-1 overflow-y-auto max-h-[250px] sm:max-h-[350px] pr-2 custom-scrollbar">
+                      {items.map(item => {
+                        const foodItem = foodItems.find(f => f.name === item.product_name) || {};
+                        return (
+                          <div key={item.id} className="flex justify-between items-center text-sm gap-3">
+                            <div className="flex items-center gap-3">
+                              <div className="size-10 sm:size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 shadow-sm flex items-center justify-center">
+                                {foodItem.image ? (
+                                  <img src={foodItem.image} alt={item.product_name} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                                ) : (
+                                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
+                                    <ShoppingBag className="size-5 sm:size-6 text-primary/60" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-foreground">
+                                  {item.quantity}x {item.product_name}
+                                </span>
+                                {item.options && (
+                                  <span className="text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
+                                    {(() => {
+                                      try {
+                                        return Object.values(JSON.parse(item.options)).join(", ");
+                                      } catch (e) {
+                                        return String(item.options);
+                                      }
+                                    })()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className="font-bold whitespace-nowrap">${Number(item.line_total).toFixed(2)}</span>
                           </div>
-                          <span className="font-medium">${Number(item.line_total).toFixed(2)}</span>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                     <div className="pt-3 border-t border-border/60 space-y-2 text-sm">
                       <div className="flex justify-between text-muted-foreground">
@@ -280,7 +307,6 @@ export default function OrderTrackingPage() {
           </div>
         </PageTransition>
       </main>
-      <Footer />
     </div>
   );
 }

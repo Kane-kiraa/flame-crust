@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User } from "lucide-react";
+import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
@@ -165,6 +165,7 @@ function Navbar() {
             )}
 
             <motion.button
+              id="cart-icon"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.94 }}
               transition={{ duration: 0.15, ease: "easeOut" }}

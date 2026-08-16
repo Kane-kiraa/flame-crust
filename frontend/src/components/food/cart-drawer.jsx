@@ -108,11 +108,12 @@ function CartDrawer() {
       for (const line of lines) {
         await create("order_items", {
           order_id: orderRes.id,
-          product_id: line.id,
+          product_id: Number(line.originalId || line.id) || parseInt(String(line.originalId || line.id).replace(/\D/g, '')) || 1,
           product_name: line.name,
           quantity: line.qty,
           unit_price: line.price,
-          line_total: line.price * line.qty
+          line_total: line.price * line.qty,
+          options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null
         });
       }
 
@@ -131,7 +132,13 @@ function CartDrawer() {
       window.dispatchEvent(new CustomEvent("orderPlaced"));
       navigate(`/track/${orderRes.id}`);
     } catch (error) {
-      toast.error("Failed to place order: " + error.message);
+      if (error.message && error.message.toLowerCase().includes("constraint")) {
+        localStorage.removeItem("customerAuth");
+        toast.error("Your session has expired or is invalid. Please sign in again.");
+        window.location.href = "/login";
+      } else {
+        toast.error("Failed to place order: " + error.message);
+      }
     }
   };
   const handleApplyCoupon = async (e) => {

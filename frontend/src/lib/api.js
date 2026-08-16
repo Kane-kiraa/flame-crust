@@ -1,6 +1,6 @@
 const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
 const defaultApiUrl = host.includes('trycloudflare.com')
-  ? "https://elliott-chubby-eyed-titled.trycloudflare.com/api"
+  ? "https://heights-promote-don-threaded.trycloudflare.com/api"
   : (host.includes('loca.lt') || host.includes('lhr.life'))
     ? "http://172.20.10.2:8080/api" 
     : `${typeof window !== 'undefined' ? window.location.protocol : 'http:'}//${host}:8080/api`;

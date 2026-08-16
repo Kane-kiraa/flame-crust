@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
   User, 
@@ -12,28 +12,43 @@ import {
   Trash2,
   RefreshCcw,
   Heart,
-  LocateFixed
+  LocateFixed,
+  Settings,
+  Ticket,
+  Lock,
+  Phone,
+  Mail,
+  ArrowLeft
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
-import { Footer } from "@/components/food/footer";
+import { CartDrawer } from "@/components/food/cart-drawer";
 import { PageTransition } from "@/components/shared/page-transition";
-import { list, create } from "@/lib/api";
+import { list, create, update } from "@/lib/api";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { addItem, toggleCart } = useCart();
   const [customer, setCustomer] = useState(null);
   const [orders, setOrders] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("ORDERS");
   
+  const searchParams = new URLSearchParams(location.search);
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "MENU");
+  
+  // Settings & Coupons state
+  const [coupons, setCoupons] = useState([]);
+  const [settingsForm, setSettingsForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+
   // New address state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAddress, setNewAddress] = useState({ label: "", address_line: "", city: "" });
@@ -86,15 +101,17 @@ export default function ProfilePage() {
   const fetchProfileData = async (c) => {
     setLoading(true);
     try {
-      const [allOrders, allAddresses] = await Promise.all([
+      const [allOrders, allAddresses, allCoupons] = await Promise.all([
         list("orders"),
-        list("addresses")
+        list("addresses"),
+        list("coupons").catch(() => [])
       ]);
       setOrders(allOrders
         .filter(o => String(o.customer_id) === String(c.id) || o.customer_phone === c.phone)
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
       );
       setAddresses(allAddresses.filter(a => String(a.customer_id) === String(c.id)));
+      setCoupons(allCoupons);
     } catch (err) {
       console.error(err);
     } finally {
@@ -110,6 +127,7 @@ export default function ProfilePage() {
     }
     const c = JSON.parse(auth);
     setCustomer(c);
+    setSettingsForm({ name: c.name || "", email: c.email || "", phone: c.phone || "", password: "" });
     fetchProfileData(c);
     loadFavorites();
 
@@ -117,6 +135,39 @@ export default function ProfilePage() {
     window.addEventListener("favoritesChanged", handleFavChange);
     return () => window.removeEventListener("favoritesChanged", handleFavChange);
   }, [navigate]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const tabParam = params.get('tab');
+    if (tabParam) {
+      setActiveTab(tabParam.toUpperCase());
+    } else {
+      setActiveTab("MENU");
+    }
+  }, [location.search]);
+
+  const handleUpdateSettings = async (e) => {
+    e.preventDefault();
+    setIsUpdatingSettings(true);
+    try {
+      const dataToUpdate = { name: settingsForm.name, phone: settingsForm.phone, email: settingsForm.email };
+      if (settingsForm.password) {
+        dataToUpdate.password_hash = settingsForm.password;
+      }
+      await update("customers", customer.id, dataToUpdate);
+      
+      const updatedCustomer = { ...customer, ...dataToUpdate };
+      delete updatedCustomer.password;
+      localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+      setCustomer(updatedCustomer);
+      setSettingsForm(prev => ({ ...prev, password: "" }));
+      toast.success("Profile updated successfully!");
+    } catch (err) {
+      toast.error("Failed to update profile");
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
 
   const handleCreateAddress = async (e) => {
     e.preventDefault();
@@ -170,6 +221,8 @@ export default function ProfilePage() {
 
   if (!customer) return null;
 
+  const displayTab = activeTab === "MENU" ? "SETTINGS" : activeTab;
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
@@ -182,8 +235,21 @@ export default function ProfilePage() {
               <motion.div 
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="bg-card border border-border/60 rounded-3xl p-6 h-fit shadow-warm-lg"
+                className={cn(
+                  "bg-card border border-border/60 rounded-3xl p-6 h-fit shadow-warm-lg",
+                  activeTab !== "MENU" ? "hidden lg:block" : "block"
+                )}
               >
+                <div className="lg:hidden mb-6">
+                  <Button 
+                    variant="ghost" 
+                    className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground"
+                    onClick={() => navigate("/")}
+                  >
+                    <ArrowLeft className="size-5 mr-2" />
+                    Back to Home
+                  </Button>
+                </div>
                 <div className="flex flex-col items-center text-center mb-8">
                   <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center mb-4 overflow-hidden">
                     {customer.avatar ? (
@@ -199,6 +265,14 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="space-y-2">
+                  <Button 
+                    variant="ghost" 
+                    className={cn("w-full justify-start", activeTab === "SETTINGS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                    onClick={() => setActiveTab("SETTINGS")}
+                  >
+                    <Settings className="mr-3 size-5" />
+                    Profile Settings
+                  </Button>
                   <Button 
                     variant="ghost" 
                     className={cn("w-full justify-start", activeTab === "ORDERS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
@@ -225,6 +299,14 @@ export default function ProfilePage() {
                   </Button>
                   <Button 
                     variant="ghost" 
+                    className={cn("w-full justify-start", activeTab === "COUPONS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
+                    onClick={() => setActiveTab("COUPONS")}
+                  >
+                    <Ticket className="mr-3 size-5" />
+                    Coupons
+                  </Button>
+                  <Button 
+                    variant="ghost" 
                     className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 mt-8"
                     onClick={handleLogout}
                   >
@@ -238,9 +320,95 @@ export default function ProfilePage() {
               <motion.div 
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="space-y-6"
+                className={cn(
+                  "space-y-6",
+                  activeTab === "MENU" ? "hidden lg:block" : "block"
+                )}
               >
-                {activeTab === "ORDERS" ? (
+                <div className="lg:hidden mb-2">
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => { navigate("/profile"); setActiveTab("MENU"); }} 
+                    className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="size-5 mr-2" />
+                    Back to Menu
+                  </Button>
+                </div>
+
+                {displayTab === "SETTINGS" && (
+                  <>
+                    <h3 className="font-serif text-3xl font-bold text-foreground mb-6">Profile Settings</h3>
+                    <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
+                      <form onSubmit={handleUpdateSettings} className="space-y-6">
+                        <div className="grid sm:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                              <User className="size-4" /> Full Name
+                            </label>
+                            <Input 
+                              required 
+                              value={settingsForm.name} 
+                              onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
+                              className="rounded-xl border-border/60 bg-background/50 h-12" 
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                              <Phone className="size-4" /> Phone Number
+                            </label>
+                            <Input 
+                              required 
+                              value={settingsForm.phone} 
+                              onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
+                              className="rounded-xl border-border/60 bg-background/50 h-12" 
+                            />
+                          </div>
+                          <div className="space-y-2 sm:col-span-2">
+                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                              <Mail className="size-4" /> Email Address
+                            </label>
+                            <Input 
+                              type="email"
+                              value={settingsForm.email} 
+                              onChange={e => setSettingsForm(prev => ({...prev, email: e.target.value}))} 
+                              className="rounded-xl border-border/60 bg-background/50 h-12" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="pt-6 border-t border-border/60">
+                          <h4 className="font-serif text-xl font-bold text-foreground mb-4">Security</h4>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                              <Lock className="size-4" /> New Password (leave blank to keep current)
+                            </label>
+                            <Input 
+                              type="password"
+                              placeholder="••••••••"
+                              value={settingsForm.password} 
+                              onChange={e => setSettingsForm(prev => ({...prev, password: e.target.value}))} 
+                              className="rounded-xl border-border/60 bg-background/50 h-12 max-w-md" 
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex justify-end pt-4">
+                          <Button 
+                            type="submit" 
+                            size="lg" 
+                            className="rounded-full px-8"
+                            disabled={isUpdatingSettings}
+                          >
+                            {isUpdatingSettings ? "Saving..." : "Save Changes"}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </>
+                )}
+
+                {displayTab === "ORDERS" && (
                   <>
                     <h3 className="font-serif text-3xl font-bold text-foreground mb-6">
                       Recent Orders
@@ -260,7 +428,8 @@ export default function ProfilePage() {
                     {orders.map((order) => (
                       <div 
                         key={order.id} 
-                        className="bg-card border border-border/60 rounded-3xl p-6 transition-all hover:border-primary/50"
+                        className="bg-card border border-border/60 rounded-3xl p-6 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm"
+                        onClick={() => navigate(`/track/${order.id}`)}
                       >
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                           <div>
@@ -277,7 +446,7 @@ export default function ProfilePage() {
                             </div>
                             <h4 className="font-semibold text-foreground flex items-center gap-2">
                               <Clock className="size-4 text-muted-foreground" />
-                              {new Date(order.created_at).toLocaleDateString()}
+                              {formatDate(order.created_at)}
                             </h4>
                           </div>
                         </div>
@@ -289,7 +458,10 @@ export default function ProfilePage() {
                               variant="outline" 
                               size="sm" 
                               className="rounded-full text-xs h-8"
-                              onClick={() => handleReorder(order.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleReorder(order.id);
+                              }}
                             >
                               <RefreshCcw className="size-3 mr-1.5" /> Reorder
                             </Button>
@@ -297,7 +469,10 @@ export default function ProfilePage() {
                               variant="ghost" 
                               size="sm" 
                               className="rounded-full text-xs h-8 text-muted-foreground"
-                              onClick={() => navigate(`/track/${order.id}`)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/track/${order.id}`);
+                              }}
                             >
                               View Details <ChevronRight className="size-3 ml-1" />
                             </Button>
@@ -308,7 +483,9 @@ export default function ProfilePage() {
                   </div>
                 )}
                   </>
-                ) : (
+                )}
+
+                {displayTab === "ADDRESSES" && (
                   <>
                     <div className="flex justify-between items-center mb-6">
                       <h3 className="font-serif text-3xl font-bold text-foreground">Saved Addresses</h3>
@@ -392,7 +569,7 @@ export default function ProfilePage() {
                     )}
                   </>
                 )}
-                {activeTab === "FAVORITES" && (
+                {displayTab === "FAVORITES" && (
                   <>
                     <h3 className="font-serif text-3xl font-bold text-foreground mb-6">Favorites</h3>
                     {favorites.length === 0 ? (
@@ -429,13 +606,94 @@ export default function ProfilePage() {
                     )}
                   </>
                 )}
+                {displayTab === "COUPONS" && (
+                  <>
+                    <h3 className="font-serif text-3xl font-bold text-foreground mb-6">My Coupons</h3>
+                    {loading ? (
+                      <div className="flex justify-center py-12">
+                        <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : coupons.length === 0 ? (
+                      <div className="bg-card border border-border/60 rounded-3xl p-12 text-center text-muted-foreground">
+                        <Ticket className="size-16 mx-auto mb-4 opacity-20" />
+                        <p>No coupons available right now.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-8">
+                        <div>
+                          <h4 className="text-lg font-bold mb-4 text-foreground flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-green-500"></span> Available Now
+                          </h4>
+                          <div className="grid sm:grid-cols-2 gap-4">
+                            {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).map(coupon => (
+                              <div key={coupon.id} className="bg-primary/5 border border-primary/20 rounded-2xl p-5 relative overflow-hidden shadow-sm">
+                                <div className="absolute -right-6 -top-6 size-24 bg-primary/10 rounded-full blur-2xl"></div>
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <div className="inline-block px-3 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
+                                      {coupon.code}
+                                    </div>
+                                    <h5 className="font-bold text-lg">
+                                      {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                       coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                       `$${coupon.discount_value} OFF`}
+                                    </h5>
+                                    <p className="text-xs text-muted-foreground mt-1">Min. spend: ${coupon.min_order_amount}</p>
+                                  </div>
+                                </div>
+                                {coupon.expires_at && (
+                                  <div className="mt-4 pt-3 border-t border-primary/10 text-xs text-primary font-semibold flex items-center gap-1.5">
+                                    <Clock className="size-3" /> Valid until {new Date(coupon.expires_at).toLocaleDateString()}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                            {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).length === 0 && (
+                              <p className="text-sm text-muted-foreground">No available coupons.</p>
+                            )}
+                          </div>
+                        </div>
+
+                        <div>
+                          <h4 className="text-lg font-bold mb-4 text-muted-foreground flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
+                          </h4>
+                          <div className="grid sm:grid-cols-2 gap-4 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
+                            {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => (
+                              <div key={coupon.id} className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm">
+                                <div className="flex items-start justify-between">
+                                  <div>
+                                    <div className="inline-block px-3 py-1 bg-secondary text-muted-foreground text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
+                                      {coupon.code}
+                                    </div>
+                                    <h5 className="font-bold text-muted-foreground">
+                                      {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
+                                       coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
+                                       `$${coupon.discount_value} OFF`}
+                                    </h5>
+                                  </div>
+                                </div>
+                                <div className="mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground flex items-center gap-1.5">
+                                  {coupon.active ? "Expired" : "Used or Inactive"}
+                                </div>
+                              </div>
+                            ))}
+                            {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).length === 0 && (
+                              <p className="text-sm text-muted-foreground">No expired coupons.</p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </motion.div>
 
             </div>
           </div>
         </PageTransition>
       </main>
-      <Footer />
+      <CartDrawer />
     </div>
   );
 }

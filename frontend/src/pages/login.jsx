@@ -109,7 +109,12 @@ export default function LoginPage() {
         toast.success("Welcome back, " + customer.name + "!");
         navigate("/");
       } else {
-        toast.error("Invalid email or password.");
+        const userExists = customers.find(c => c.email === email);
+        if (userExists && !userExists.password_hash) {
+          toast.error("Password not set. Please use Email OTP to sign in first, then set your password in your Profile.");
+        } else {
+          toast.error("Invalid email or password.");
+        }
       }
     }, 800);
   };

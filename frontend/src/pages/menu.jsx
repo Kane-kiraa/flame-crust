@@ -6,7 +6,6 @@ import { foodItems, categoryMeta, categoryOrder } from "@/lib/food-data";
 import { fetchFoodItems } from "@/lib/food-api";
 import { Navbar } from "@/components/food/navbar";
 import { FoodCard } from "@/components/food/food-card";
-import { Footer } from "@/components/food/footer";
 import { CartDrawer } from "@/components/food/cart-drawer";
 import { SearchInput } from "@/components/shared/search-input";
 import { CardGridSkeleton } from "@/components/shared/loading-skeleton";
@@ -214,7 +213,6 @@ function MenuPage() {
           </section>
         </PageTransition>
       </main>
-      <Footer />
     </div>
   );
 }

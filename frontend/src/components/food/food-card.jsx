@@ -40,6 +40,12 @@ function FoodCard({ item, index = 0 }) {
   const handleAdd = (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    window.dispatchEvent(new CustomEvent("fly-to-cart", {
+      detail: { image: item.image, startRect: rect }
+    }));
+
     addItem(item);
     toast.success(`${item.name} added to cart`, {
       description: inCart ? `Now ${inCart.qty + 1} in your order` : "Tap the cart icon to checkout"
