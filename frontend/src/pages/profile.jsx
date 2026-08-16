@@ -11,7 +11,8 @@ import {
   Plus,
   Trash2,
   RefreshCcw,
-  Heart
+  Heart,
+  LocateFixed
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,6 +37,44 @@ export default function ProfilePage() {
   // New address state
   const [showAddForm, setShowAddForm] = useState(false);
   const [newAddress, setNewAddress] = useState({ label: "", address_line: "", city: "" });
+  const [isLocating, setIsLocating] = useState(false);
+
+  const handleAutoLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        const data = await res.json();
+        
+        if (data && data.address) {
+          const addr = data.address;
+          const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
+            c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
+          );
+          
+          setNewAddress(prev => ({
+            ...prev,
+            city: cityMatch || prev.city || "Phnom Penh",
+            address_line: data.display_name
+          }));
+          toast.success("Location found!");
+        }
+      } catch (err) {
+        toast.error("Failed to get location address");
+      } finally {
+        setIsLocating(false);
+      }
+    }, () => {
+      toast.error("Please allow location permissions");
+      setIsLocating(false);
+    });
+  };
 
   const loadFavorites = () => {
     try {
@@ -146,13 +185,17 @@ export default function ProfilePage() {
                 className="bg-card border border-border/60 rounded-3xl p-6 h-fit shadow-warm-lg"
               >
                 <div className="flex flex-col items-center text-center mb-8">
-                  <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center mb-4">
-                    <User className="size-10 text-primary" />
+                  <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center mb-4 overflow-hidden">
+                    {customer.avatar ? (
+                      <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <User className="size-10 text-primary" />
+                    )}
                   </div>
                   <h2 className="font-serif text-2xl font-bold text-foreground">
                     {customer.name || "Foodie"}
                   </h2>
-                  <p className="text-muted-foreground">{customer.phone}</p>
+                  <p className="text-muted-foreground">{customer.phone || customer.email}</p>
                 </div>
 
                 <div className="space-y-2">
@@ -300,7 +343,20 @@ export default function ProfilePage() {
                           </div>
                         </div>
                         <div>
-                          <label className="text-xs font-semibold text-muted-foreground mb-1 block">Specific Details (Street, House No, etc.)</label>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="text-xs font-semibold text-muted-foreground">Specific Details (Street, House No, etc.)</label>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
+                              onClick={handleAutoLocation}
+                              disabled={isLocating}
+                            >
+                              <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
+                              {isLocating ? "Locating..." : "Use Current Location"}
+                            </Button>
+                          </div>
                           <Input required value={newAddress.address_line} onChange={e => setNewAddress(prev => ({...prev, address_line: e.target.value}))} placeholder="e.g. St 271, House 123, Toul Kork" className="rounded-xl border-border/60" />
                         </div>
                         <div className="flex justify-end gap-2 mt-2">

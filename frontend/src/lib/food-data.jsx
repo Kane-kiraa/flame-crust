@@ -281,6 +281,11 @@ const foodItems = [
   }
 ];
 const categoryMeta = {
+  all: {
+    label: "All Foods",
+    description: "Explore our full delicious menu of wood-fired sourdough pizzas, bagels, burgers & sides.",
+    icon: "\u{1F37D}\u{FE0F}"
+  },
   pizza: {
     label: "Pizza",
     description: "Wood-fired sourdough crusts topped with the good stuff.",
@@ -303,6 +308,7 @@ const categoryMeta = {
   }
 };
 const categoryOrder = [
+  "all",
   "pizza",
   "pizza-bagels",
   "burgers",

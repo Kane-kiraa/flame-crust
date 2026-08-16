@@ -10,7 +10,9 @@ import {
   Bike, 
   MapPin, 
   PhoneCall, 
-  AlertCircle
+  AlertCircle,
+  Home,
+  Receipt
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
@@ -33,6 +35,8 @@ export default function OrderTrackingPage() {
   const navigate = useNavigate();
   const [order, setOrder] = useState(null);
   const [driver, setDriver] = useState(null);
+  const [address, setAddress] = useState(null);
+  const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -46,6 +50,19 @@ export default function OrderTrackingPage() {
         const driverData = await get("drivers", orderData.driver_id);
         setDriver(driverData);
       }
+      
+      if (orderData.address_id) {
+        try {
+          const addressData = await get("addresses", orderData.address_id);
+          setAddress(addressData);
+        } catch(e) {}
+      }
+
+      try {
+        const allItems = await list("order_items");
+        setItems(allItems.filter(item => String(item.order_id) === String(orderId)));
+      } catch(e) {}
+
       setError(null);
     } catch (err) {
       setError(err.message || "Failed to load order status.");
@@ -108,7 +125,7 @@ export default function OrderTrackingPage() {
             <div className="rounded-3xl border border-border/60 bg-card p-6 sm:p-10 shadow-warm-lg">
               <div className="flex justify-between items-start mb-8 border-b border-border/60 pb-6">
                 <div>
-                  <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+                  <h1 className="font-serif text-2xl sm:text-3xl font-bold bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm">
                     Order #{order.order_number}
                   </h1>
                   <p className="text-muted-foreground mt-1">
@@ -129,46 +146,48 @@ export default function OrderTrackingPage() {
                   <p className="text-sm mt-1">This order was cancelled and will not be delivered.</p>
                 </div>
               ) : (
-                <div className="relative mb-12 mt-6">
-                  {/* Progress Line */}
-                  <div className="absolute top-6 left-0 right-0 h-1 bg-secondary rounded-full overflow-hidden">
-                    <motion.div 
-                      className="h-full bg-primary"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.max(0, currentStepIndex) / (STATUS_STEPS.length - 1) * 100}%` }}
-                      transition={{ duration: 1, ease: "easeOut" }}
-                    />
-                  </div>
+                <div className="relative mb-12 mt-6 -mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto pb-8 sm:pb-0">
+                  <div className="min-w-[480px] sm:min-w-0 relative">
+                    {/* Progress Line */}
+                    <div className="absolute top-6 left-0 right-0 h-1 bg-secondary rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-primary shadow-[0_0_10px_2px_rgba(239,68,68,0.7)]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(0, currentStepIndex) / (STATUS_STEPS.length - 1) * 100}%` }}
+                        transition={{ duration: 1, ease: "easeOut" }}
+                      />
+                    </div>
 
-                  {/* Steps */}
-                  <div className="relative flex justify-between">
-                    {STATUS_STEPS.map((step, idx) => {
-                      const isCompleted = idx <= currentStepIndex;
-                      const isCurrent = idx === currentStepIndex;
-                      const Icon = step.icon;
-                      return (
-                        <div key={step.id} className="flex flex-col items-center">
-                          <motion.div 
-                            initial={{ scale: 0.8, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            transition={{ delay: idx * 0.1 }}
-                            className={cn(
-                              "size-12 rounded-full border-4 flex items-center justify-center bg-card z-10 transition-colors duration-500",
-                              isCompleted ? "border-primary text-primary" : "border-secondary text-muted-foreground",
-                              isCurrent && "bg-primary text-primary-foreground border-primary ring-4 ring-primary/20"
-                            )}
-                          >
-                            <Icon className="size-5" />
-                          </motion.div>
-                          <span className={cn(
-                            "text-[11px] sm:text-xs font-semibold mt-2 text-center absolute -bottom-6 w-20 -ml-10 left-1/2",
-                            isCurrent ? "text-primary" : (isCompleted ? "text-foreground" : "text-muted-foreground")
-                          )}>
-                            {step.label}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    {/* Steps */}
+                    <div className="relative flex justify-between">
+                      {STATUS_STEPS.map((step, idx) => {
+                        const isCompleted = idx <= currentStepIndex;
+                        const isCurrent = idx === currentStepIndex;
+                        const Icon = step.icon;
+                        return (
+                          <div key={step.id} className="relative flex flex-col items-center">
+                            <motion.div 
+                              initial={{ scale: 0.8, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ delay: idx * 0.1 }}
+                              className={cn(
+                                "size-12 rounded-full border-4 flex items-center justify-center bg-card z-10 transition-all duration-500",
+                                isCompleted ? "border-primary text-primary" : "border-secondary text-muted-foreground",
+                                isCurrent && "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(239,68,68,0.6)] animate-pulse ring-4 ring-primary/30"
+                              )}
+                            >
+                              <Icon className="size-5" />
+                            </motion.div>
+                            <span className={cn(
+                              "text-[11px] sm:text-xs font-semibold mt-2 text-center absolute -bottom-6 w-20 -ml-10 left-1/2",
+                              isCurrent ? "text-primary" : (isCompleted ? "text-foreground" : "text-muted-foreground")
+                            )}>
+                              {step.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -195,6 +214,68 @@ export default function OrderTrackingPage() {
                   </a>
                 </motion.div>
               )}
+
+              {/* Delivery Details & Order Summary */}
+              <div className="grid sm:grid-cols-2 gap-6 pt-6 border-t border-border/60">
+                {/* Address Section */}
+                {address && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="space-y-4"
+                  >
+                    <h3 className="font-serif text-lg font-bold flex items-center gap-2 text-foreground">
+                      <Home className="size-5 text-primary" /> Delivery Address
+                    </h3>
+                    <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300">
+                      <p className="font-medium text-foreground mb-1">{address.address_line}</p>
+                      <p className="text-sm text-muted-foreground mb-3">{address.city}</p>
+                      {address.notes && (
+                        <div className="text-xs bg-background/50 p-3 rounded-xl border border-border/40">
+                          <span className="font-semibold text-primary">Note:</span> {address.notes}
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+
+                {/* Order Summary */}
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="space-y-4"
+                >
+                  <h3 className="font-serif text-lg font-bold flex items-center gap-2 text-foreground">
+                    <Receipt className="size-5 text-primary" /> Order Summary
+                  </h3>
+                  <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300">
+                    <div className="space-y-3 mb-4">
+                      {items.map(item => (
+                        <div key={item.id} className="flex justify-between items-start text-sm">
+                          <div>
+                            <span className="font-medium text-foreground">{item.quantity}x</span> <span className="text-muted-foreground">{item.product_name}</span>
+                          </div>
+                          <span className="font-medium">${Number(item.line_total).toFixed(2)}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="pt-3 border-t border-border/60 space-y-2 text-sm">
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Subtotal</span>
+                        <span>${Number(order.subtotal).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground">
+                        <span>Delivery Fee</span>
+                        <span>${Number(order.delivery_fee).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold text-foreground pt-2 text-base">
+                        <span>Total</span>
+                        <span className="text-primary">${Number(order.total).toFixed(2)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              </div>
             </div>
           </div>
         </PageTransition>

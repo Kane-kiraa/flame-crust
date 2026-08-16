@@ -2,6 +2,7 @@ package com.flamecrust.api.admin;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -53,33 +54,52 @@ public class AdminCrudController {
 
     @PostMapping("/{resource}")
     public ResponseEntity<?> create(@PathVariable String resource, @RequestBody Map<String, Object> body) {
-        Resource definition = definition(resource);
-        Map<String, Object> values = clean(definition, body);
-        if (values.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Request body has no writable fields"));
+        try {
+            Resource definition = definition(resource);
+            Map<String, Object> values = clean(definition, body);
+            if (values.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Request body has no writable fields"));
+            }
+            String columns = values.keySet().stream().map(column -> "`" + column + "`").collect(Collectors.joining(", "));
+            String placeholders = values.keySet().stream().map(column -> "?").collect(Collectors.joining(", "));
+
+            String sql = "INSERT INTO `" + definition.table() + "` (" + columns + ") VALUES (" + placeholders + ")";
+            if ("reviews".equalsIgnoreCase(definition.table())) {
+                sql += " ON DUPLICATE KEY UPDATE `rating` = VALUES(`rating`), `comment` = VALUES(`comment`), `created_at` = CURRENT_TIMESTAMP";
+            }
+
+            jdbc.update(sql, values.values().toArray());
+            Number id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Number.class);
+            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id != null ? id.longValue() : 0, "message", "created"));
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
         }
-        String columns = values.keySet().stream().map(column -> "`" + column + "`").collect(Collectors.joining(", "));
-        String placeholders = values.keySet().stream().map(column -> "?").collect(Collectors.joining(", "));
-        jdbc.update("INSERT INTO `" + definition.table() + "` (" + columns + ") VALUES (" + placeholders + ")",
-                values.values().toArray());
-        Number id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Number.class);
-        return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id.longValue(), "message", "created"));
     }
 
     @PutMapping("/{resource}/{id}")
     public ResponseEntity<?> update(@PathVariable String resource, @PathVariable long id,
                                     @RequestBody Map<String, Object> body) {
-        Resource definition = definition(resource);
-        Map<String, Object> values = clean(definition, body);
-        if (values.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Request body has no writable fields"));
+        try {
+            Resource definition = definition(resource);
+            Map<String, Object> values = clean(definition, body);
+            if (values.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Request body has no writable fields"));
+            }
+            String assignments = values.keySet().stream().map(column -> "`" + column + "` = ?")
+                    .collect(Collectors.joining(", "));
+            Object[] args = Arrays.copyOf(values.values().toArray(), values.size() + 1);
+            args[values.size()] = id;
+            int changed = jdbc.update("UPDATE `" + definition.table() + "` SET " + assignments + " WHERE id = ?", args);
+            return changed == 0 ? ResponseEntity.notFound().build() : ResponseEntity.ok(Map.of("message", "updated", "id", id));
+        } catch (DataIntegrityViolationException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        String assignments = values.keySet().stream().map(column -> "`" + column + "` = ?")
-                .collect(Collectors.joining(", "));
-        Object[] args = Arrays.copyOf(values.values().toArray(), values.size() + 1);
-        args[values.size()] = id;
-        int changed = jdbc.update("UPDATE `" + definition.table() + "` SET " + assignments + " WHERE id = ?", args);
-        return changed == 0 ? ResponseEntity.notFound().build() : ResponseEntity.ok(Map.of("message", "updated", "id", id));
     }
 
     @DeleteMapping("/{resource}/{id}")
@@ -88,6 +108,7 @@ public class AdminCrudController {
         int deleted = jdbc.update("DELETE FROM `" + definition.table() + "` WHERE id = ?", id);
         return deleted == 0 ? ResponseEntity.notFound().build() : ResponseEntity.ok(Map.of("message", "deleted", "id", id));
     }
+
 
     private Resource definition(String name) {
         Resource resource = RESOURCES.get(name.toLowerCase());
@@ -102,9 +123,29 @@ public class AdminCrudController {
         body.forEach((key, value) -> {
             if (!key.equals("id") && resource.columns().contains(key)) {
                 values.put(key, sqlValue(value));
+            } else if (key.equals("password") && value instanceof String password && !password.isBlank()) {
+                if (resource.columns().contains("password_hash")) {
+                    values.put("password_hash", hashPassword(password));
+                }
             }
         });
         return values;
+    }
+
+    private String hashPassword(String password) {
+        try {
+            java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] hash = md.digest(password.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder hexString = new StringBuilder();
+            for (byte b : hash) {
+                String hex = Integer.toHexString(0xff & b);
+                if (hex.length() == 1) hexString.append('0');
+                hexString.append(hex);
+            }
+            return hexString.toString();
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 algorithm not found", e);
+        }
     }
 
     private Object sqlValue(Object value) {

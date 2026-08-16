@@ -32,7 +32,7 @@ export function DataTable({
   className,
 }) {
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState(null);
+  const [sortKey, setSortKey] = useState("id");
   const [sortDir, setSortDir] = useState("asc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(controlledPageSize || 10);

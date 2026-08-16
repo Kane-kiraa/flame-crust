@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS coupons (
     active BOOLEAN NOT NULL DEFAULT TRUE,
     PRIMARY KEY (id),
     UNIQUE KEY uk_coupons_code (code),
-    CONSTRAINT chk_coupons_type CHECK (discount_type IN ('PERCENTAGE', 'FIXED')),
+    CONSTRAINT chk_coupons_type CHECK (discount_type IN ('PERCENTAGE', 'FIXED', 'FREE_DELIVERY')),
     CONSTRAINT chk_coupons_values CHECK (discount_value >= 0 AND min_order_amount >= 0)
 );
 

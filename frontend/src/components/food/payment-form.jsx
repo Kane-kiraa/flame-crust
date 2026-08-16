@@ -4,7 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
-import { BakongKHQR, MerchantInfo } from "bakong-khqr";
+import { BakongKHQR, IndividualInfo } from "bakong-khqr";
+import ImageUpload from "@/components/ImageUpload";
+import { MapPicker } from "./map-picker";
+import { LocateFixed, MapPin, Truck, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const methods = [
   { id: "CARD", label: "Card", icon: CreditCard },
@@ -16,40 +20,105 @@ const methods = [
 export function PaymentForm({ total, onBack, onSuccess }) {
   const [method, setMethod] = useState("CARD");
   const [card, setCard] = useState({ name: "", number: "", expiry: "", cvv: "" });
+  const [address, setAddress] = useState("");
+  const [city, setCity] = useState("Phnom Penh");
+  const [isLocating, setIsLocating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
   const [qrCodeString, setQrCodeString] = useState("");
+  const [paymentSlip, setPaymentSlip] = useState("");
 
-  // Generate KHQR when total changes
-  useEffect(() => {
+  const handleAutoLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        const data = await res.json();
+
+        if (data && data.address) {
+          const addr = data.address;
+          const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
+            c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
+          );
+
+          setAddress(data.display_name);
+          setCity(cityMatch || "Phnom Penh");
+          toast.success("Location found!");
+        }
+      } catch (err) {
+        toast.error("Failed to get location address");
+      } finally {
+        setIsLocating(false);
+      }
+    }, () => {
+      toast.error("Please allow location permissions");
+      setIsLocating(false);
+    });
+  };
+
+
+  const generateQR = () => {
     try {
-      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "kanekira@acleda";
+      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "0965755963@acleda";
       const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
-      const qrInfo = new MerchantInfo(
+      const qrInfo = new IndividualInfo(
         accountId,
         merchantName,
         "Phnom Penh",
-        Number(total),
-        "USD",
-        "STORE1",
-        "TERM1"
+        {
+          currency: "116", // 116 is KHR
+          amount: Math.round(Number(total) * 4100),
+          storeLabel: "STORE1",
+          terminalLabel: "TERM1",
+          expirationTimestamp: Date.now() + (5 * 60 * 1000) // expires in 5 minutes
+        }
       );
       const khqr = new BakongKHQR();
-      const res = khqr.generateMerchant(qrInfo);
+      const res = khqr.generateIndividual(qrInfo);
       if (res && res.data && res.data.qr) {
         setQrCodeString(res.data.qr);
+        toast.success("QR Code generated");
+      } else {
+        throw new Error(res?.status?.message || "Invalid QR response");
       }
     } catch (e) {
       console.error("Failed to generate KHQR", e);
+      toast.error(e.message || "Failed to generate QR");
     }
+  };
+
+  // Reset QR if total changes
+  useEffect(() => {
+    setQrCodeString("");
   }, [total]);
 
   const submitPayment = (event) => {
     event.preventDefault();
+    if (!address) {
+      toast.error("Please provide a delivery address or pin on map.");
+      return;
+    }
     if (method === "CARD" && (!card.name || !card.number || !card.expiry || !card.cvv)) {
       toast.error("Please complete your card details");
       return;
     }
+    if (method === "ABA_PAY" && !paymentSlip) {
+      toast.error("សូមបញ្ចូលរូបភាពវិក័យប័ត្រទូទាត់ប្រាក់របស់អ្នក (Payment Slip)");
+      return;
+    }
     toast.success("Payment method saved", { description: "Your order is ready to place." });
-    onSuccess({ method, cardLast4: method === "CARD" ? card.number.slice(-4) : null });
+    onSuccess({
+      method,
+      cardLast4: method === "CARD" ? card.number.slice(-4) : null,
+      paymentSlip: paymentSlip,
+      address,
+      city
+    });
   };
 
   return (
@@ -64,21 +133,46 @@ export function PaymentForm({ total, onBack, onSuccess }) {
         </div>
       </div>
 
-      <form onSubmit={submitPayment} className="space-y-5 pt-6">
-        <div className="grid grid-cols-4 gap-2">
-          {methods.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setMethod(id)}
-              className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-xs font-semibold transition-colors ${
-                method === id ? "border-primary bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:border-primary/50"
-              }`}
-            >
-              <Icon className="size-5" />
-              {label}
-            </button>
-          ))}
+      <form onSubmit={submitPayment} className="space-y-6 pt-6">
+
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-semibold text-sm flex items-center gap-2">
+              <Truck className="size-4 text-primary" /> Delivery Details
+            </h4>
+            <div className="flex gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={() => setShowMap(true)} className="h-7 text-[11px] rounded-full px-3">
+                <MapPin className="size-3 mr-1.5" />
+                Map
+              </Button>
+              <Button type="button" variant="outline" size="sm" onClick={handleAutoLocation} disabled={isLocating} className="h-7 text-[11px] rounded-full px-3">
+                <LocateFixed className={`size-3 mr-1.5 ${isLocating ? "animate-spin" : ""}`} />
+                Auto
+              </Button>
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Input required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Full address details" className="rounded-xl border-border/60" />
+            <Input required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City / Province" className="rounded-xl border-border/60" />
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-border/60">
+          <h4 className="font-semibold text-sm mb-3">Payment Method</h4>
+          <div className="grid grid-cols-4 gap-2">
+            {methods.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMethod(id)}
+                className={`flex flex-col items-center gap-2 rounded-2xl border px-2 py-3 text-xs font-semibold transition-colors ${method === id ? "border-primary bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:border-primary/50"
+                  }`}
+              >
+                <Icon className="size-5" />
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {method === "CARD" && (
@@ -94,25 +188,33 @@ export function PaymentForm({ total, onBack, onSuccess }) {
         )}
 
         {method === "ABA_PAY" && (
-          <div className="rounded-2xl border border-border/60 bg-card p-5 text-center">
+          <div className="rounded-2xl border border-border/60 bg-card p-5 flex flex-col items-center text-center">
             <Wallet className="mx-auto size-8 text-primary" />
             <p className="mt-2 font-semibold text-foreground">Pay with ABA Pay</p>
-            <p className="mt-1 text-sm text-muted-foreground">You will receive payment instructions after placing the order.</p>
+            <p className="mt-1 text-sm text-muted-foreground mb-4">Please upload your payment receipt below.</p>
+            <ImageUpload onUploadSuccess={(url) => setPaymentSlip(url)} />
           </div>
         )}
 
         {method === "KHQR" && (
-          <div className="rounded-2xl border border-border/60 bg-card p-5 text-center">
-            <div className="mx-auto flex size-44 items-center justify-center rounded-xl bg-white shadow-inner overflow-hidden" aria-label="KHQR payment code">
-              {qrCodeString ? (
-                <QRCodeCanvas value={qrCodeString} size={176} includeMargin={false} />
-              ) : (
-                <QrCode className="size-24 text-zinc-900 opacity-50" />
-              )}
-            </div>
-            <p className="mt-3 font-semibold text-foreground">Scan with any KHQR app</p>
-            <p className="mt-1 text-sm text-muted-foreground">Flame &amp; Crust · Total ${total.toFixed(2)}</p>
-            <p className="mt-2 text-[11px] text-muted-foreground">KHQR payment will be verified after you place the order.</p>
+          <div className="rounded-2xl border border-border/60 bg-card p-5 flex flex-col items-center text-center">
+            {qrCodeString ? (
+              <>
+                <div className="mx-auto flex size-44 items-center justify-center rounded-xl bg-white shadow-inner overflow-hidden" aria-label="KHQR payment code">
+                  <QRCodeCanvas value={qrCodeString} size={176} includeMargin={false} />
+                </div>
+                <p className="mt-3 font-semibold text-foreground">Scan with Bakong App</p>
+                <p className="mt-1 text-sm text-muted-foreground">Flame &amp; Crust · Total ${total.toFixed(2)}</p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center py-4">
+                <QrCode className="size-16 text-muted-foreground mb-3 opacity-50" />
+                <p className="text-sm text-muted-foreground mb-5">Generate a unique KHQR code to pay ${total.toFixed(2)}</p>
+                <Button type="button" onClick={generateQR} className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90">
+                  <QrCode className="mr-2 size-4" /> Generate KHQR
+                </Button>
+              </div>
+            )}
           </div>
         )}
 
@@ -132,6 +234,30 @@ export function PaymentForm({ total, onBack, onSuccess }) {
           <CheckCircle2 className="mr-2 size-5" /> Confirm payment
         </Button>
       </form>
+
+      <AnimatePresence>
+        {showMap && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-lg rounded-3xl p-6 shadow-2xl relative"
+            >
+              <h3 className="font-serif text-xl font-bold text-foreground mb-4">Pick Location</h3>
+              <MapPicker
+                onConfirm={(loc) => {
+                  setAddress(loc.address);
+                  setCity(loc.city);
+                  setShowMap(false);
+                  toast.success("Location picked successfully!");
+                }}
+                onClose={() => setShowMap(false)}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import { resourceConfig } from "./resource-config.jsx";
 import { list, get, create, update, remove } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import ImageUpload from "@/components/ImageUpload";
 
 function AdminResourcePage({ resource }) {
   const config = resourceConfig[resource];
@@ -145,7 +146,18 @@ function AdminResourcePage({ resource }) {
   }
 
   const columnsWithActions = [
-    ...config.columns,
+    ...config.columns.map(col => ({
+      ...col,
+      render: col.render ? (v, row) => col.render(v, row, async (updates) => {
+        try {
+          await update(resource, row.id, updates);
+          toast.success("Updated successfully");
+          fetchData();
+        } catch(err) {
+          toast.error("Failed to update: " + err.message);
+        }
+      }) : undefined
+    })),
     {
       key: "actions",
       label: "Actions",
@@ -203,13 +215,15 @@ function AdminResourcePage({ resource }) {
           emptyTitle={`No ${config.label.toLowerCase()} found`}
           emptyDescription={`Create your first ${config.label.slice(0, -1).toLowerCase()} to get started.`}
           actions={
-            <Button
-              onClick={openCreate}
-              className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-5"
-            >
-              <Plus className="size-4 mr-1" />
-              Add {config.label.slice(0, -1)}
-            </Button>
+            !config.disableCreate && (
+              <Button
+                onClick={openCreate}
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-5"
+              >
+                <Plus className="size-4 mr-1" />
+                Add {config.label.slice(0, -1)}
+              </Button>
+            )
           }
         />
       )}
@@ -311,7 +325,26 @@ function AdminResourcePage({ resource }) {
                           {field.label}
                         </Label>
                       </div>
+                    ) : field.type === "image" ? (
+                      <div className="space-y-1.5">
+                        <Label className="text-sm font-medium">
+                          {field.label}
+                          {field.required && <span className="text-destructive ml-0.5">*</span>}
+                        </Label>
+                        <div className="h-48 border border-border/60 rounded-xl overflow-hidden">
+                          <ImageUpload 
+                            onUploadSuccess={(url) => updateField(field.name, url)} 
+                          />
+                        </div>
+                        {formData[field.name] && (
+                           <p className="text-xs text-green-600 mt-1 truncate" title={formData[field.name]}>URL: {formData[field.name]}</p>
+                        )}
+                        {formErrors[field.name] && (
+                          <p className="text-xs text-destructive">{formErrors[field.name]}</p>
+                        )}
+                      </div>
                     ) : (
+
                       <div className="space-y-1.5">
                         <Label htmlFor={field.name} className="text-sm font-medium">
                           {field.label}

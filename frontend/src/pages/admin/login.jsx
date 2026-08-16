@@ -20,12 +20,27 @@ export default function AdminLoginPage() {
     }
     
     setLoading(true);
-    // Simulate auth check (in a real app, this would be a POST to /auth/login)
-    setTimeout(() => {
-      localStorage.setItem("adminAuth", JSON.stringify({ email, role: "Admin", authenticated: true }));
-      toast.success("Welcome to Flame & Crust Admin");
+    try {
+      const res = await fetch("http://localhost:8080/api/auth/admin-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error(errorData?.error || "Invalid credentials");
+      }
+
+      const userData = await res.json();
+      localStorage.setItem("adminAuth", JSON.stringify({ ...userData, authenticated: true }));
+      toast.success(`Welcome to Flame & Crust Admin, ${userData.name}!`);
       navigate("/admin/dashboard");
-    }, 1000);
+    } catch (err) {
+      toast.error(err.message || "Failed to log in");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

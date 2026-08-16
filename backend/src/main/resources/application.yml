@@ -23,9 +23,26 @@ spring:
       schema-locations: classpath:db/schema.sql
       data-locations: classpath:db/data.sql
       continue-on-error: true
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:chanthakhemara12@gmail.com}
+    password: ${MAIL_PASSWORD:yklkawmryphjodct}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
 
 server:
   port: ${PORT:8080}
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+bakong:
+  api:
+    url: ${BAKONG_API_URL:https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5}
+    token: ${BAKONG_API_TOKEN:}
+

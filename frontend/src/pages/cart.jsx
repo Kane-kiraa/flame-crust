@@ -10,7 +10,10 @@ import {
   ArrowRight,
   Sparkles,
   Tag,
+  Loader2,
+  PartyPopper,
 } from "lucide-react";
+import { AvailableCoupons } from "@/components/food/available-coupons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
@@ -36,12 +39,16 @@ function CartPage() {
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE;
   const discount = couponApplied
     ? couponApplied.discount_type === "PERCENTAGE"
       ? Math.min(subtotal, subtotal * Number(couponApplied.discount_value) / 100)
-      : Math.min(subtotal, Number(couponApplied.discount_value))
+      : couponApplied.discount_type === "FREE_DELIVERY"
+        ? 0
+        : Math.min(subtotal, Number(couponApplied.discount_value))
     : 0;
+  const deliveryFee = (couponApplied && couponApplied.discount_type === "FREE_DELIVERY")
+    ? 0
+    : (subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE);
   const total = subtotal - discount + deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
   const remainingForFree = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
   const progressToFree = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
@@ -211,8 +218,14 @@ function CartPage() {
                         {couponApplied ? "Applied" : "Apply"}
                       </Button>
                     </div>
-                    {couponError && (
-                      <p className="text-xs text-destructive mt-1 ml-1">{couponError}</p>
+                    {couponError && <p className="text-sm text-destructive mt-2 ml-4">{couponError}</p>}
+                    {!couponApplied && (
+                      <div className="ml-4">
+                        <AvailableCoupons onSelectCoupon={(c) => {
+                          setCoupon(c);
+                          // Auto apply could be done, but let's just populate the field and they can click apply
+                        }} />
+                      </div>
                     )}
                     {couponApplied && (
                           <p className="text-xs text-green-600 mt-1 ml-1 font-medium">

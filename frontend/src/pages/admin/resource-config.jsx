@@ -22,7 +22,7 @@ export const resourceConfig = {
         { value: "burgers", label: "Burgers" },
         { value: "sides", label: "Sides" },
       ]},
-      { name: "image", label: "Image URL", type: "text", required: false },
+      { name: "image", label: "Image URL", type: "image", required: false },
       { name: "tags", label: "Tags (comma-separated)", type: "text", required: false },
       { name: "rating", label: "Rating", type: "number", required: false, step: "0.1" },
       { name: "spicy", label: "Spicy", type: "checkbox", required: false },
@@ -63,24 +63,42 @@ export const resourceConfig = {
       { name: "name", label: "Name", type: "text", required: true },
       { name: "email", label: "Email", type: "email", required: false },
       { name: "phone", label: "Phone", type: "tel", required: false },
+      { name: "password", label: "Password (leave blank to keep current)", type: "text", required: false },
     ],
   },
   orders: {
     label: "Orders",
     icon: "📋",
+    disableCreate: true,
     searchKeys: ["order_number", "status"],
     columns: [
       { key: "id", label: "ID", sortable: true, className: "w-16" },
       { key: "order_number", label: "Order Number", sortable: true },
-      { key: "status", label: "Status", sortable: true, render: (v) => {
+      { key: "status", label: "Status", sortable: true, render: (v, row, onUpdate) => {
         const colors = {
-          pending: "bg-yellow-100 text-yellow-800",
-          confirmed: "bg-blue-100 text-blue-800",
-          preparing: "bg-orange-100 text-orange-800",
-          delivered: "bg-green-100 text-green-800",
-          cancelled: "bg-red-100 text-red-800",
+          PENDING: "bg-yellow-100 text-yellow-800",
+          CONFIRMED: "bg-blue-100 text-blue-800",
+          PREPARING: "bg-orange-100 text-orange-800",
+          READY: "bg-purple-100 text-purple-800",
+          OUT_FOR_DELIVERY: "bg-teal-100 text-teal-800",
+          DELIVERED: "bg-green-100 text-green-800",
+          CANCELLED: "bg-red-100 text-red-800",
         };
-        return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors[v] || "bg-secondary"}`}>{v || "—"}</span>;
+        const statuses = ["PENDING", "CONFIRMED", "PREPARING", "READY", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED"];
+        return (
+          <div className="relative inline-block">
+            <select 
+              value={v || ""} 
+              onChange={(e) => onUpdate && onUpdate({ status: e.target.value })}
+              onClick={(e) => e.stopPropagation()} // Prevent row click
+              className={`cursor-pointer rounded-full px-3 py-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider outline-none border-2 border-transparent hover:border-primary/20 appearance-none shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 ${colors[v] || "bg-secondary"}`}
+            >
+              {statuses.map(s => (
+                <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
+              ))}
+            </select>
+          </div>
+        );
       }},
       { key: "total", label: "Total", sortable: true, render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
       { key: "created_at", label: "Created", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
@@ -191,19 +209,23 @@ export const resourceConfig = {
   users: {
     label: "Users",
     icon: "👤",
-    searchKeys: ["username", "email"],
+    searchKeys: ["name", "email"],
     columns: [
       { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "username", label: "Username", sortable: true },
+      { key: "name", label: "Name", sortable: true },
       { key: "email", label: "Email", sortable: true },
       { key: "role_id", label: "Role ID", sortable: true },
-      { key: "active", label: "Active", render: (v) => v ? "✅" : "❌" },
+      { key: "status", label: "Status", render: (v) => v === "ACTIVE" ? "✅" : "❌" },
     ],
     fields: [
-      { name: "username", label: "Username", type: "text", required: true },
+      { name: "name", label: "Name", type: "text", required: true },
       { name: "email", label: "Email", type: "email", required: true },
+      { name: "password", label: "Password (leave blank to keep current)", type: "text", required: false },
       { name: "role_id", label: "Role ID", type: "number", required: true },
-      { name: "active", label: "Active", type: "checkbox", required: false },
+      { name: "status", label: "Status", type: "select", required: false, options: [
+        { value: "ACTIVE", label: "Active" },
+        { value: "INACTIVE", label: "Inactive" },
+      ]},
     ],
   },
   roles: {
@@ -223,12 +245,12 @@ export const resourceConfig = {
   audit_logs: {
     label: "Audit Logs",
     icon: "📝",
-    searchKeys: ["action", "entity", "user_id"],
+    searchKeys: ["action", "table_name", "user_id"],
     columns: [
       { key: "id", label: "ID", sortable: true, className: "w-16" },
       { key: "user_id", label: "User ID", sortable: true },
       { key: "action", label: "Action", sortable: true },
-      { key: "entity", label: "Entity", sortable: true },
+      { key: "table_name", label: "Table", sortable: true },
       { key: "created_at", label: "Date", sortable: true, render: (v) => v ? new Date(v).toLocaleString() : "—" },
     ],
     fields: [

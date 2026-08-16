@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "leaflet/dist/leaflet.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -105,6 +106,10 @@
 }
 
 @layer base {
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
   * {
     @apply border-border outline-ring/50;
   }
@@ -141,6 +146,16 @@
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  animation: gradient 3s ease infinite;
 }
 
 /* Marquee animation */
@@ -195,3 +210,121 @@
 .card-lift:hover {
   transform: translateY(-6px);
 }
+
+@keyframes cardFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-card-fade-in {
+  animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  will-change: opacity, transform;
+}
+
+/* Custom Sonner Notification Toast Styling */
+[data-sonner-toaster] {
+  font-family: var(--font-inter), system-ui, sans-serif !important;
+  z-index: 99999 !important;
+}
+
+[data-sonner-toast] {
+  font-family: var(--font-inter), system-ui, sans-serif !important;
+  border-radius: 1.25rem !important;
+  padding: 0.9rem 2.75rem 0.9rem 1.15rem !important;
+  box-shadow: 0 20px 45px -10px oklch(0 0 0 / 0.35), 0 8px 18px -6px oklch(0 0 0 / 0.2) !important;
+  backdrop-filter: blur(16px) !important;
+  gap: 0.75rem !important;
+}
+
+/* Fix close button hanging outside on top-left */
+[data-sonner-toast] [data-close-button] {
+  left: auto !important;
+  right: 0.75rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  width: 1.375rem !important;
+  height: 1.375rem !important;
+  background: oklch(1 0 0 / 0.1) !important;
+  border: 1px solid oklch(1 0 0 / 0.15) !important;
+  color: currentColor !important;
+  border-radius: 9999px !important;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  opacity: 0.75 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-sonner-toast]:hover [data-close-button] {
+  opacity: 1 !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border-color: var(--primary) !important;
+  transform: translateY(-50%) scale(1.1) !important;
+}
+
+/* Styled toast variants - Dark theme default */
+.dark [data-sonner-toast][data-type="info"] {
+  border-color: oklch(0.6 0.18 240 / 0.4) !important;
+  background: oklch(0.2 0.04 240 / 0.92) !important;
+  color: oklch(0.95 0.02 240) !important;
+}
+
+.dark [data-sonner-toast][data-type="success"] {
+  border-color: oklch(0.65 0.2 145 / 0.4) !important;
+  background: oklch(0.2 0.04 145 / 0.92) !important;
+  color: oklch(0.95 0.02 145) !important;
+}
+
+.dark [data-sonner-toast][data-type="error"] {
+  border-color: oklch(0.6 0.22 28 / 0.4) !important;
+  background: oklch(0.2 0.05 28 / 0.92) !important;
+  color: oklch(0.95 0.02 28) !important;
+}
+
+.dark [data-sonner-toast][data-type="warning"] {
+  border-color: oklch(0.7 0.18 70 / 0.4) !important;
+  background: oklch(0.22 0.05 70 / 0.92) !important;
+  color: oklch(0.95 0.02 70) !important;
+}
+
+/* Light mode adjustments */
+:root:not(.dark) [data-sonner-toast][data-type="info"] {
+  background: oklch(0.97 0.015 240 / 0.96) !important;
+  color: oklch(0.25 0.08 240) !important;
+  border-color: oklch(0.65 0.15 240 / 0.35) !important;
+}
+
+:root:not(.dark) [data-sonner-toast][data-type="success"] {
+  background: oklch(0.97 0.02 145 / 0.96) !important;
+  color: oklch(0.25 0.1 145) !important;
+  border-color: oklch(0.65 0.16 145 / 0.35) !important;
+}
+
+:root:not(.dark) [data-sonner-toast][data-type="error"] {
+  background: oklch(0.97 0.02 28 / 0.96) !important;
+  color: oklch(0.35 0.18 28) !important;
+  border-color: oklch(0.6 0.2 28 / 0.35) !important;
+}
+
+:root:not(.dark) [data-sonner-toast][data-type="warning"] {
+  background: oklch(0.98 0.03 70 / 0.96) !important;
+  color: oklch(0.35 0.14 70) !important;
+  border-color: oklch(0.7 0.15 70 / 0.4) !important;
+}
+
+:root:not(.dark) [data-sonner-toast] [data-close-button] {
+  background: oklch(0 0 0 / 0.06) !important;
+  border-color: oklch(0 0 0 / 0.1) !important;
+  color: oklch(0.3 0.02 30) !important;
+}
+

@@ -1,7 +1,9 @@
 import { lazy, Suspense } from "react";
-import { Routes, Route } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { AnimatePresence } from "framer-motion";
+import { Toaster } from "@/components/ui/sonner.jsx";
 import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
+import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 
 const Home = lazy(() => import("./pages/home.jsx"));
 const MenuPage = lazy(() => import("./pages/menu.jsx"));
@@ -19,6 +21,13 @@ const DriverLoginPage = lazy(() => import("./pages/driver/login.jsx"));
 const DriverDashboardPage = lazy(() => import("./pages/driver/dashboard.jsx"));
 const ProfilePage = lazy(() => import("./pages/profile.jsx"));
 
+// Pre-fetch primary route chunks in background for instant smooth page transitions
+import("./pages/home.jsx");
+import("./pages/menu.jsx");
+import("./pages/product-detail.jsx");
+import("./pages/cart.jsx");
+import("./pages/profile.jsx");
+
 function PageLoader() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -31,27 +40,32 @@ function PageLoader() {
 }
 
 export default function App() {
+  const location = useLocation();
+
   return (
     <Suspense fallback={<PageLoader />}>
       <ScrollToTop />
       <Toaster position="top-right" richColors closeButton />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<MenuPage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<CheckoutPage />} />
-        <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
-        <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
-        <Route path="/track/:orderId" element={<OrderTrackingPage />} />
-        <Route path="/review/:productId" element={<LeaveReviewPage />} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/profile" element={<ProfilePage />} />
-        <Route path="/admin/login" element={<AdminLoginPage />} />
-        <Route path="/admin/*" element={<AdminLayout />} />
-        <Route path="/driver/login" element={<DriverLoginPage />} />
-        <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
-      </Routes>
+      <ActiveOrderWidget />
+      <AnimatePresence mode="wait">
+        <Routes location={location} key={location.pathname}>
+          <Route path="/" element={<Home />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<CheckoutPage />} />
+          <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
+          <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+          <Route path="/track/:orderId" element={<OrderTrackingPage />} />
+          <Route path="/review/:productId" element={<LeaveReviewPage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
+          <Route path="/admin/login" element={<AdminLoginPage />} />
+          <Route path="/admin/*" element={<AdminLayout />} />
+          <Route path="/driver/login" element={<DriverLoginPage />} />
+          <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
+        </Routes>
+      </AnimatePresence>
     </Suspense>
   );
 }

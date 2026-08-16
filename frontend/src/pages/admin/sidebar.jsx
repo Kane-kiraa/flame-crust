@@ -52,6 +52,20 @@ function AdminSidebar({ resources, onNavigate }) {
           );
         })}
       </nav>
+
+      <div className="p-4 border-t border-border/60">
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10"
+          onClick={() => {
+            localStorage.removeItem("adminAuth");
+            window.location.href = "/admin/login";
+          }}
+        >
+          <span className="text-base mr-2">🚪</span>
+          Sign Out
+        </Button>
+      </div>
     </aside>
   );
 }

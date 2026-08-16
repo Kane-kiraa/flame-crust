@@ -92,9 +92,21 @@ export function SearchModal({ isOpen, onClose }) {
           {/* Results */}
           <div className="flex-1 overflow-y-auto p-2 sm:p-4">
             {query.length <= 1 ? (
-              <div className="py-12 text-center text-muted-foreground">
-                <Search className="size-12 mx-auto mb-4 opacity-20" />
-                <p>Type at least 2 characters to search</p>
+              <div className="py-8 px-4 text-center">
+                <Search className="size-10 mx-auto mb-3 text-primary/40" />
+                <p className="text-sm font-semibold text-foreground">Quick Search Suggestions</p>
+                <p className="text-xs text-muted-foreground mt-1 mb-5">Click a popular item tag or start typing to search</p>
+                <div className="flex flex-wrap items-center justify-center gap-2 max-w-md mx-auto">
+                  {["Pepperoni", "Margherita", "Burgers", "Bagels", "Truffle Fries", "Spicy"].map((tag) => (
+                    <button
+                      key={tag}
+                      onClick={() => setQuery(tag)}
+                      className="px-3.5 py-1.5 rounded-full bg-secondary/80 hover:bg-primary/10 hover:text-primary border border-border/50 text-xs font-semibold transition-all duration-200 shadow-2xs hover:border-primary/30"
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : filtered.length === 0 ? (
               <div className="py-12 text-center text-muted-foreground">

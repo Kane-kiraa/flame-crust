@@ -41,9 +41,7 @@ function AdminLayout() {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Navbar />
-      <CartDrawer />
-      <div className="flex-1 flex pt-18 sm:pt-20">
+      <div className="flex-1 flex">
         {/* Desktop Sidebar */}
         <AdminSidebar resources={adminResources} />
 

@@ -57,18 +57,37 @@ export function TableSkeleton({ rows = 5, cols = 4, className }) {
 export function DetailSkeleton({ className }) {
   return (
     <div className={cn("space-y-6", className)}>
-      <Skeleton className="h-8 w-1/2" />
-      <Skeleton className="aspect-[16/9] w-full max-w-2xl rounded-3xl" />
-      <div className="space-y-3">
-        <Skeleton className="h-6 w-3/4" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-full" />
-        <Skeleton className="h-4 w-2/3" />
-      </div>
-      <div className="flex gap-3">
-        <Skeleton className="h-12 w-40 rounded-full" />
-        <Skeleton className="h-12 w-32 rounded-full" />
+      <Skeleton className="h-9 w-24 rounded-full mb-4 sm:mb-6" />
+      <div className="grid lg:grid-cols-2 gap-6 lg:gap-12 items-start">
+        <Skeleton className="aspect-[4/3] w-full rounded-3xl" />
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <Skeleton className="h-6 w-20 rounded-full" />
+            <Skeleton className="h-6 w-24 rounded-full" />
+          </div>
+          <Skeleton className="h-10 sm:h-12 w-4/5 rounded-xl" />
+          <div className="space-y-2 pt-2">
+            <Skeleton className="h-4 w-full rounded-md" />
+            <Skeleton className="h-4 w-5/6 rounded-md" />
+            <Skeleton className="h-4 w-3/4 rounded-md" />
+          </div>
+          <div className="pt-6 space-y-3">
+            <Skeleton className="h-4 w-28 rounded-md" />
+            <div className="grid grid-cols-2 gap-2.5">
+              <Skeleton className="h-12 rounded-xl" />
+              <Skeleton className="h-12 rounded-xl" />
+            </div>
+          </div>
+          <div className="pt-8 flex items-center justify-between gap-6 border-t border-border/40">
+            <Skeleton className="h-10 w-28 rounded-lg" />
+            <div className="flex gap-3">
+              <Skeleton className="h-12 w-32 rounded-full" />
+              <Skeleton className="h-12 w-36 rounded-full" />
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
+

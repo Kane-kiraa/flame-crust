@@ -11,10 +11,12 @@ import {
   QrCode,
   Wallet,
   Lock,
-  Ticket,
   X,
   Loader2,
+  LocateFixed,
+  MapPin,
 } from "lucide-react";
+import { AvailableCoupons } from "@/components/food/available-coupons";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,7 +24,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
 import { CartDrawer } from "@/components/food/cart-drawer";
+import { MapPicker } from "@/components/food/map-picker";
 import { PageTransition } from "@/components/shared/page-transition";
+import { AnimatePresence } from "framer-motion";
 import { useCart } from "@/lib/cart-store";
 import { create, list } from "@/lib/api";
 import { toast } from "sonner";
@@ -49,6 +53,7 @@ function CheckoutPage() {
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [customer, setCustomer] = useState(null);
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -93,15 +98,53 @@ function CheckoutPage() {
     formState: { errors },
   } = useForm();
 
+  const handleAutoLocation = () => {
+    if (!navigator.geolocation) {
+      toast.error("Geolocation is not supported by your browser");
+      return;
+    }
+    
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(async (position) => {
+      try {
+        const { latitude, longitude } = position.coords;
+        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+        const data = await res.json();
+        
+        if (data && data.address) {
+          const addr = data.address;
+          const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
+            c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
+          );
+          
+          setValue("address1", data.display_name);
+          setValue("city", cityMatch || "Phnom Penh");
+          toast.success("Location found!");
+        }
+      } catch (err) {
+        toast.error("Failed to get location address");
+      } finally {
+        setIsLocating(false);
+      }
+    }, () => {
+      toast.error("Please allow location permissions");
+      setIsLocating(false);
+    });
+  };
+
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const discount = coupon
     ? coupon.discount_type === "PERCENTAGE"
       ? Math.min(grossSubtotal, (grossSubtotal * Number(coupon.discount_value)) / 100)
-      : Math.min(grossSubtotal, Number(coupon.discount_value))
+      : coupon.discount_type === "FREE_DELIVERY"
+        ? 0
+        : Math.min(grossSubtotal, Number(coupon.discount_value))
     : 0;
   const subtotal = grossSubtotal - discount;
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const deliveryFee = subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE;
+  const deliveryFee = (coupon && coupon.discount_type === "FREE_DELIVERY") 
+    ? 0 
+    : (subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE);
   const total = subtotal + deliveryFee;
 
   const handleApplyCoupon = async (e) => {
@@ -114,7 +157,7 @@ function CheckoutPage() {
       const found = coupons.find((c) => c.code.toUpperCase() === couponCode.toUpperCase());
       if (!found) {
         setCouponError("Invalid promo code");
-      } else if (!found.is_active) {
+      } else if (!found.active) {
         setCouponError("This code is no longer active");
       } else {
         applyCoupon(found);
@@ -187,8 +230,8 @@ function CheckoutPage() {
       clear();
       removeCoupon();
 
-      if (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") {
-        navigate(`/payment/${orderId}`);
+      if (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY" || paymentMethod === "CARD") {
+        navigate(`/payment/${orderId}`, { state: { total, paymentMethod } });
       } else {
         navigate("/order-confirmation", {
           state: {
@@ -246,10 +289,18 @@ function CheckoutPage() {
 
             <h1 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">Checkout</h1>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="mt-8 grid lg:grid-cols-[1fr_380px] gap-8">
+            <form onSubmit={handleSubmit(onSubmit)} className="mt-8 grid lg:grid-cols-[1fr_380px] gap-10">
               <div className="space-y-8">
-                <div className="rounded-2xl border border-border/60 bg-card p-6">
-                  <h2 className="font-serif text-xl font-bold text-foreground mb-5">Delivery address</h2>
+                <div className="rounded-3xl border border-white/5 bg-card/60 backdrop-blur-xl shadow-lg p-6 sm:p-8">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5">
+                    <h2 className="font-serif text-xl font-bold text-foreground">Delivery address</h2>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={handleAutoLocation} disabled={isLocating} className="rounded-full text-xs h-8">
+                        <LocateFixed className={cn("size-3 mr-1.5", isLocating && "animate-spin")} />
+                        {isLocating ? "Locating..." : "Auto Location"}
+                      </Button>
+                    </div>
+                  </div>
                   
                   {savedAddresses.length > 0 && (
                     <div className="mb-6 space-y-3">
@@ -308,11 +359,12 @@ function CheckoutPage() {
                       <Textarea id="notes" {...register("notes")} placeholder="Gate code, landmarks, etc." className="rounded-xl border-border/60 min-h-20" />
                     </div>
                   </div>
+
                 </div>
 
-                <div className="rounded-2xl border border-border/60 bg-card p-6">
-                  <h2 className="font-serif text-xl font-bold text-foreground mb-5">Payment method</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-5">
+                <div className="rounded-3xl border border-white/5 bg-card/60 backdrop-blur-xl shadow-lg p-6 sm:p-8">
+                  <h2 className="font-serif text-xl font-bold text-foreground mb-6">Payment method</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                     {paymentMethods.map(({ id, label, icon: Icon }) => (
                       <button
                         key={id}
@@ -409,8 +461,8 @@ function CheckoutPage() {
                 </div>
               </div>
 
-              <div className="lg:sticky lg:top-28 lg:self-start">
-                <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+              <div className="lg:sticky lg:top-32 lg:self-start">
+                <div className="rounded-3xl border border-white/5 bg-card/80 backdrop-blur-2xl shadow-xl p-6 sm:p-8 space-y-6">
                   <h2 className="font-serif text-xl font-bold text-foreground">Order summary</h2>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
                     {lines.map((line) => (
@@ -448,6 +500,11 @@ function CheckoutPage() {
                       </form>
                     )}
                     {couponError && <p className="text-xs text-destructive mt-2">{couponError}</p>}
+                    {!coupon && (
+                      <AvailableCoupons onSelectCoupon={(c) => {
+                        setCouponCode(c);
+                      }} />
+                    )}
                   </div>
 
                   <div className="border-t border-border/60 pt-4 space-y-2 text-sm">
@@ -477,7 +534,7 @@ function CheckoutPage() {
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full h-13 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 shadow-warm text-base font-semibold"
+                    className="w-full h-14 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] transition-all duration-300 text-lg font-bold"
                   >
                     {submitting ? (
                       <span className="flex items-center gap-2">

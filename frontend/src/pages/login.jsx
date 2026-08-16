@@ -8,7 +8,7 @@ import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
 import { PageTransition } from "@/components/shared/page-transition";
 import { toast } from "sonner";
-import { create, list } from "@/lib/api";
+import { create, list, API_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useGoogleLogin } from "@react-oauth/google";
 import { jwtDecode } from "jwt-decode";
@@ -31,22 +31,26 @@ export default function LoginPage() {
 
   const handleSendOTP = async (e) => {
     e.preventDefault();
-    if (!phone || phone.length < 8) {
-      toast.error("Please enter a valid phone number.");
+    if (!email || email.length < 5 || !email.includes("@")) {
+      toast.error("Please enter a valid email address.");
       return;
     }
     setLoading(true);
     try {
-      await create("otps", {
-        target: phone,
-        otp_code: Math.floor(100000 + Math.random() * 900000).toString(),
-        is_used: false,
-        expires_at: new Date(Date.now() + 5 * 60000).toISOString(),
+      const response = await fetch(`${API_URL}/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
       });
-      toast.success("OTP sent to " + phone);
+      
+      if (!response.ok) {
+        throw new Error("Failed to send OTP");
+      }
+      
+      toast.success("OTP sent to " + email);
       setStep("OTP");
     } catch (err) {
-      toast.error("Failed to send OTP.");
+      toast.error(err.message || "Failed to send OTP.");
     } finally {
       setLoading(false);
     }
@@ -59,16 +63,34 @@ export default function LoginPage() {
       return;
     }
     setLoading(true);
-    setTimeout(() => {
-      let customer = customers.find(c => c.phone === phone);
-      if (!customer) {
-        // Mock a newly created customer ID for them
-        customer = { id: 999, phone, name: "New User", role: "CUSTOMER" };
+    try {
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, otp }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Invalid OTP");
       }
-      localStorage.setItem("customerAuth", JSON.stringify({ ...customer, authenticated: true }));
-      toast.success("Successfully logged in!");
+
+      const customer = await response.json();
+      const seedName = customer.name || email.split("@")[0] || "User";
+      const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=e2e8f0&textColor=475569`;
+      
+      localStorage.setItem("customerAuth", JSON.stringify({ 
+        ...customer, 
+        avatar: avatarUrl, 
+        authenticated: true 
+      }));
+      toast.success(`Welcome, ${customer.name || seedName}!`);
       navigate("/");
-    }, 1000);
+    } catch (err) {
+      toast.error(err.message || "Failed to verify OTP");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEmailLogin = async (e) => {
@@ -133,12 +155,12 @@ export default function LoginPage() {
               className="rounded-3xl border border-border/60 bg-card p-8 shadow-warm-lg"
             >
               <h1 className="font-serif text-3xl font-bold text-center text-foreground mb-2">
-                {step === "INPUT" ? "Welcome back" : "Verify your number"}
+                {step === "INPUT" ? "Welcome back" : "Verify your email"}
               </h1>
               <p className="text-center text-muted-foreground mb-6">
                 {step === "INPUT" 
                   ? "Sign in or create an account to continue."
-                  : `We've sent a 6-digit code to ${phone}.`}
+                  : `We've sent a 6-digit code to ${email}.`}
               </p>
 
               {step === "INPUT" ? (
@@ -151,7 +173,7 @@ export default function LoginPage() {
                         authMethod === "PHONE" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      Phone Number
+                      Email OTP
                     </button>
                     <button
                       onClick={() => setAuthMethod("EMAIL")}
@@ -172,12 +194,12 @@ export default function LoginPage() {
                         onSubmit={handleSendOTP} className="space-y-4"
                       >
                         <div className="relative">
-                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
                           <Input
-                            type="tel"
-                            value={phone}
-                            onChange={(e) => setPhone(e.target.value)}
-                            placeholder="e.g. 012 345 678"
+                            type="email"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            placeholder="e.g. your@email.com"
                             className="pl-12 h-14 rounded-2xl text-lg"
                           />
                         </div>
@@ -186,7 +208,7 @@ export default function LoginPage() {
                           disabled={loading}
                           className="w-full h-14 rounded-2xl bg-primary text-primary-foreground text-lg font-semibold hover:bg-primary/90 transition-all"
                         >
-                          {loading ? <Loader2 className="size-5 animate-spin" /> : "Continue with Phone"}
+                          {loading ? <Loader2 className="size-5 animate-spin" /> : "Send OTP to Email"}
                         </Button>
                       </motion.form>
                     ) : (

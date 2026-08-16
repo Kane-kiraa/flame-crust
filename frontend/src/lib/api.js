@@ -1,4 +1,10 @@
-const API_URL = (import.meta.env.VITE_API_URL ?? "http://localhost:8080/api").replace(/\/$/, "");
+const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
+const defaultApiUrl = host.includes('trycloudflare.com')
+  ? "https://elliott-chubby-eyed-titled.trycloudflare.com/api"
+  : (host.includes('loca.lt') || host.includes('lhr.life'))
+    ? "http://172.20.10.2:8080/api" 
+    : `${typeof window !== 'undefined' ? window.location.protocol : 'http:'}//${host}:8080/api`;
+const API_URL = (import.meta.env.VITE_API_URL ?? defaultApiUrl).replace(/\/$/, "");
 
 async function request(path, options = {}) {
   const response = await globalThis.fetch(`${API_URL}${path}`, {

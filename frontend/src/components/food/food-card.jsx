@@ -47,17 +47,7 @@ function FoodCard({ item, index = 0 }) {
   };
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 24 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{
-        duration: 0.5,
-        delay: Math.min(index * 0.06, 0.4),
-        ease: [0.16, 1, 0.3, 1]
-      }}
-      className="group card-lift relative flex flex-col overflow-hidden rounded-3xl bg-card border border-border/60 shadow-warm hover:shadow-warm-lg"
-    >
+    <article className="group card-lift relative flex flex-col overflow-hidden rounded-3xl bg-card border border-border/60 shadow-warm hover:shadow-warm-lg animate-card-fade-in">
       <Link to={`/product/${item.id}`} className="block">
         <div className="relative aspect-[4/3] overflow-hidden">
           <img
@@ -144,7 +134,7 @@ function FoodCard({ item, index = 0 }) {
           </Button>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 }
 
