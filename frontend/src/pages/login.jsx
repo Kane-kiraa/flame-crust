@@ -93,9 +93,9 @@ export default function LoginPage() {
       }
 
       const data = await response.json();
-      const isAdminOrStaff = data.type === "ADMIN" || (data.user && !data.customer);
+      const isAdmin = data.type === "ADMIN";
 
-      if (isAdminOrStaff) {
+      if (isAdmin) {
         const user = data.user || data;
         const seedName = user.name || email.split("@")[0] || "Admin";
         const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=f97316&textColor=ffffff`;

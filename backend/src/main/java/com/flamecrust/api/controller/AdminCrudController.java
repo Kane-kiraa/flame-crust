@@ -1,181 +1,136 @@
 package com.flamecrust.api.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.flamecrust.api.model.*;
+import com.flamecrust.api.repository.*;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationContext;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
+import java.util.*;
 
-/** Generic CRUD endpoints for the 18 database resources. */
 @RestController
 @RequestMapping("/api/admin")
+@RequiredArgsConstructor
 public class AdminCrudController {
-    private static final Map<String, Resource> RESOURCES = resources();
 
-    private final JdbcTemplate jdbc;
+    private final ApplicationContext context;
     private final ObjectMapper mapper;
+    private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
-    public AdminCrudController(JdbcTemplate jdbc, ObjectMapper mapper) {
-        this.jdbc = jdbc;
-        this.mapper = mapper;
+    private record ResourceConfig(Class<?> entityClass, Class<? extends JpaRepository> repoClass) {}
+
+    private static final Map<String, ResourceConfig> RESOURCES = new HashMap<>();
+
+    static {
+        Map<String, ResourceConfig> map = RESOURCES;
+        map.put("addresses", new ResourceConfig(Address.class, AddressRepository.class));
+        map.put("audit_logs", new ResourceConfig(AuditLog.class, AuditLogRepository.class));
+        map.put("branch_staff", new ResourceConfig(BranchStaff.class, BranchStaffRepository.class));
+        map.put("branches", new ResourceConfig(Branche.class, BrancheRepository.class));
+        map.put("cart_items", new ResourceConfig(CartItem.class, CartItemRepository.class));
+        map.put("carts", new ResourceConfig(Cart.class, CartRepository.class));
+        map.put("cash_register_sessions", new ResourceConfig(CashRegisterSession.class, CashRegisterSessionRepository.class));
+        map.put("categories", new ResourceConfig(Category.class, CategoryRepository.class));
+        map.put("coupon_usages", new ResourceConfig(CouponUsage.class, CouponUsageRepository.class));
+        map.put("coupons", new ResourceConfig(Coupon.class, CouponRepository.class));
+        map.put("customers", new ResourceConfig(Customer.class, CustomerRepository.class));
+        map.put("driver_locations", new ResourceConfig(DriverLocation.class, DriverLocationRepository.class));
+        map.put("drivers", new ResourceConfig(Driver.class, DriverRepository.class));
+        map.put("ingredient_stock", new ResourceConfig(IngredientStock.class, IngredientStockRepository.class));
+        map.put("ingredients", new ResourceConfig(Ingredient.class, IngredientRepository.class));
+        map.put("inventory", new ResourceConfig(Inventory.class, InventoryRepository.class));
+        map.put("kitchen_staff", new ResourceConfig(KitchenStaff.class, KitchenStaffRepository.class));
+        map.put("order_items", new ResourceConfig(OrderItem.class, OrderItemRepository.class));
+        map.put("order_status_history", new ResourceConfig(OrderStatusHistory.class, OrderStatusHistoryRepository.class));
+        map.put("orders", new ResourceConfig(Order.class, OrderRepository.class));
+        map.put("otps", new ResourceConfig(Otp.class, OtpRepository.class));
+        map.put("payment_attempts", new ResourceConfig(PaymentAttempt.class, PaymentAttemptRepository.class));
+        map.put("payments", new ResourceConfig(Payment.class, PaymentRepository.class));
+        map.put("product_options", new ResourceConfig(ProductOption.class, ProductOptionRepository.class));
+        map.put("product_recipes", new ResourceConfig(ProductRecipe.class, ProductRecipeRepository.class));
+        map.put("product_variants", new ResourceConfig(ProductVariant.class, ProductVariantRepository.class));
+        map.put("products", new ResourceConfig(Product.class, ProductRepository.class));
+        map.put("reviews", new ResourceConfig(Review.class, ReviewRepository.class));
+        map.put("roles", new ResourceConfig(Role.class, RoleRepository.class));
+        map.put("tables", new ResourceConfig(Table.class, TableRepository.class));
+        map.put("users", new ResourceConfig(User.class, UserRepository.class));
+    }
+
+    @SuppressWarnings("unchecked")
+    private <T, ID> JpaRepository<T, ID> getRepository(String resourceName) {
+        ResourceConfig config = RESOURCES.get(resourceName.toLowerCase());
+        if (config == null) throw new IllegalArgumentException("Unknown resource: " + resourceName);
+        return context.getBean(config.repoClass());
+    }
+    
+    private Class<?> getEntityClass(String resourceName) {
+        ResourceConfig config = RESOURCES.get(resourceName.toLowerCase());
+        if (config == null) throw new IllegalArgumentException("Unknown resource: " + resourceName);
+        return config.entityClass();
     }
 
     @GetMapping("/{resource}")
-    public List<Map<String, Object>> all(@PathVariable String resource) {
-        Resource definition = definition(resource);
-        return jdbc.queryForList("SELECT * FROM `" + definition.table() + "` ORDER BY id DESC");
+    public List<?> all(@PathVariable String resource) {
+        JpaRepository<Object, Long> repo = getRepository(resource);
+        return repo.findAll(Sort.by(Sort.Direction.DESC, "id"));
     }
 
     @GetMapping("/{resource}/{id}")
     public ResponseEntity<?> one(@PathVariable String resource, @PathVariable long id) {
-        Resource definition = definition(resource);
-        List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT * FROM `" + definition.table() + "` WHERE id = ?", id);
-        return rows.isEmpty() ? ResponseEntity.notFound().build() : ResponseEntity.ok(rows.getFirst());
+        JpaRepository<Object, Long> repo = getRepository(resource);
+        return repo.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping("/{resource}")
     public ResponseEntity<?> create(@PathVariable String resource, @RequestBody Map<String, Object> body) {
         try {
-            Resource definition = definition(resource);
-            Map<String, Object> values = clean(definition, body);
-            if (values.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Request body has no writable fields"));
+            if (body.containsKey("password")) {
+                body.put("passwordHash", passwordEncoder.encode(body.get("password").toString()));
             }
-
-            String columns = values.keySet().stream().map(column -> "`" + column + "`").collect(Collectors.joining(", "));
-            String placeholders = values.keySet().stream().map(column -> "?").collect(Collectors.joining(", "));
-
-            String sql = "INSERT INTO `" + definition.table() + "` (" + columns + ") VALUES (" + placeholders + ")";
-            if ("reviews".equalsIgnoreCase(definition.table())) {
-                sql += " ON DUPLICATE KEY UPDATE `rating` = VALUES(`rating`), `comment` = VALUES(`comment`), `created_at` = CURRENT_TIMESTAMP";
-            }
-
-            jdbc.update(sql, values.values().toArray());
-            Number id = jdbc.queryForObject("SELECT LAST_INSERT_ID()", Number.class);
-            return ResponseEntity.status(HttpStatus.CREATED).body(Map.of("id", id != null ? id.longValue() : 0, "message", "created"));
+            Object entity = mapper.convertValue(body, getEntityClass(resource));
+            JpaRepository<Object, Long> repo = getRepository(resource);
+            Object saved = repo.save(entity);
+            return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
         }
     }
 
     @PutMapping("/{resource}/{id}")
-    public ResponseEntity<?> update(@PathVariable String resource, @PathVariable long id,
-                                    @RequestBody Map<String, Object> body) {
+    public ResponseEntity<?> update(@PathVariable String resource, @PathVariable long id, @RequestBody Map<String, Object> body) {
         try {
-            Resource definition = definition(resource);
-            Map<String, Object> values = clean(definition, body);
-            if (values.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Request body has no writable fields"));
+            JpaRepository<Object, Long> repo = getRepository(resource);
+            if (!repo.existsById(id)) return ResponseEntity.notFound().build();
+            
+            if (body.containsKey("password") && body.get("password") != null && !body.get("password").toString().isBlank()) {
+                body.put("passwordHash", passwordEncoder.encode(body.get("password").toString()));
             }
-
-            String assignments = values.keySet().stream().map(column -> "`" + column + "` = ?")
-                    .collect(Collectors.joining(", "));
-            Object[] args = Arrays.copyOf(values.values().toArray(), values.size() + 1);
-            args[values.size()] = id;
-            int changed = jdbc.update("UPDATE `" + definition.table() + "` SET " + assignments + " WHERE id = ?", args);
-            return changed == 0 ? ResponseEntity.notFound().build() : ResponseEntity.ok(Map.of("message", "updated", "id", id));
+            
+            body.put("id", id);
+            Object entity = mapper.convertValue(body, getEntityClass(resource));
+            Object saved = repo.save(entity);
+            return ResponseEntity.ok(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
         }
     }
 
     @DeleteMapping("/{resource}/{id}")
     public ResponseEntity<?> delete(@PathVariable String resource, @PathVariable long id) {
-        Resource definition = definition(resource);
-        int deleted = jdbc.update("DELETE FROM `" + definition.table() + "` WHERE id = ?", id);
-        return deleted == 0 ? ResponseEntity.notFound().build() : ResponseEntity.ok(Map.of("message", "deleted", "id", id));
-    }
-
-
-    private Resource definition(String name) {
-        Resource resource = RESOURCES.get(name.toLowerCase());
-        if (resource == null) {
-            throw new IllegalArgumentException("Unknown API resource: " + name);
-        }
-        return resource;
-    }
-
-    private Map<String, Object> clean(Resource resource, Map<String, Object> body) {
-        Map<String, Object> values = new LinkedHashMap<>();
-        body.forEach((key, value) -> {
-            if (!key.equals("id") && resource.columns().contains(key)) {
-                values.put(key, sqlValue(value));
-            } else if (key.equals("password") && value instanceof String password && !password.isBlank()) {
-                if (resource.columns().contains("password_hash")) {
-                    values.put("password_hash", new org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder().encode(password));
-                }
-            }
-        });
-        return values;
-    }
-
-    private Object sqlValue(Object value) {
-        if (value instanceof Map<?, ?> || value instanceof List<?>) {
-            try {
-                return mapper.writeValueAsString(value);
-            } catch (JsonProcessingException e) {
-                throw new IllegalArgumentException("Invalid JSON field", e);
-            }
-        }
-        return value;
-    }
-
-    private record Resource(String table, Set<String> columns) {}
-
-    private static Map<String, Resource> resources() {
-        Map<String, Resource> map = new LinkedHashMap<>();
-        add(map, "roles", "name", "permissions");
-        add(map, "users", "role_id", "name", "email", "password_hash", "status", "deleted_at");
-        add(map, "customers", "name", "email", "phone", "password_hash", "status", "deleted_at");
-        add(map, "addresses", "customer_id", "label", "address_line", "city", "postal_code", "notes", "is_default");
-        add(map, "categories", "slug", "name", "sort_order", "active");
-        add(map, "products", "sku", "category_id", "name", "description", "price", "base_price", "category", "image", "tags", "rating", "popular", "spicy", "vegetarian", "active");
-        add(map, "product_options", "product_id", "name", "is_required");
-        add(map, "product_variants", "option_id", "name", "price_adjustment", "active");
-        add(map, "reviews", "product_id", "customer_id", "rating", "comment");
-        add(map, "carts", "customer_id");
-        add(map, "cart_items", "cart_id", "product_id", "quantity", "options");
-        add(map, "coupons", "code", "discount_type", "discount_value", "min_order_amount", "expires_at", "active");
-        add(map, "orders", "order_number", "customer_id", "address_id", "coupon_id", "driver_id", "branch_id", "status", "subtotal", "discount_amount", "delivery_fee", "total", "notes", "idempotency_key");
-        add(map, "order_status_history", "order_id", "status", "notes");
-        add(map, "order_items", "order_id", "product_id", "product_name", "quantity", "unit_price", "line_total", "options");
-        add(map, "payments", "order_id", "method", "status", "amount", "transaction_id", "paid_at");
-        add(map, "payment_attempts", "order_id", "method", "status", "amount", "transaction_id", "error_message");
-        add(map, "drivers", "name", "phone", "email", "password_hash", "vehicle_info", "profile_photo", "date_of_birth", "national_id", "address", "emergency_contact", "license_plate", "latitude", "longitude", "location_updated_at", "profile_completed", "status");
-        add(map, "audit_logs", "user_id", "action", "table_name", "old_data", "new_data");
-        add(map, "branches", "name", "address", "phone", "active");
-        add(map, "branch_staff", "branch_id", "user_id");
-        add(map, "inventory", "branch_id", "product_id", "stock_quantity", "low_stock_threshold");
-        add(map, "kitchen_staff", "name", "phone", "email", "password_hash", "role_title", "status");
-        return Map.copyOf(map);
-    }
-
-    private static void add(Map<String, Resource> map, String name, String... columns) {
-        map.put(name, new Resource(name, Set.copyOf(Arrays.asList(columns))));
+        JpaRepository<Object, Long> repo = getRepository(resource);
+        if (!repo.existsById(id)) return ResponseEntity.notFound().build();
+        repo.deleteById(id);
+        return ResponseEntity.ok(Map.of("message", "deleted", "id", id));
     }
 }

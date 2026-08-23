@@ -7,17 +7,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 import com.flamecrust.api.model.Product;
+import com.flamecrust.api.model.Category;
 import com.flamecrust.api.repository.ProductRepository;
+import com.flamecrust.api.repository.CategoryRepository;
 
 @RestController
 @RequestMapping("/api/products")
 public class ProductController {
     private final ProductRepository products;
-    private final org.springframework.jdbc.core.JdbcTemplate jdbc;
+    private final CategoryRepository categories;
 
-    public ProductController(ProductRepository products, org.springframework.jdbc.core.JdbcTemplate jdbc) {
+    public ProductController(ProductRepository products, CategoryRepository categories) {
         this.products = products;
-        this.jdbc = jdbc;
+        this.categories = categories;
     }
 
     @GetMapping
@@ -26,8 +28,8 @@ public class ProductController {
     }
 
     @GetMapping("/categories")
-    public ResponseEntity<List<java.util.Map<String, Object>>> getCategories() {
-        return ResponseEntity.ok(jdbc.queryForList("SELECT * FROM categories WHERE active = TRUE ORDER BY sort_order ASC"));
+    public ResponseEntity<List<Category>> getCategories() {
+        return ResponseEntity.ok(categories.findByActiveTrueOrderBySortOrderAsc());
     }
 
     @GetMapping("/{category}")

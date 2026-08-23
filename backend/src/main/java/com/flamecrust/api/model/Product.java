@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "products")
+@jakarta.persistence.Table(name = "products")
 public class Product {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,6 +19,8 @@ public class Product {
     private String name;
     private String description;
     private BigDecimal price;
+    private BigDecimal basePrice;
+    private Long categoryId;
     private String category;
     private String image;
     private String tags;
@@ -30,12 +32,14 @@ public class Product {
 
     protected Product() {}
 
-    public Product(String name, String description, BigDecimal price, String category,
+    public Product(String name, String description, BigDecimal price, BigDecimal basePrice, Long categoryId, String category,
                    String image, String tags, BigDecimal rating, boolean popular,
                    boolean spicy, boolean vegetarian) {
         this.name = name;
         this.description = description;
         this.price = price;
+        this.basePrice = basePrice;
+        this.categoryId = categoryId;
         this.category = category;
         this.image = image;
         this.tags = tags;
@@ -50,6 +54,8 @@ public class Product {
     public String getName() { return name; }
     public String getDescription() { return description; }
     public BigDecimal getPrice() { return price; }
+    public BigDecimal getBasePrice() { return basePrice; }
+    public Long getCategoryId() { return categoryId; }
     public String getCategory() { return category; }
     public String getImage() { return image; }
     public String getTags() { return tags; }
@@ -58,4 +64,21 @@ public class Product {
     public boolean isSpicy() { return spicy; }
     public boolean isVegetarian() { return vegetarian; }
     public boolean isActive() { return active; }
+    
+    // Setters
+    public void setId(Long id) { this.id = id; }
+    public void setSku(String sku) { this.sku = sku; }
+    public void setName(String name) { this.name = name; }
+    public void setDescription(String description) { this.description = description; }
+    public void setPrice(BigDecimal price) { this.price = price; }
+    public void setBasePrice(BigDecimal basePrice) { this.basePrice = basePrice; }
+    public void setCategoryId(Long categoryId) { this.categoryId = categoryId; }
+    public void setCategory(String category) { this.category = category; }
+    public void setImage(String image) { this.image = image; }
+    public void setTags(String tags) { this.tags = tags; }
+    public void setRating(BigDecimal rating) { this.rating = rating; }
+    public void setPopular(boolean popular) { this.popular = popular; }
+    public void setSpicy(boolean spicy) { this.spicy = spicy; }
+    public void setVegetarian(boolean vegetarian) { this.vegetarian = vegetarian; }
+    public void setActive(boolean active) { this.active = active; }
 }

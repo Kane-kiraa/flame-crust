@@ -19,7 +19,6 @@ const LoginPage = lazy(() => import("./pages/login.jsx"));
 const OrderTrackingPage = lazy(() => import("./pages/order-tracking.jsx"));
 const DriverLoginPage = lazy(() => import("./pages/driver/login.jsx"));
 const DriverDashboardPage = lazy(() => import("./pages/driver/dashboard.jsx"));
-const KitchenLoginPage = lazy(() => import("./pages/kitchen/login.jsx"));
 const KitchenDashboardPage = lazy(() => import("./pages/kitchen/dashboard.jsx"));
 const ProfilePage = lazy(() => import("./pages/profile.jsx"));
 
@@ -78,7 +77,7 @@ export default function App() {
           <Route path="/admin/*" element={<AdminLayout />} />
           <Route path="/driver/login" element={<Navigate to="/login" replace />} />
           <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
-          <Route path="/kitchen/login" element={<KitchenLoginPage />} />
+          <Route path="/kitchen/login" element={<Navigate to="/login" replace />} />
           <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
         </Routes>
       </AnimatePresence>

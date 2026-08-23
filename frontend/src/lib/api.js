@@ -12,9 +12,12 @@ async function request(path, options = {}) {
     const adminAuth = localStorage.getItem("adminAuth");
     const customerAuth = localStorage.getItem("customerAuth");
     const driverAuth = localStorage.getItem("driverAuth");
+    const kitchenAuth = localStorage.getItem("kitchenAuth");
     
     if (adminAuth) {
       try { token = JSON.parse(adminAuth).token; } catch (e) {}
+    } else if (kitchenAuth) {
+      try { token = JSON.parse(kitchenAuth).token; } catch (e) {}
     } else if (driverAuth) {
       try { token = JSON.parse(driverAuth).token; } catch (e) {}
     } else if (customerAuth) {
