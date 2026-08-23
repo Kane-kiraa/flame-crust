@@ -74,7 +74,7 @@ function Features() {
                   /* @__PURE__ */ jsx(
                     "img",
                     {
-                      src: "/images/library/pizza3.1.jpg",
+                      src: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787503337/pizza.jpg",
                       alt: "Wood-fired pizza oven at Flame & Crust",
                       className: "w-full h-full object-cover",
                       loading: "lazy"
