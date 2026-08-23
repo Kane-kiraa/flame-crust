@@ -39,19 +39,19 @@ function CartPage() {
 
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const discount = couponApplied
+  const isCouponValid = couponApplied && (!couponApplied.min_order_amount || subtotal >= Number(couponApplied.min_order_amount));
+  
+  const discount = isCouponValid
     ? couponApplied.discount_type === "PERCENTAGE"
       ? Math.min(subtotal, subtotal * Number(couponApplied.discount_value) / 100)
       : couponApplied.discount_type === "FREE_DELIVERY"
         ? 0
         : Math.min(subtotal, Number(couponApplied.discount_value))
     : 0;
-  const deliveryFee = (couponApplied && couponApplied.discount_type === "FREE_DELIVERY")
+  const deliveryFee = (isCouponValid && couponApplied.discount_type === "FREE_DELIVERY")
     ? 0
-    : (subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE);
+    : (subtotal === 0 ? 0 : DELIVERY_FEE);
   const total = subtotal - discount + deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
-  const remainingForFree = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
-  const progressToFree = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
 
   const handleApplyCoupon = async () => {
     if (!coupon.trim()) {
@@ -78,7 +78,7 @@ function CartPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 pt-24 sm:pt-28">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
         <PageTransition>
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
             <h1 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">Your Cart</h1>
@@ -94,31 +94,6 @@ function CartPage() {
               />
             ) : (
               <div className="mt-8">
-                {/* Free delivery progress */}
-                <div className="rounded-2xl bg-secondary/40 border border-border/60 p-4 mb-6">
-                  {remainingForFree > 0 ? (
-                    <p className="text-sm text-foreground/80">
-                      Add{" "}
-                      <span className="font-bold text-primary">
-                        ${remainingForFree.toFixed(2)}
-                      </span>{" "}
-                      more for free delivery
-                    </p>
-                  ) : (
-                    <p className="text-sm font-semibold text-green-600 flex items-center gap-1.5">
-                      <Sparkles className="size-3.5" />
-                      You've unlocked free delivery!
-                    </p>
-                  )}
-                  <div className="mt-2 h-1.5 rounded-full bg-border overflow-hidden">
-                    <motion.div
-                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent"
-                      animate={{ width: `${progressToFree}%` }}
-                      transition={{ type: "spring", stiffness: 120, damping: 20 }}
-                    />
-                  </div>
-                </div>
-
                 {/* Cart items */}
                 <div className="space-y-0">
                   <AnimatePresence initial={false}>

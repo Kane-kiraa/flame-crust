@@ -13,7 +13,7 @@ const stats = [
 
 function Hero() {
   return (
-    <section className="relative pt-24 sm:pt-32 lg:pt-40 pb-16 lg:pb-24 overflow-hidden">
+    <section className="relative pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-32 lg:pt-40 pb-16 lg:pb-24 overflow-hidden">
       <div className="absolute inset-0 -z-10 bg-background" />
 
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -119,7 +119,7 @@ function Hero() {
               className="absolute inset-2 sm:inset-4 rounded-full overflow-hidden shadow-warm-lg ring-4 ring-background"
             >
               <img
-                src="/images/library/pizza.jpg"
+                src="./../../public/images/library/pizza.jpg"
                 alt="Signature wood-fired pepperoni pizza"
                 className="w-full h-full object-cover"
                 loading="eager"

@@ -2,8 +2,8 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { foodItems, categoryMeta, categoryOrder } from "@/lib/food-data";
-import { fetchFoodItems } from "@/lib/food-api";
+import { foodItems, categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-data";
+import { fetchFoodItems, fetchCategories } from "@/lib/food-api";
 import { Navbar } from "@/components/food/navbar";
 import { FoodCard } from "@/components/food/food-card";
 import { CartDrawer } from "@/components/food/cart-drawer";
@@ -20,6 +20,7 @@ function MenuPage() {
   const categoryFromUrl = searchParams.get("category") || "all";
   const [active, setActive] = useState(categoryFromUrl);
   const [itemsFromApi, setItemsFromApi] = useState(null);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
@@ -42,9 +43,13 @@ function MenuPage() {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    fetchFoodItems(controller.signal)
-      .then((items) => {
+    Promise.all([
+      fetchFoodItems(controller.signal),
+      fetchCategories(controller.signal)
+    ])
+      .then(([items, cats]) => {
         setItemsFromApi(items);
+        setCategories(cats);
         setLoading(false);
       })
       .catch((err) => {
@@ -72,8 +77,11 @@ function MenuPage() {
   }, [allItems, active, search]);
 
   const visibleItems = useMemo(() => {
+    if (active !== "all") {
+      return filteredItems;
+    }
     return filteredItems.slice(0, visibleCount);
-  }, [filteredItems, visibleCount]);
+  }, [filteredItems, visibleCount, active]);
 
   const handleCategoryChange = (cat) => {
     setActive(cat);
@@ -84,9 +92,13 @@ function MenuPage() {
     const controller = new AbortController();
     setLoading(true);
     setError(null);
-    fetchFoodItems(controller.signal)
-      .then((items) => {
+    Promise.all([
+      fetchFoodItems(controller.signal),
+      fetchCategories(controller.signal)
+    ])
+      .then(([items, cats]) => {
         setItemsFromApi(items);
+        setCategories(cats);
         setLoading(false);
       })
       .catch((err) => {
@@ -97,40 +109,46 @@ function MenuPage() {
       });
   };
 
-  const meta = categoryMeta[active] || categoryMeta.all || { label: "Menu", description: "Explore our delicious menu.", icon: "🍕" };
+  const dbActiveCat = categories.find(c => c.slug === active);
+  const meta = categoryMeta[active] || (dbActiveCat ? { label: dbActiveCat.name, description: `Explore our delicious ${dbActiveCat.name} made just for you.`, icon: "🍽️" } : categoryMeta.all);
+  const currentCategoryOrder = categories.length > 0 ? ["all", ...categories.map(c => c.slug)] : defaultCategoryOrder;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 min-h-[calc(100vh-140px)] pt-24 sm:pt-28">
+      <main className="flex-1 min-h-[calc(100vh-140px)] pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
         <PageTransition>
-          <section className="py-10 lg:py-16">
+          <section className="py-6 sm:py-10 lg:py-12">
             <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
               <div className="text-center max-w-2xl mx-auto">
                 <span className="inline-block rounded-full bg-secondary border border-border/60 px-4 py-1.5 text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
                   Our Menu
                 </span>
-                <h2 className="mt-4 font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.05]">
+                <h2 className="mt-2 sm:mt-4 font-serif text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.05]">
                   Pick your <span className="text-gradient-warm italic">flavor</span> of comfort
                 </h2>
-                <p className="mt-4 text-base sm:text-lg text-muted-foreground">
+                <p className="mt-2 sm:mt-4 text-xs sm:text-base text-muted-foreground max-w-xl mx-auto">
                   Every dish is made-to-order with the good stuff — no shortcuts, no freezers, no compromises.
                 </p>
               </div>
 
-              <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <div className="w-full sm:w-auto overflow-x-auto no-scrollbar py-2 px-1">
+              <div className="mt-5 sm:mt-8 flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4">
+                <div className="w-full sm:w-auto overflow-x-auto no-scrollbar py-1 sm:py-2 px-1">
                   <div className="flex items-center justify-start sm:justify-center gap-2 min-w-max mx-auto">
-                    {categoryOrder.map((cat) => {
-                      const m = categoryMeta[cat];
+                    {currentCategoryOrder.map((cat) => {
+                      const dbCat = categories.find(c => c.slug === cat);
+                      const m = categoryMeta[cat] || {
+                        label: dbCat ? dbCat.name : cat,
+                        icon: "🍽️"
+                      };
                       const isActive = active === cat;
                       return (
                         <button
                           key={cat}
                           onClick={() => handleCategoryChange(cat)}
                           className={cn(
-                            "relative shrink-0 flex items-center gap-2 px-5 py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-semibold transition-colors duration-200 whitespace-nowrap border-2 border-transparent",
+                            "relative shrink-0 flex items-center gap-2 px-4 sm:px-5 py-2 sm:py-3 rounded-full text-sm sm:text-base font-semibold transition-colors duration-200 whitespace-nowrap border-2 border-transparent",
                             isActive
                               ? "bg-primary text-primary-foreground border-primary shadow-warm"
                               : "bg-secondary/80 text-foreground/80 hover:bg-secondary hover:text-foreground hover:border-border/60"
@@ -158,7 +176,7 @@ function MenuPage() {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -8 }}
                   transition={{ duration: 0.25 }}
-                  className="mt-6 text-center text-sm sm:text-base text-muted-foreground italic"
+                  className="mt-3 sm:mt-6 text-center text-xs sm:text-base text-muted-foreground italic"
                 >
                   {meta.description}
                 </motion.p>
@@ -173,7 +191,7 @@ function MenuPage() {
                     className="py-16"
                   />
                 ) : loading ? (
-                  <CardGridSkeleton count={8} className="mt-10" />
+                  <CardGridSkeleton count={8} className="mt-6 sm:mt-10" />
                 ) : filteredItems.length === 0 ? (
                   <div className="mt-10 text-center py-16">
                     <p className="font-serif text-2xl font-bold text-foreground">No items found</p>
@@ -185,14 +203,14 @@ function MenuPage() {
                   <>
                     <div
                       key={active + search}
-                      className="mt-10 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6"
+                      className="mt-6 sm:mt-10 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
                     >
                       {visibleItems.map((item) => (
                         <FoodCard key={item.id} item={item} />
                       ))}
                     </div>
 
-                    {visibleCount < filteredItems.length && (
+                    {active === "all" && visibleCount < filteredItems.length && (
                       <div className="mt-12 text-center flex flex-col items-center gap-3">
                         <Button
                           onClick={handleLoadMore}

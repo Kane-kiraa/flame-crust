@@ -5,6 +5,9 @@ import { ThemeProvider } from "./components/theme-provider.jsx";
 import App from "./App.jsx";
 import "./app/globals.css";
 import { GoogleOAuthProvider } from "@react-oauth/google";
+import { registerSW } from 'virtual:pwa-register';
+
+registerSW({ immediate: true });
 
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 

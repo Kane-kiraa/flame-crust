@@ -2,9 +2,8 @@ import { useState } from "react";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { UploadCloud, Loader2 } from "lucide-react";
 
-export default function ImageUpload({ onUploadSuccess }) {
+export default function ImageUpload({ value, onUploadSuccess }) {
   const [isUploading, setIsUploading] = useState(false);
-  const [imageUrl, setImageUrl] = useState("");
 
   const handleImageChange = async (event) => {
     const file = event.target.files[0];
@@ -13,8 +12,6 @@ export default function ImageUpload({ onUploadSuccess }) {
     try {
       setIsUploading(true);
       const uploadedUrl = await uploadImageToCloudinary(file);
-      
-      setImageUrl(uploadedUrl);
       
       if (onUploadSuccess) {
         onUploadSuccess(uploadedUrl);
@@ -49,10 +46,10 @@ export default function ImageUpload({ onUploadSuccess }) {
         />
       </label>
 
-      {imageUrl && (
+      {value && (
         <div className="relative">
           <img 
-            src={imageUrl} 
+            src={value} 
             alt="Uploaded Preview" 
             className="w-32 h-32 object-cover rounded-lg border shadow"
           />

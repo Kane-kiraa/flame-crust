@@ -5,18 +5,18 @@ export const resourceConfig = {
     icon: "📦",
     searchKeys: ["name", "category"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "name", label: "Name", sortable: true },
-      { key: "price", label: "Price", sortable: true, render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
-      { key: "category", label: "Category", sortable: true, render: (v) => v ? <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{v}</span> : "—" },
-      { key: "rating", label: "Rating", sortable: true, render: (v) => v != null ? `⭐ ${v}` : "—" },
-      { key: "popular", label: "Popular", render: (v) => v ? "✅" : "—" },
+      { key: "_index", label: "No.", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm max-w-[120px] sm:max-w-none truncate" },
+      { key: "price", label: "Price", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "category", label: "Category", sortable: true, className: "hidden sm:table-cell", render: (v) => v ? <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{v}</span> : "—" },
+      { key: "rating", label: "Rating", sortable: true, className: "hidden lg:table-cell", render: (v) => v != null ? `⭐ ${v}` : "—" },
+      { key: "popular", label: "Popular", className: "hidden lg:table-cell", render: (v) => v ? "✅" : "—" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
       { name: "description", label: "Description", type: "textarea", required: false },
       { name: "price", label: "Price", type: "number", required: true, step: "0.01" },
-      { name: "category", label: "Category", type: "select", required: true, options: [
+      { name: "category", label: "Category", type: "select", required: true, optionsResource: "categories", optionsMap: { value: "slug", label: "name" }, options: [
         { value: "pizza", label: "Pizza" },
         { value: "pizza-bagels", label: "Pizza Bagels" },
         { value: "burgers", label: "Burgers" },
@@ -35,11 +35,11 @@ export const resourceConfig = {
     icon: "📂",
     searchKeys: ["name", "slug"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "name", label: "Name", sortable: true },
-      { key: "slug", label: "Slug", sortable: true },
-      { key: "sort_order", label: "Order", sortable: true },
-      { key: "active", label: "Active", render: (v) => v ? "✅" : "❌" },
+      { key: "_index", label: "No.", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "slug", label: "Slug", sortable: true, className: "hidden sm:table-cell" },
+      { key: "sort_order", label: "Order", sortable: true, className: "hidden lg:table-cell" },
+      { key: "active", label: "Active", className: "text-xs sm:text-sm", render: (v) => v ? "✅" : "❌" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
@@ -53,11 +53,11 @@ export const resourceConfig = {
     icon: "👥",
     searchKeys: ["name", "email", "phone"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "name", label: "Name", sortable: true },
-      { key: "email", label: "Email", sortable: true },
-      { key: "phone", label: "Phone" },
-      { key: "created_at", label: "Created", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      { key: "_index", label: "No.", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "email", label: "Email", sortable: true, className: "hidden sm:table-cell" },
+      { key: "phone", label: "Phone", className: "text-xs sm:text-sm" },
+      { key: "created_at", label: "Created", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
@@ -72,9 +72,9 @@ export const resourceConfig = {
     disableCreate: true,
     searchKeys: ["order_number", "status"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "order_number", label: "Order Number", sortable: true },
-      { key: "status", label: "Status", sortable: true, render: (v, row, onUpdate) => {
+      { key: "id", label: "ID", sortable: true, className: "hidden sm:table-cell w-16" },
+      { key: "order_number", label: "Order No.", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "status", label: "Status", sortable: true, className: "text-xs sm:text-sm", render: (v, row, onUpdate) => {
         const colors = {
           PENDING: "bg-yellow-100 text-yellow-800",
           CONFIRMED: "bg-blue-100 text-blue-800",
@@ -91,7 +91,7 @@ export const resourceConfig = {
               value={v || ""} 
               onChange={(e) => onUpdate && onUpdate({ status: e.target.value })}
               onClick={(e) => e.stopPropagation()} // Prevent row click
-              className={`cursor-pointer rounded-full px-3 py-1.5 text-[11px] sm:text-xs font-bold uppercase tracking-wider outline-none border-2 border-transparent hover:border-primary/20 appearance-none shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 ${colors[v] || "bg-secondary"}`}
+              className={`cursor-pointer rounded-full px-2 sm:px-3 py-1 sm:py-1.5 text-[9px] sm:text-[11px] font-bold uppercase tracking-wider outline-none border-2 border-transparent hover:border-primary/20 appearance-none shadow-sm hover:shadow-md hover:scale-[1.02] transition-all duration-200 ${colors[v] || "bg-secondary"}`}
             >
               {statuses.map(s => (
                 <option key={s} value={s}>{s.replace(/_/g, " ")}</option>
@@ -100,8 +100,8 @@ export const resourceConfig = {
           </div>
         );
       }},
-      { key: "total", label: "Total", sortable: true, render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
-      { key: "created_at", label: "Created", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      { key: "total", label: "Total", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "created_at", label: "Created", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
     ],
     fields: [
       { name: "order_number", label: "Order Number", type: "text", required: true },
@@ -124,19 +124,19 @@ export const resourceConfig = {
     icon: "💳",
     searchKeys: ["method", "status"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "order_id", label: "Order ID", sortable: true },
-      { key: "method", label: "Method", sortable: true },
-      { key: "amount", label: "Amount", sortable: true, render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
-      { key: "status", label: "Status", sortable: true, render: (v) => {
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "order_id", label: "Order ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "method", label: "Method", sortable: true, className: "hidden sm:table-cell" },
+      { key: "amount", label: "Amount", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "status", label: "Status", sortable: true, className: "text-xs sm:text-sm", render: (v) => {
         const colors = {
           completed: "bg-green-100 text-green-800",
           pending: "bg-yellow-100 text-yellow-800",
           failed: "bg-red-100 text-red-800",
         };
-        return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors[v] || "bg-secondary"}`}>{v || "—"}</span>;
+        return <span className={`rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-medium uppercase ${colors[v] || "bg-secondary"}`}>{v || "—"}</span>;
       }},
-      { key: "created_at", label: "Created", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      { key: "created_at", label: "Created", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
     ],
     fields: [
       { name: "order_id", label: "Order ID", type: "text", required: true },
@@ -158,28 +158,38 @@ export const resourceConfig = {
     icon: "🚗",
     searchKeys: ["name", "status"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "name", label: "Name", sortable: true },
-      { key: "phone", label: "Phone" },
-      { key: "status", label: "Status", sortable: true, render: (v) => {
+      { key: "id", label: "ID", sortable: true, className: "hidden sm:table-cell w-16" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "email", label: "Email", sortable: true, className: "hidden sm:table-cell" },
+      { key: "phone", label: "Phone", className: "text-xs sm:text-sm" },
+      { key: "status", label: "Status", sortable: true, className: "text-xs sm:text-sm", render: (v) => {
         const colors = {
-          available: "bg-green-100 text-green-800",
-          busy: "bg-yellow-100 text-yellow-800",
-          offline: "bg-gray-100 text-gray-800",
+          ONLINE: "bg-green-100 text-green-800",
+          BUSY: "bg-yellow-100 text-yellow-800",
+          OFFLINE: "bg-gray-100 text-gray-800",
         };
-        return <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${colors[v] || "bg-secondary"}`}>{v || "—"}</span>;
+        return <span className={`rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-medium ${colors[v] || "bg-secondary"}`}>{v || "—"}</span>;
       }},
-      { key: "rating", label: "Rating", sortable: true, render: (v) => v != null ? `⭐ ${v}` : "—" },
+      { key: "profile_completed", label: "Profile", className: "hidden lg:table-cell", render: (v) => v ? "✅" : "❌" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
+      { name: "email", label: "Email", type: "email", required: true },
       { name: "phone", label: "Phone", type: "tel", required: true },
+      { name: "password", label: "Password (leave blank to keep current)", type: "text", required: false },
+      { name: "profile_photo", label: "Profile Photo URL", type: "image", required: false },
+      { name: "date_of_birth", label: "Date of Birth", type: "date", required: false },
+      { name: "national_id", label: "National ID", type: "text", required: false },
+      { name: "address", label: "Address", type: "textarea", required: false },
+      { name: "emergency_contact", label: "Emergency Contact", type: "tel", required: false },
+      { name: "vehicle_info", label: "Vehicle Info", type: "text", required: false },
+      { name: "license_plate", label: "License Plate", type: "text", required: false },
       { name: "status", label: "Status", type: "select", required: true, options: [
         { value: "ONLINE", label: "Online" },
         { value: "BUSY", label: "Busy" },
         { value: "OFFLINE", label: "Offline" },
       ]},
-      { name: "rating", label: "Rating", type: "number", required: false, step: "0.1" },
+      { name: "profile_completed", label: "Profile Completed", type: "checkbox", required: false },
     ],
   },
   coupons: {
@@ -187,12 +197,12 @@ export const resourceConfig = {
     icon: "🎟️",
     searchKeys: ["code"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "code", label: "Code", sortable: true },
-      { key: "discount_value", label: "Discount", sortable: true, render: (v) => v != null ? v : "—" },
-      { key: "min_order_amount", label: "Min Order", sortable: true, render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
-      { key: "expires_at", label: "Expires", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
-      { key: "active", label: "Active", render: (v) => v ? "✅" : "❌" },
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "code", label: "Code", sortable: true, className: "text-xs sm:text-sm font-bold" },
+      { key: "discount_value", label: "Discount", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? v : "—" },
+      { key: "min_order_amount", label: "Min Order", sortable: true, className: "hidden sm:table-cell", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "expires_at", label: "Expires", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      { key: "active", label: "Active", className: "text-xs sm:text-sm", render: (v) => v ? "✅" : "❌" },
     ],
     fields: [
       { name: "code", label: "Code", type: "text", required: true },
@@ -211,11 +221,11 @@ export const resourceConfig = {
     icon: "👤",
     searchKeys: ["name", "email"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "name", label: "Name", sortable: true },
-      { key: "email", label: "Email", sortable: true },
-      { key: "role_id", label: "Role ID", sortable: true },
-      { key: "status", label: "Status", render: (v) => v === "ACTIVE" ? "✅" : "❌" },
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "email", label: "Email", sortable: true, className: "hidden sm:table-cell" },
+      { key: "role_id", label: "Role ID", sortable: true, className: "hidden lg:table-cell" },
+      { key: "status", label: "Status", className: "text-xs sm:text-sm", render: (v) => v === "ACTIVE" ? "✅" : "❌" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
@@ -233,9 +243,9 @@ export const resourceConfig = {
     icon: "🛡️",
     searchKeys: ["name"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "name", label: "Name", sortable: true },
-      { key: "permissions", label: "Permissions" },
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "permissions", label: "Permissions", className: "hidden sm:table-cell max-w-xs truncate" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
@@ -247,11 +257,11 @@ export const resourceConfig = {
     icon: "📝",
     searchKeys: ["action", "table_name", "user_id"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "user_id", label: "User ID", sortable: true },
-      { key: "action", label: "Action", sortable: true },
-      { key: "table_name", label: "Table", sortable: true },
-      { key: "created_at", label: "Date", sortable: true, render: (v) => v ? new Date(v).toLocaleString() : "—" },
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "user_id", label: "User ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "action", label: "Action", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "table_name", label: "Table", sortable: true, className: "hidden sm:table-cell" },
+      { key: "created_at", label: "Date", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleString() : "—" },
     ],
     fields: [
       // Audit logs are usually read-only
@@ -262,10 +272,10 @@ export const resourceConfig = {
     icon: "⚙️",
     searchKeys: ["name", "product_id"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "product_id", label: "Product ID", sortable: true },
-      { key: "name", label: "Name", sortable: true },
-      { key: "is_required", label: "Required", render: (v) => v ? "✅" : "—" },
+      { key: "id", label: "ID", sortable: true, className: "hidden sm:table-cell w-16" },
+      { key: "product_id", label: "Product ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "is_required", label: "Required", className: "text-xs sm:text-sm", render: (v) => v ? "✅" : "—" },
     ],
     fields: [
       { name: "product_id", label: "Product ID", type: "number", required: true },
@@ -278,11 +288,11 @@ export const resourceConfig = {
     icon: "🧩",
     searchKeys: ["name", "option_id"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "option_id", label: "Option ID", sortable: true },
-      { key: "name", label: "Variant Name", sortable: true },
-      { key: "price_adjustment", label: "Price Adj.", sortable: true, render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
-      { key: "active", label: "Active", render: (v) => v ? "✅" : "❌" },
+      { key: "id", label: "ID", sortable: true, className: "hidden sm:table-cell w-16" },
+      { key: "option_id", label: "Option ID", sortable: true, className: "hidden sm:table-cell" },
+      { key: "name", label: "Variant Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "price_adjustment", label: "Price Adj.", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "active", label: "Active", className: "text-xs sm:text-sm", render: (v) => v ? "✅" : "❌" },
     ],
     fields: [
       { name: "option_id", label: "Option ID", type: "number", required: true },
@@ -296,17 +306,49 @@ export const resourceConfig = {
     icon: "⭐",
     searchKeys: ["product_id", "customer_id", "comment"],
     columns: [
-      { key: "id", label: "ID", sortable: true, className: "w-16" },
-      { key: "product_id", label: "Product ID", sortable: true },
-      { key: "rating", label: "Rating", sortable: true, render: (v) => `⭐ ${v}` },
-      { key: "comment", label: "Comment" },
-      { key: "created_at", label: "Date", sortable: true, render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      { key: "id", label: "ID", sortable: true, className: "hidden sm:table-cell w-16" },
+      { key: "product_id", label: "Prod ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "rating", label: "Rating", sortable: true, className: "text-xs sm:text-sm", render: (v) => `⭐ ${v}` },
+      { key: "comment", label: "Comment", className: "text-xs sm:text-sm max-w-[120px] truncate" },
+      { key: "created_at", label: "Date", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
     ],
     fields: [
       { name: "product_id", label: "Product ID", type: "number", required: true },
       { name: "customer_id", label: "Customer ID", type: "number", required: true },
       { name: "rating", label: "Rating (1-5)", type: "number", required: true, step: "1" },
       { name: "comment", label: "Comment", type: "textarea", required: false },
+    ],
+  },
+  kitchen_staff: {
+    label: "Kitchen Staff",
+    icon: "🧑‍🍳",
+    searchKeys: ["name", "email", "phone"],
+    columns: [
+      { key: "id", label: "ID", sortable: true, className: "hidden sm:table-cell w-16" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "email", label: "Email", sortable: true, className: "hidden sm:table-cell" },
+      { key: "phone", label: "Phone", className: "text-xs sm:text-sm" },
+      { key: "role_title", label: "Role", className: "text-xs sm:text-sm" },
+      { key: "status", label: "Status", sortable: true, className: "text-xs sm:text-sm", render: (v) => {
+        const colors = {
+          ONLINE: "bg-green-100 text-green-800",
+          BUSY: "bg-yellow-100 text-yellow-800",
+          OFFLINE: "bg-gray-100 text-gray-800",
+        };
+        return <span className={`rounded-full px-2 py-0.5 text-[10px] sm:text-xs font-medium ${colors[v] || "bg-secondary"}`}>{v || "—"}</span>;
+      }},
+    ],
+    fields: [
+      { name: "name", label: "Name", type: "text", required: true },
+      { name: "email", label: "Email", type: "email", required: true },
+      { name: "phone", label: "Phone", type: "tel", required: true },
+      { name: "password", label: "Password (leave blank to keep current)", type: "text", required: false },
+      { name: "role_title", label: "Role Title (e.g. Head Chef)", type: "text", required: false },
+      { name: "status", label: "Status", type: "select", required: true, options: [
+        { value: "ONLINE", label: "Online" },
+        { value: "BUSY", label: "Busy" },
+        { value: "OFFLINE", label: "Offline" },
+      ]},
     ],
   },
 };

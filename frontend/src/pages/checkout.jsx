@@ -133,7 +133,8 @@ function CheckoutPage() {
   };
 
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const discount = coupon
+  const isCouponValid = coupon && (!coupon.min_order_amount || grossSubtotal >= Number(coupon.min_order_amount));
+  const discount = isCouponValid
     ? coupon.discount_type === "PERCENTAGE"
       ? Math.min(grossSubtotal, (grossSubtotal * Number(coupon.discount_value)) / 100)
       : coupon.discount_type === "FREE_DELIVERY"
@@ -142,9 +143,9 @@ function CheckoutPage() {
     : 0;
   const subtotal = grossSubtotal - discount;
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const deliveryFee = (coupon && coupon.discount_type === "FREE_DELIVERY") 
+  const deliveryFee = (isCouponValid && coupon.discount_type === "FREE_DELIVERY") 
     ? 0 
-    : (subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE);
+    : (subtotal === 0 ? 0 : DELIVERY_FEE);
   const total = subtotal + deliveryFee;
 
   const handleApplyCoupon = async (e) => {
@@ -159,6 +160,8 @@ function CheckoutPage() {
         setCouponError("Invalid promo code");
       } else if (!found.active) {
         setCouponError("This code is no longer active");
+      } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {
+        setCouponError(`Minimum order amount is $${Number(found.min_order_amount).toFixed(2)}`);
       } else {
         applyCoupon(found);
         setCouponCode("");
@@ -253,7 +256,7 @@ function CheckoutPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
-        <main className="flex-1 pt-24">
+        <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))]">
           <div className="mx-auto max-w-2xl px-4 py-16 text-center">
             <h2 className="font-serif text-2xl font-bold">Your cart is empty</h2>
             <p className="mt-2 text-muted-foreground">Add items before checking out.</p>
@@ -274,7 +277,7 @@ function CheckoutPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 pt-24 sm:pt-28">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
         <PageTransition>
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
             <Button

@@ -74,7 +74,7 @@ function Features() {
                   /* @__PURE__ */ jsx(
                     "img",
                     {
-                      src: "/images/library/pizza3.jpeg",
+                      src: "/images/library/pizza3.1.jpg",
                       alt: "Wood-fired pizza oven at Flame & Crust",
                       className: "w-full h-full object-cover",
                       loading: "lazy"
@@ -92,7 +92,7 @@ function Features() {
               ]
             }
           ),
-          /* @__PURE__ */ jsx("div", { className: "grid sm:grid-cols-2 gap-4 sm:gap-5", children: features.map((f, i) => /* @__PURE__ */ jsxs(
+          /* @__PURE__ */ jsx("div", { className: "grid sm:grid-cols-2 gap-3 sm:gap-5", children: features.map((f, i) => /* @__PURE__ */ jsxs(
             motion.div,
             {
               initial: { opacity: 0, y: 24 },
@@ -103,17 +103,17 @@ function Features() {
                 delay: Math.min(i * 0.08, 0.4),
                 ease: [0.16, 1, 0.3, 1]
               },
-              className: "group relative rounded-3xl bg-card border border-border/60 hover:border-primary/30 p-6 lg:p-7 transition-all hover:bg-card",
+              className: "group relative rounded-2xl sm:rounded-3xl bg-card border border-border/60 hover:border-primary/30 p-4 sm:p-6 lg:p-7 transition-all hover:bg-card",
               children: [
                 /* @__PURE__ */ jsx(
                   "span",
                   {
-                    className: `inline-flex items-center justify-center size-12 rounded-2xl ${f.color} mb-4`,
-                    children: /* @__PURE__ */ jsx(f.icon, { className: "size-6" })
+                    className: `inline-flex items-center justify-center size-9 sm:size-12 rounded-xl sm:rounded-2xl ${f.color} mb-2 sm:mb-4`,
+                    children: /* @__PURE__ */ jsx(f.icon, { className: "size-4 sm:size-6" })
                   }
                 ),
-                /* @__PURE__ */ jsx("h3", { className: "font-serif text-xl font-bold text-card-foreground", children: f.title }),
-                /* @__PURE__ */ jsx("p", { className: "mt-2 text-sm sm:text-base text-muted-foreground leading-relaxed", children: f.body })
+                /* @__PURE__ */ jsx("h3", { className: "font-serif text-base sm:text-xl font-bold text-card-foreground leading-tight", children: f.title }),
+                /* @__PURE__ */ jsx("p", { className: "mt-1 sm:mt-2 text-xs sm:text-base text-muted-foreground leading-relaxed line-clamp-3 sm:line-clamp-none", children: f.body })
               ]
             },
             f.title

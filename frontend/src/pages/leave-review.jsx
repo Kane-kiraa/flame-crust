@@ -72,7 +72,7 @@ export default function LeaveReviewPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-24 sm:pt-28">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
         <PageTransition>
           <div className="mx-auto max-w-2xl px-4 py-8">
             <Button

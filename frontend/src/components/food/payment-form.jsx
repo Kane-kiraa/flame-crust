@@ -7,8 +7,9 @@ import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 import ImageUpload from "@/components/ImageUpload";
 import { MapPicker } from "./map-picker";
-import { LocateFixed, MapPin, Truck, X } from "lucide-react";
+import { LocateFixed, MapPin, Truck, X, ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { list } from "@/lib/api";
 
 const methods = [
   { id: "CARD", label: "Card", icon: CreditCard },
@@ -26,6 +27,30 @@ export function PaymentForm({ total, onBack, onSuccess }) {
   const [showMap, setShowMap] = useState(false);
   const [qrCodeString, setQrCodeString] = useState("");
   const [paymentSlip, setPaymentSlip] = useState("");
+  const [savedAddresses, setSavedAddresses] = useState([]);
+
+  useEffect(() => {
+    const fetchAddresses = async () => {
+      try {
+        const stored = localStorage.getItem("customerAuth");
+        if (!stored) return;
+        const customer = JSON.parse(stored);
+        const addresses = await list("addresses");
+        const myAddresses = addresses.filter(a => String(a.customer_id) === String(customer.id));
+        setSavedAddresses(myAddresses);
+        
+        // Auto-select default address if user hasn't typed anything
+        if (myAddresses.length > 0 && !address) {
+          const defaultAddr = myAddresses.find(a => a.is_default) || myAddresses[0];
+          setAddress(defaultAddr.address_line);
+          setCity(defaultAddr.city);
+        }
+      } catch (e) {
+        console.error("Failed to fetch addresses:", e);
+      }
+    };
+    fetchAddresses();
+  }, []);
 
   const handleAutoLocation = () => {
     if (!navigator.geolocation) {
@@ -71,11 +96,10 @@ export function PaymentForm({ total, onBack, onSuccess }) {
         merchantName,
         "Phnom Penh",
         {
-          currency: "116", // 116 is KHR
-          amount: Math.round(Number(total) * 4100),
-          storeLabel: "STORE1",
-          terminalLabel: "TERM1",
-          expirationTimestamp: Date.now() + (5 * 60 * 1000) // expires in 5 minutes
+          currency: "840", // 840 is USD
+          amount: Number(Number(total).toFixed(2)),
+          storeLabel: "FlameCrust",
+          terminalLabel: "T1"
         }
       );
       const khqr = new BakongKHQR();
@@ -97,8 +121,12 @@ export function PaymentForm({ total, onBack, onSuccess }) {
     setQrCodeString("");
   }, [total]);
 
-  const submitPayment = (event) => {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const submitPayment = async (event) => {
     event.preventDefault();
+    if (isSubmitting) return;
+    
     if (!address) {
       toast.error("Please provide a delivery address or pin on map.");
       return;
@@ -111,14 +139,19 @@ export function PaymentForm({ total, onBack, onSuccess }) {
       toast.error("សូមបញ្ចូលរូបភាពវិក័យប័ត្រទូទាត់ប្រាក់របស់អ្នក (Payment Slip)");
       return;
     }
-    toast.success("Payment method saved", { description: "Your order is ready to place." });
-    onSuccess({
-      method,
-      cardLast4: method === "CARD" ? card.number.slice(-4) : null,
-      paymentSlip: paymentSlip,
-      address,
-      city
-    });
+    
+    setIsSubmitting(true);
+    try {
+      await onSuccess({
+        method,
+        cardLast4: method === "CARD" ? card.number.slice(-4) : null,
+        paymentSlip: paymentSlip,
+        address,
+        city
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -152,6 +185,41 @@ export function PaymentForm({ total, onBack, onSuccess }) {
             </div>
           </div>
           <div className="space-y-2">
+            {savedAddresses.length > 0 && (
+              <div className="relative mb-3">
+                <select
+                  className="w-full h-12 px-4 py-2 appearance-none rounded-xl border border-border/80 bg-secondary/30 text-foreground font-medium focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all cursor-pointer hover:bg-secondary/50"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "new") {
+                      setAddress("");
+                      setCity("Phnom Penh");
+                    } else {
+                      const selected = savedAddresses.find(a => String(a.id) === val);
+                      if (selected) {
+                        setAddress(selected.address_line);
+                        setCity(selected.city);
+                      }
+                    }
+                  }}
+                  defaultValue={
+                    savedAddresses.find(a => a.address_line === address)?.id || 
+                    (address ? "new" : "")
+                  }
+                >
+                  <option value="" disabled className="text-muted-foreground bg-background">-- Choose a saved address --</option>
+                  {savedAddresses.map(addr => (
+                    <option key={addr.id} value={addr.id} className="bg-background text-foreground py-2">
+                      {addr.label} ({addr.city})
+                    </option>
+                  ))}
+                  <option value="new" className="bg-background text-primary font-medium py-2">+ Enter a new address...</option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-4 text-muted-foreground">
+                  <ChevronDown className="size-4 opacity-70" />
+                </div>
+              </div>
+            )}
             <Input required value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Full address details" className="rounded-xl border-border/60" />
             <Input required value={city} onChange={(e) => setCity(e.target.value)} placeholder="City / Province" className="rounded-xl border-border/60" />
           </div>
@@ -230,8 +298,17 @@ export function PaymentForm({ total, onBack, onSuccess }) {
           <span className="font-semibold text-foreground">Total to pay</span>
           <span className="font-serif text-2xl font-bold text-primary">${total.toFixed(2)}</span>
         </div>
-        <Button type="submit" className="h-13 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90">
-          <CheckCircle2 className="mr-2 size-5" /> Confirm payment
+        <Button type="submit" disabled={isSubmitting} className="h-13 w-full rounded-full bg-primary text-base font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-70 disabled:cursor-not-allowed">
+          {isSubmitting ? (
+            <>
+              <div className="mr-2 size-5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
+              Processing...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="mr-2 size-5" /> Confirm payment
+            </>
+          )}
         </Button>
       </form>
 

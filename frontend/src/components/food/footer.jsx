@@ -1,41 +1,57 @@
 "use client";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Flame, Instagram, Twitter, Facebook, Mail, Phone, MapPin, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
-
-const footerLinks = {
-  Menu: [
-    { label: "Pizza", to: "/menu?category=pizza" },
-    { label: "Pizza Bagels", to: "/menu?category=pizza-bagels" },
-    { label: "Burgers", to: "/menu?category=burgers" },
-    { label: "Sides", to: "/menu?category=sides" },
-  ],
-  Company: [
-    { label: "Our story", to: "/#features" },
-    { label: "Careers", to: "#" },
-    { label: "Press", to: "#" },
-    { label: "Franchising", to: "#" },
-    { label: "Gift cards", to: "#" },
-  ],
-  Support: [
-    { label: "Help center", to: "#" },
-    { label: "Track order", to: "#" },
-    { label: "Contact us", to: "#" },
-    { label: "Allergens", to: "#" },
-    { label: "FAQs", to: "#" },
-  ],
-  Legal: [
-    { label: "Privacy", to: "#" },
-    { label: "Terms", to: "#" },
-    { label: "Cookies", to: "#" },
-    { label: "Accessibility", to: "#" },
-  ],
-};
+import { fetchCategories } from "@/lib/food-api";
 
 function Footer({ hideNewsletter = false }) {
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    fetchCategories()
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCategories(data);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const footerLinks = {
+    Menu: categories.length > 0
+      ? categories.map((c) => ({ label: c.name, to: `/menu?category=${c.slug}` }))
+      : [
+          { label: "Pizza", to: "/menu?category=pizza" },
+          { label: "Pizza Bagels", to: "/menu?category=pizza-bagels" },
+          { label: "Burgers", to: "/menu?category=burgers" },
+          { label: "Sides", to: "/menu?category=sides" },
+        ],
+    Company: [
+      { label: "Our story", to: "/#features" },
+      { label: "Careers", to: "#" },
+      { label: "Press", to: "#" },
+      { label: "Franchising", to: "#" },
+      { label: "Gift cards", to: "#" },
+    ],
+    Support: [
+      { label: "Help center", to: "#" },
+      { label: "Track order", to: "#" },
+      { label: "Contact us", to: "#" },
+      { label: "Allergens", to: "#" },
+      { label: "FAQs", to: "#" },
+    ],
+    Legal: [
+      { label: "Privacy", to: "#" },
+      { label: "Terms", to: "#" },
+      { label: "Cookies", to: "#" },
+      { label: "Accessibility", to: "#" },
+    ],
+  };
+
   return (
     <footer className="relative bg-background text-foreground overflow-hidden mt-auto pt-10 lg:pt-14 border-t border-border/60">
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -96,10 +112,30 @@ function Footer({ hideNewsletter = false }) {
               Wood-fired pizzas, hand-rolled pizza bagels, and smashed Angus burgers. Crafted with care, delivered hot.
             </p>
             <div className="mt-6 flex items-center gap-2">
-              {[Instagram, Twitter, Facebook].map((Icon, i) => (
+              {[Instagram,].map((Icon, i) => (
                 <a
                   key={i}
-                  href="#"
+                  href="https://www.facebook.com/share/193HJWpF4T/?mibextid=wwXIfr"
+                  className="flex items-center justify-center size-10 rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground text-foreground/80 transition-colors"
+                  aria-label="Social link"
+                >
+                  <Icon className="size-4.5" />
+                </a>
+              ))}
+              {[Twitter].map((Icon, i) => (
+                <a
+                  key={i}
+                  href="https://www.facebook.com/share/193HJWpF4T/?mibextid=wwXIfr"
+                  className="flex items-center justify-center size-10 rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground text-foreground/80 transition-colors"
+                  aria-label="Social link"
+                >
+                  <Icon className="size-4.5" />
+                </a>
+              ))}
+              {[Facebook].map((Icon, i) => (
+                <a
+                  key={i}
+                  href="https://www.facebook.com/share/193HJWpF4T/?mibextid=wwXIfr"
                   className="flex items-center justify-center size-10 rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground text-foreground/80 transition-colors"
                   aria-label="Social link"
                 >

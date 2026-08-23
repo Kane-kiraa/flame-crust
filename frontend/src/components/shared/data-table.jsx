@@ -32,7 +32,7 @@ export function DataTable({
   className,
 }) {
   const [search, setSearch] = useState("");
-  const [sortKey, setSortKey] = useState("id");
+  const [sortKey, setSortKey] = useState(columns[0]?.key || "id");
   const [sortDir, setSortDir] = useState("asc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(controlledPageSize || 10);
@@ -136,7 +136,7 @@ export function DataTable({
                 {pagedData.map((row, i) => (
                   <TableRow key={row.id ?? i}>
                     {columns.map((col) => (
-                      <TableCell key={col.key} className={cn(col.cellClassName)}>
+                      <TableCell key={col.key} className={cn(col.className, col.cellClassName)}>
                         {col.render ? col.render(row[col.key], row) : row[col.key]}
                       </TableCell>
                     ))}

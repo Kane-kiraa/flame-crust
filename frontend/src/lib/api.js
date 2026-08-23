@@ -1,22 +1,47 @@
 const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
 const defaultApiUrl = host.includes('trycloudflare.com')
-  ? "https://heights-promote-don-threaded.trycloudflare.com/api"
+  ? "https://backup-tommy-jesse-engine.trycloudflare.com/api"
   : (host.includes('loca.lt') || host.includes('lhr.life'))
     ? "http://172.20.10.2:8080/api" 
     : `${typeof window !== 'undefined' ? window.location.protocol : 'http:'}//${host}:8080/api`;
 const API_URL = (import.meta.env.VITE_API_URL ?? defaultApiUrl).replace(/\/$/, "");
 
 async function request(path, options = {}) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    const adminAuth = localStorage.getItem("adminAuth");
+    const customerAuth = localStorage.getItem("customerAuth");
+    const driverAuth = localStorage.getItem("driverAuth");
+    
+    if (adminAuth) {
+      try { token = JSON.parse(adminAuth).token; } catch (e) {}
+    } else if (driverAuth) {
+      try { token = JSON.parse(driverAuth).token; } catch (e) {}
+    } else if (customerAuth) {
+      try { token = JSON.parse(customerAuth).token; } catch (e) {}
+    }
+  }
+
+  const headers = {
+    Accept: "application/json",
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    ...options.headers
+  };
+
   const response = await globalThis.fetch(`${API_URL}${path}`, {
     ...options,
-    headers: {
-      Accept: "application/json",
-      ...(options.body ? { "Content-Type": "application/json" } : {}),
-      ...options.headers
-    }
+    headers
   });
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem("adminAuth");
+        localStorage.removeItem("customerAuth");
+        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
+      }
+    }
     let message = `API request failed: ${response.status} ${response.statusText}`;
     try {
       const error = await response.json();
@@ -93,3 +118,62 @@ export const api = Object.freeze({
 });
 
 export { API_URL };
+
+// ── Driver-specific API helpers ──
+
+function driverRequest(path, options = {}) {
+  let token = null;
+  if (typeof window !== 'undefined') {
+    const driverAuth = localStorage.getItem("driverAuth");
+    if (driverAuth) {
+      try { token = JSON.parse(driverAuth).token; } catch (e) {}
+    }
+  }
+  const headers = {
+    Accept: "application/json",
+    ...(options.body ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+    ...options.headers
+  };
+  return globalThis.fetch(`${API_URL}${path}`, { ...options, headers }).then(async (res) => {
+    if (!res.ok) {
+      let message = `API request failed: ${res.status}`;
+      try { const err = await res.json(); message = err.error ?? message; } catch {}
+      throw new Error(message);
+    }
+    if (res.status === 204) return null;
+    return res.json();
+  });
+}
+
+export function driverLogin(email, password) {
+  return driverRequest("/auth/driver-login", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+}
+
+export function driverRegister(name, email, phone, password) {
+  return driverRequest("/auth/driver-register", {
+    method: "POST",
+    body: JSON.stringify({ name, email, phone, password }),
+  });
+}
+
+export function getDriverMe() {
+  return driverRequest("/auth/driver-me");
+}
+
+export function updateDriverProfile(data) {
+  return driverRequest("/auth/driver-profile", {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateDriverLocation(latitude, longitude) {
+  return driverRequest("/auth/driver-location", {
+    method: "PUT",
+    body: JSON.stringify({ latitude, longitude }),
+  });
+}

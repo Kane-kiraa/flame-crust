@@ -165,6 +165,7 @@ export default function AddProductForm() {
           <div className="h-full">
             {/* ហៅ ImageUpload Component មកប្រើនៅទីនេះ */}
             <ImageUpload
+              value={formData.imageUrl}
               onUploadSuccess={(url) => handleChange("imageUrl", url)}
             />
           </div>

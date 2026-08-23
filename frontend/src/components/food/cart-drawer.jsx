@@ -36,21 +36,22 @@ function CartDrawer() {
     setMounted(true);
   }, []);
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const discountAmount = coupon 
-    ? (coupon.discount_type === "PERCENTAGE" 
-        ? grossSubtotal * (coupon.discount_value / 100) 
-        : coupon.discount_type === "FREE_DELIVERY"
-          ? 0
-          : coupon.discount_value)
+  const isCouponValid = coupon && (!coupon.min_order_amount || grossSubtotal >= Number(coupon.min_order_amount));
+  
+  const discount = isCouponValid
+    ? coupon.discount_type === "PERCENTAGE"
+      ? Math.min(grossSubtotal, grossSubtotal * Number(coupon.discount_value) / 100)
+      : coupon.discount_type === "FREE_DELIVERY"
+        ? 0
+        : Math.min(grossSubtotal, Number(coupon.discount_value))
     : 0;
-  const subtotal = Math.max(0, grossSubtotal - discountAmount);
+
+  const subtotal = Math.max(0, grossSubtotal - discount);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const deliveryFee = (coupon && coupon.discount_type === "FREE_DELIVERY") 
+  const deliveryFee = (isCouponValid && coupon.discount_type === "FREE_DELIVERY") 
     ? 0 
-    : (subtotal >= FREE_DELIVERY_THRESHOLD || subtotal === 0 ? 0 : DELIVERY_FEE);
-  const total = subtotal + deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
-  const remainingForFree = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
-  const progressToFree = Math.min(100, subtotal / FREE_DELIVERY_THRESHOLD * 100);
+    : (grossSubtotal === 0 ? 0 : DELIVERY_FEE);
+  const total = subtotal + deliveryFee + (grossSubtotal > 0 ? SERVICE_FEE : 0);
   const handleCheckout = () => {
     try {
       const stored = localStorage.getItem("customerAuth");
@@ -99,7 +100,7 @@ function CartDrawer() {
         coupon_id: coupon?.id || null,
         status: "PENDING",
         subtotal: subtotal,
-        discount_amount: discountAmount,
+        discount_amount: discount,
         delivery_fee: finalDeliveryAndServiceFee,
         total: total,
         notes: "Payment: " + paymentDetails.method
@@ -117,10 +118,13 @@ function CartDrawer() {
         });
       }
 
+      const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentDetails.method) ? paymentDetails.method : "OTHER";
+      const dbStatus = paymentDetails.method === "CASH" ? "PENDING" : "PAID";
+
       await create("payments", {
         order_id: orderRes.id,
-        method: paymentDetails.method,
-        status: paymentDetails.method === "CASH" ? "PENDING" : "COMPLETED",
+        method: dbMethod,
+        status: dbStatus,
         amount: total,
         transaction_id: paymentDetails.method === "CASH" ? null : "TXN-" + Date.now()
       });
@@ -182,7 +186,7 @@ function CartDrawer() {
         animate: { x: 0 },
         exit: { x: "100%" },
         transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
-        className: "fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-background/85 backdrop-blur-3xl shadow-2xl sm:border-l border-border/50 flex flex-col will-change-transform transform-gpu sm:rounded-l-[2.5rem] overflow-hidden",
+        className: "fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-background/85 backdrop-blur-3xl shadow-2xl sm:border-l border-border/50 flex flex-col will-change-transform transform-gpu sm:rounded-l-[2.5rem] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
         children: [
           /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-5 sm:px-6 py-5 border-b border-border/60", children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
@@ -245,29 +249,6 @@ function CartDrawer() {
               )
             ] })
           ) : /* @__PURE__ */ jsxs(Fragment, { children: [
-            /* @__PURE__ */ jsxs("div", { className: "px-5 sm:px-6 py-4 bg-secondary/40 border-b border-border/60", children: [
-              remainingForFree > 0 ? /* @__PURE__ */ jsxs("p", { className: "text-xs sm:text-sm text-foreground/80", children: [
-                "Add",
-                " ",
-                /* @__PURE__ */ jsxs("span", { className: "font-bold text-primary", children: [
-                  "$",
-                  remainingForFree.toFixed(2)
-                ] }),
-                " ",
-                "more for free delivery"
-              ] }) : /* @__PURE__ */ jsxs("p", { className: "text-xs sm:text-sm font-semibold text-green-600 flex items-center gap-1.5", children: [
-                /* @__PURE__ */ jsx(Sparkles, { className: "size-3.5" }),
-                " You've unlocked free delivery!"
-              ] }),
-              /* @__PURE__ */ jsx("div", { className: "mt-2 h-1.5 rounded-full bg-border overflow-hidden", children: /* @__PURE__ */ jsx(
-                motion.div,
-                {
-                  className: "h-full rounded-full bg-gradient-to-r from-primary to-accent",
-                  animate: { width: `${progressToFree}%` },
-                  transition: { type: "spring", stiffness: 120, damping: 20 }
-                }
-              ) })
-            ] }),
             /* @__PURE__ */ jsx("div", { className: "flex-1 overflow-y-auto px-5 sm:px-6 py-4", children: /* @__PURE__ */ jsx(AnimatePresence, { initial: false, children: lines.map((line) => /* @__PURE__ */ jsxs(
               motion.div,
               {
@@ -355,7 +336,7 @@ function CartDrawer() {
                 ] }),
                 coupon && /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-green-600", children: [
                   /* @__PURE__ */ jsx("span", { children: "Discount" }),
-                  /* @__PURE__ */ jsxs("span", { className: "font-medium", children: ["-$", discountAmount.toFixed(2)] })
+                  /* @__PURE__ */ jsxs("span", { className: "font-medium", children: ["-$", discount.toFixed(2)] })
                 ] }),
                 /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
                   /* @__PURE__ */ jsx("span", { children: "Delivery fee" }),

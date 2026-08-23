@@ -1,36 +1,202 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Phone, Mail, ArrowRight, Loader2, KeyRound, Lock } from "lucide-react";
+import { Mail, ArrowRight, Loader2, KeyRound, Lock, Eye, EyeOff, ShieldCheck, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
 import { PageTransition } from "@/components/shared/page-transition";
 import { toast } from "sonner";
-import { create, list, API_URL } from "@/lib/api";
+import { API_URL } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useGoogleLogin } from "@react-oauth/google";
-import { jwtDecode } from "jwt-decode";
 
 export default function LoginPage() {
   const navigate = useNavigate();
-  const [authMethod, setAuthMethod] = useState("PHONE"); // PHONE or EMAIL
-  const [step, setStep] = useState("INPUT"); // INPUT or OTP
-  const [phone, setPhone] = useState("");
+  const location = useLocation();
+
+  // Determine redirect URL from query params (?redirect=...)
+  const queryParams = new URLSearchParams(location.search);
+  const redirectPath = queryParams.get("redirect");
+
+  const [authMethod, setAuthMethod] = useState("PASSWORD"); // PASSWORD or OTP
+  const [step, setStep] = useState("INPUT"); // INPUT or OTP_VERIFY
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
-  const [customers, setCustomers] = useState([]);
+
+  const [otpLockTime, setOtpLockTime] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
 
   useEffect(() => {
-    // Pre-fetch customers to simulate backend login
-    list("customers").then(setCustomers).catch(() => {});
+    // Check if OTP rate limit is active
+    const lockedUntil = localStorage.getItem("otpLockTime");
+    if (lockedUntil && new Date().getTime() < parseInt(lockedUntil)) {
+      setOtpLockTime(parseInt(lockedUntil));
+    }
   }, []);
 
-  const handleSendOTP = async (e) => {
+  useEffect(() => {
+    if (!otpLockTime) return;
+
+    const interval = setInterval(() => {
+      const now = new Date().getTime();
+      if (now >= otpLockTime) {
+        setOtpLockTime(null);
+        localStorage.removeItem("otpLockTime");
+        setTimeLeft(0);
+      } else {
+        setTimeLeft(Math.ceil((otpLockTime - now) / 1000));
+      }
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpLockTime]);
+
+  const handlePasswordLogin = async (e) => {
     e.preventDefault();
+    if (!email.trim() || !password) {
+      toast.error("Please enter both email and password.");
+      return;
+    }
+    setLoading(true);
+
+    try {
+      // 1. Call unified login endpoint
+      let response = await fetch(`${API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim(), password }),
+      });
+
+      // Fallback for older backend endpoints if unified route was unavailable
+      if (!response.ok && response.status === 404) {
+        response = await fetch(`${API_URL}/auth/admin-login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), password }),
+        });
+        if (!response.ok) {
+          response = await fetch(`${API_URL}/auth/customer-login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: email.trim(), password }),
+          });
+        }
+      }
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Invalid email or password");
+      }
+
+      const data = await response.json();
+      const isAdminOrStaff = data.type === "ADMIN" || (data.user && !data.customer);
+
+      if (isAdminOrStaff) {
+        const user = data.user || data;
+        const seedName = user.name || email.split("@")[0] || "Admin";
+        const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=f97316&textColor=ffffff`;
+
+        localStorage.setItem(
+          "adminAuth",
+          JSON.stringify({
+            ...user,
+            avatar: avatarUrl,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+
+        localStorage.setItem(
+          "customerAuth",
+          JSON.stringify({
+            id: user.id,
+            name: user.name || seedName,
+            email: user.email || email,
+            role: user.role || "ADMIN",
+            avatar: avatarUrl,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success(`Welcome to Flame & Crust Admin, ${user.name || "Admin"}!`);
+
+        const destination = redirectPath && redirectPath.startsWith("/admin") 
+          ? redirectPath 
+          : "/admin/dashboard";
+        navigate(destination, { replace: true });
+      } else if (data.type === "DRIVER") {
+        const driver = data.driver || data;
+        localStorage.setItem(
+          "driverAuth",
+          JSON.stringify({
+            ...driver,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success(`Welcome back, ${driver.name}!`);
+        
+        navigate("/driver/dashboard", { replace: true });
+      } else if (data.type === "KITCHEN_STAFF") {
+        const staff = data.user || data;
+        localStorage.setItem(
+          "kitchenAuth",
+          JSON.stringify({
+            ...staff,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success(`Welcome to the Kitchen, ${staff.name}!`);
+        
+        navigate("/kitchen/dashboard", { replace: true });
+      } else {
+        const customer = data.customer || data;
+        const seedName = customer.name || email.split("@")[0] || "User";
+        const avatarUrl = customer.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=e2e8f0&textColor=475569`;
+
+        localStorage.removeItem("adminAuth");
+        localStorage.setItem(
+          "customerAuth",
+          JSON.stringify({
+            ...customer,
+            avatar: avatarUrl,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success(`Welcome back, ${customer.name || seedName}!`);
+
+        const destination = redirectPath && !redirectPath.startsWith("/admin") 
+          ? redirectPath 
+          : "/";
+        navigate(destination, { replace: true });
+      }
+    } catch (err) {
+      toast.error(err.message || "An error occurred during sign in.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendOTP = async (e) => {
+    if (e) e.preventDefault();
+
+    if (otpLockTime) {
+      toast.error(`Please wait ${Math.ceil(timeLeft / 60)} minutes before trying again.`);
+      return;
+    }
+
     if (!email || email.length < 5 || !email.includes("@")) {
       toast.error("Please enter a valid email address.");
       return;
@@ -40,15 +206,21 @@ export default function LoginPage() {
       const response = await fetch(`${API_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email: email.trim() }),
       });
-      
+
       if (!response.ok) {
-        throw new Error("Failed to send OTP");
+        const err = await response.json().catch(() => ({}));
+        if (response.status === 429 || (err.error && err.error.includes("Too many"))) {
+          const lockUntil = new Date().getTime() + 10 * 60 * 1000;
+          setOtpLockTime(lockUntil);
+          localStorage.setItem("otpLockTime", lockUntil.toString());
+        }
+        throw new Error(err.error || "Failed to send OTP");
       }
-      
+
       toast.success("OTP sent to " + email);
-      setStep("OTP");
+      setStep("OTP_VERIFY");
     } catch (err) {
       toast.error(err.message || "Failed to send OTP.");
     } finally {
@@ -67,25 +239,36 @@ export default function LoginPage() {
       const response = await fetch(`${API_URL}/auth/verify-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, otp }),
+        body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
       });
 
       if (!response.ok) {
-        const err = await response.json();
+        const err = await response.json().catch(() => ({}));
         throw new Error(err.error || "Invalid OTP");
       }
 
-      const customer = await response.json();
+      const data = await response.json();
+      const customer = data.customer;
       const seedName = customer.name || email.split("@")[0] || "User";
       const avatarUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=e2e8f0&textColor=475569`;
-      
-      localStorage.setItem("customerAuth", JSON.stringify({ 
-        ...customer, 
-        avatar: avatarUrl, 
-        authenticated: true 
-      }));
+
+      localStorage.removeItem("adminAuth");
+      localStorage.setItem(
+        "customerAuth",
+        JSON.stringify({
+          ...customer,
+          avatar: avatarUrl,
+          token: data.token,
+          authenticated: true,
+        })
+      );
+      window.dispatchEvent(new Event("authChanged"));
       toast.success(`Welcome, ${customer.name || seedName}!`);
-      navigate("/");
+
+      const destination = redirectPath && !redirectPath.startsWith("/admin") 
+        ? redirectPath 
+        : "/";
+      navigate(destination, { replace: true });
     } catch (err) {
       toast.error(err.message || "Failed to verify OTP");
     } finally {
@@ -93,185 +276,271 @@ export default function LoginPage() {
     }
   };
 
-  const handleEmailLogin = async (e) => {
-    e.preventDefault();
-    if (!email || !password) {
-      toast.error("Please fill in both email and password.");
-      return;
-    }
-    setLoading(true);
-    setTimeout(() => {
-      const customer = customers.find(c => c.email === email && c.password_hash === password);
-      setLoading(false);
-      
-      if (customer) {
-        localStorage.setItem("customerAuth", JSON.stringify({ ...customer, authenticated: true }));
-        toast.success("Welcome back, " + customer.name + "!");
-        navigate("/");
-      } else {
-        const userExists = customers.find(c => c.email === email);
-        if (userExists && !userExists.password_hash) {
-          toast.error("Password not set. Please use Email OTP to sign in first, then set your password in your Profile.");
-        } else {
-          toast.error("Invalid email or password.");
-        }
-      }
-    }, 800);
-  };
-
   const handleGoogleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
         setLoading(true);
-        // Fetch user info from Google API using access token
-        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+        const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
           headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
         });
         const userInfo = await userInfoRes.json();
+
+        // Send Google user info to backend to create/fetch customer and get a real JWT
+        const response = await fetch(`${API_URL}/auth/google-login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            email: userInfo.email, 
+            name: userInfo.name, 
+            avatar: userInfo.picture 
+          }),
+        });
         
-        let customer = customers.find(c => c.email === userInfo.email);
-        if (!customer) {
-          // If new, create customer logic (mocked)
-          customer = { id: Math.floor(Math.random() * 10000), email: userInfo.email, name: userInfo.name, role: "CUSTOMER" };
+        if (!response.ok) {
+           throw new Error("Failed to authenticate with backend.");
         }
         
-        localStorage.setItem("customerAuth", JSON.stringify({ ...customer, avatar: userInfo.picture, authenticated: true }));
-        toast.success("Welcome, " + userInfo.name + "!");
-        navigate("/");
+        const data = await response.json();
+        const customer = data.customer;
+
+        localStorage.setItem(
+          "customerAuth",
+          JSON.stringify({ 
+            ...customer, 
+            avatar: data.avatar || userInfo.picture, 
+            token: data.token,
+            authenticated: true 
+          })
+        );
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success("Welcome, " + (customer.name || userInfo.name) + "!");
+
+        const destination = redirectPath && !redirectPath.startsWith("/admin") 
+          ? redirectPath 
+          : "/";
+        navigate(destination, { replace: true });
       } catch (err) {
         toast.error("Failed to authenticate with Google.");
+      } finally {
         setLoading(false);
       }
     },
     onError: () => {
       toast.error("Google login failed or was cancelled.");
-    }
+    },
   });
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background selection:bg-primary selection:text-primary-foreground">
       <Navbar />
-      <main className="flex-1 pt-24 sm:pt-32 flex items-center justify-center">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-32 pb-16 flex items-center justify-center px-4">
         <PageTransition>
-          <div className="w-full max-w-md px-4 py-8 mx-auto">
+          <div className="w-full max-w-md mx-auto">
             <motion.div
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="rounded-3xl border border-border/60 bg-card p-8 shadow-warm-lg"
+              initial={{ scale: 0.96, opacity: 0, y: 10 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="rounded-3xl border border-border/70 bg-card p-6 sm:p-8 shadow-warm-xl relative overflow-hidden"
             >
-              <h1 className="font-serif text-3xl font-bold text-center text-foreground mb-2">
-                {step === "INPUT" ? "Welcome back" : "Verify your email"}
+              {/* Flame header accent */}
+              <div className="flex justify-center mb-4">
+                <div className="size-14 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center shadow-lg shadow-primary/25">
+                  <span className="text-2xl select-none">🔥</span>
+                </div>
+              </div>
+
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-center text-foreground mb-1">
+                {step === "INPUT" ? "Welcome to Flame & Crust" : "Verify Email Code"}
               </h1>
-              <p className="text-center text-muted-foreground mb-6">
-                {step === "INPUT" 
-                  ? "Sign in or create an account to continue."
-                  : `We've sent a 6-digit code to ${email}.`}
+              <p className="text-center text-muted-foreground text-sm mb-6">
+                {step === "INPUT"
+                  ? "Single sign-in for Customers, Staff & Admins"
+                  : `Enter the 6-digit verification code sent to ${email}`}
               </p>
 
               {step === "INPUT" ? (
                 <>
-                  <div className="flex p-1 bg-secondary rounded-2xl mb-8">
+                  {/* Auth Mode Switcher */}
+                  <div className="flex p-1 bg-secondary/80 rounded-2xl mb-6">
                     <button
-                      onClick={() => setAuthMethod("PHONE")}
+                      type="button"
+                      onClick={() => setAuthMethod("PASSWORD")}
                       className={cn(
-                        "flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all",
-                        authMethod === "PHONE" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        "flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                        authMethod === "PASSWORD"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      Email OTP
+                      <Lock className="size-3.5" />
+                      Email & Password
                     </button>
                     <button
-                      onClick={() => setAuthMethod("EMAIL")}
+                      type="button"
+                      onClick={() => setAuthMethod("OTP")}
                       className={cn(
-                        "flex-1 py-2.5 text-sm font-semibold rounded-xl transition-all",
-                        authMethod === "EMAIL" ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                        "flex-1 py-2.5 text-xs sm:text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-1.5",
+                        authMethod === "OTP"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
                       )}
                     >
-                      Email Address
+                      <KeyRound className="size-3.5" />
+                      Email OTP
                     </button>
                   </div>
 
                   <AnimatePresence mode="wait">
-                    {authMethod === "PHONE" ? (
-                      <motion.form 
-                        key="phone"
-                        initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
-                        onSubmit={handleSendOTP} className="space-y-4"
+                    {authMethod === "PASSWORD" ? (
+                      <motion.form
+                        key="password-form"
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 8 }}
+                        onSubmit={handlePasswordLogin}
+                        className="space-y-4"
                       >
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                          <Input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="e.g. your@email.com"
-                            className="pl-12 h-14 rounded-2xl text-lg"
-                          />
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground/80 pl-1">
+                            Email Address
+                          </label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <Input
+                              type="email"
+                              required
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="name@example.com"
+                              className="pl-11 h-13 rounded-2xl bg-background border-border/80 text-sm focus-visible:ring-primary"
+                            />
+                          </div>
                         </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground/80 pl-1">
+                            Password
+                          </label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <Input
+                              type={showPassword ? "text" : "password"}
+                              required
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="Enter your password"
+                              className="pl-11 pr-11 h-13 rounded-2xl bg-background border-border/80 text-sm focus-visible:ring-primary"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1"
+                              aria-label={showPassword ? "Hide password" : "Show password"}
+                            >
+                              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-1">
+                          <button
+                            type="button"
+                            onClick={() => setAuthMethod("OTP")}
+                            className="text-xs font-medium text-primary hover:underline"
+                          >
+                            Sign in with One-Time Code
+                          </button>
+                        </div>
+
                         <Button
                           type="submit"
                           disabled={loading}
-                          className="w-full h-14 rounded-2xl bg-primary text-primary-foreground text-lg font-semibold hover:bg-primary/90 transition-all"
+                          className="w-full h-13 rounded-2xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-all shadow-warm mt-2"
                         >
-                          {loading ? <Loader2 className="size-5 animate-spin" /> : "Send OTP to Email"}
+                          {loading ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="size-4 animate-spin" />
+                              Signing In...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              Sign In <ArrowRight className="size-4" />
+                            </span>
+                          )}
                         </Button>
                       </motion.form>
                     ) : (
-                      <motion.form 
-                        key="email"
-                        initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}
-                        onSubmit={handleEmailLogin} className="space-y-4"
+                      <motion.form
+                        key="otp-form"
+                        initial={{ opacity: 0, x: 8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -8 }}
+                        onSubmit={handleSendOTP}
+                        className="space-y-4"
                       >
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                          <Input
-                            type="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            placeholder="Email address"
-                            className="pl-12 h-14 rounded-2xl text-base"
-                          />
+                        <div className="space-y-1.5">
+                          <label className="text-xs font-semibold text-foreground/80 pl-1">
+                            Email Address
+                          </label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                            <Input
+                              type="email"
+                              required
+                              value={email}
+                              onChange={(e) => setEmail(e.target.value)}
+                              placeholder="name@example.com"
+                              className="pl-11 h-13 rounded-2xl bg-background border-border/80 text-sm focus-visible:ring-primary"
+                            />
+                          </div>
                         </div>
-                        <div className="relative">
-                          <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                          <Input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password"
-                            className="pl-12 h-14 rounded-2xl text-base"
-                          />
-                        </div>
+
+                        <p className="text-xs text-muted-foreground pl-1">
+                          We will send a 6-digit verification code to your email to log you in instantly.
+                        </p>
+
                         <Button
                           type="submit"
                           disabled={loading}
-                          className="w-full h-14 rounded-2xl bg-primary text-primary-foreground text-lg font-semibold hover:bg-primary/90 transition-all"
+                          className="w-full h-13 rounded-2xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-all shadow-warm mt-2"
                         >
-                          {loading ? <Loader2 className="size-5 animate-spin" /> : "Sign in with Email"}
+                          {loading ? (
+                            <span className="flex items-center gap-2">
+                              <Loader2 className="size-4 animate-spin" />
+                              Sending Code...
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-2">
+                              Send One-Time Code <ArrowRight className="size-4" />
+                            </span>
+                          )}
                         </Button>
                       </motion.form>
                     )}
                   </AnimatePresence>
 
-                  <div className="mt-8">
+                  {/* Social login divider */}
+                  <div className="mt-7 mb-5">
                     <div className="relative">
                       <div className="absolute inset-0 flex items-center">
-                        <span className="w-full border-t border-border/60" />
+                        <span className="w-full border-t border-border/70" />
                       </div>
                       <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-card px-2 text-muted-foreground font-medium">Or continue with</span>
+                        <span className="bg-card px-3 text-muted-foreground font-medium">
+                          Or continue with
+                        </span>
                       </div>
                     </div>
 
-                    <div className="mt-6 grid grid-cols-1 gap-3">
-                      <Button 
-                        variant="outline" 
+                    <div className="mt-5">
+                      <Button
+                        variant="outline"
                         type="button"
                         disabled={loading}
                         onClick={() => handleGoogleLogin()}
-                        className="h-14 rounded-2xl bg-background hover:bg-secondary border-border/60 font-semibold text-foreground transition-all"
+                        className="w-full h-13 rounded-2xl bg-background hover:bg-secondary/70 border-border/80 font-semibold text-foreground transition-all flex items-center justify-center gap-2"
                       >
-                        <svg className="size-5 mr-2" viewBox="0 0 24 24">
+                        <svg className="size-5" viewBox="0 0 24 24">
                           <path
                             d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
                             fill="#4285F4"
@@ -295,42 +564,72 @@ export default function LoginPage() {
                   </div>
                 </>
               ) : (
-                <motion.form 
-                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }}
-                  onSubmit={handleVerifyOTP} className="space-y-4"
+                /* OTP Verification Step */
+                <motion.form
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  onSubmit={handleVerifyOTP}
+                  className="space-y-4"
                 >
-                  <div className="relative">
-                    <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
-                    <Input
-                      type="text"
-                      maxLength={6}
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                      placeholder="000000"
-                      className="pl-12 h-14 rounded-2xl text-2xl tracking-[0.5em] font-mono text-center"
-                    />
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-foreground/80 block text-center">
+                      6-Digit OTP Code
+                    </label>
+                    <div className="relative">
+                      <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        maxLength={6}
+                        autoFocus
+                        value={otp}
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                        placeholder="000000"
+                        className="pl-12 h-14 rounded-2xl text-2xl tracking-[0.4em] font-mono text-center bg-background border-border/80 focus-visible:ring-primary"
+                      />
+                    </div>
                   </div>
+
                   <Button
                     type="submit"
-                    disabled={loading}
-                    className="w-full h-14 rounded-2xl bg-primary text-primary-foreground text-lg font-semibold hover:bg-primary/90 transition-all"
+                    disabled={loading || otp.length < 6}
+                    className="w-full h-13 rounded-2xl bg-primary text-primary-foreground text-base font-semibold hover:bg-primary/90 transition-all shadow-warm"
                   >
-                    {loading ? <Loader2 className="size-5 animate-spin" /> : "Verify & Sign In"}
+                    {loading ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="size-4 animate-spin" />
+                        Verifying...
+                      </span>
+                    ) : (
+                      "Verify & Sign In"
+                    )}
                   </Button>
-                  <button 
-                    type="button" 
-                    onClick={() => { setStep("INPUT"); setOtp(""); }}
-                    className="w-full text-center text-sm font-medium text-muted-foreground hover:text-foreground mt-4"
-                  >
-                    Go back
-                  </button>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setStep("INPUT");
+                        setOtp("");
+                      }}
+                      className="text-xs font-medium text-muted-foreground hover:text-foreground"
+                    >
+                      ← Back to login
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSendOTP}
+                      className="text-xs font-semibold text-primary hover:underline"
+                    >
+                      Resend Code
+                    </button>
+                  </div>
                 </motion.form>
               )}
             </motion.div>
           </div>
         </PageTransition>
       </main>
-      <Footer />
+      {/* <Footer /> */}
     </div>
   );
 }

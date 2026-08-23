@@ -21,7 +21,7 @@ export function CardSkeleton({ className }) {
 
 export function CardGridSkeleton({ count = 8, className }) {
   return (
-    <div className={cn("grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6", className)}>
+    <div className={cn("grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6", className)}>
       {Array.from({ length: count }, (_, i) => (
         <CardSkeleton key={i} />
       ))}
@@ -78,11 +78,11 @@ export function DetailSkeleton({ className }) {
               <Skeleton className="h-12 rounded-xl" />
             </div>
           </div>
-          <div className="pt-8 flex items-center justify-between gap-6 border-t border-border/40">
+          <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 border-t border-border/40">
             <Skeleton className="h-10 w-28 rounded-lg" />
-            <div className="flex gap-3">
-              <Skeleton className="h-12 w-32 rounded-full" />
-              <Skeleton className="h-12 w-36 rounded-full" />
+            <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+              <Skeleton className="h-12 w-full sm:w-32 rounded-full" />
+              <Skeleton className="h-12 w-full sm:w-36 rounded-full" />
             </div>
           </div>
         </div>

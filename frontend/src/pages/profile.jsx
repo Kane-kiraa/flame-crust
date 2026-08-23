@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { 
   User, 
   MapPin, 
@@ -18,14 +18,25 @@ import {
   Lock,
   Phone,
   Mail,
-  ArrowLeft
+  ArrowLeft,
+  Eye,
+  EyeOff,
+  Check,
+  X,
+  LayoutDashboard,
+  ShieldCheck,
+  ArrowRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
 import { CartDrawer } from "@/components/food/cart-drawer";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
-import { list, create, update } from "@/lib/api";
+import { MapPicker } from "@/components/food/map-picker";
+import { list, create, update, get } from "@/lib/api";
+import { fetchDashboard, getImageUrl } from "@/lib/food-api";
+import { foodItems } from "@/lib/food-data";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
@@ -38,6 +49,7 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState([]);
   const [addresses, setAddresses] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [allProducts, setAllProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   
   const searchParams = new URLSearchParams(location.search);
@@ -46,13 +58,28 @@ export default function ProfilePage() {
   
   // Settings & Coupons state
   const [coupons, setCoupons] = useState([]);
-  const [settingsForm, setSettingsForm] = useState({ name: "", email: "", phone: "", password: "" });
+  const [settingsForm, setSettingsForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", oldPassword: "" });
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+  const [hasPassword, setHasPassword] = useState(false);
+  
+  // OTP Reset fields in profile
+  const [showOTPDialog, setShowOTPDialog] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [isSendingOTP, setIsSendingOTP] = useState(false);
+  const [isVerifyingOTP, setIsVerifyingOTP] = useState(false);
+
+  // Password visibility states
+  const [showOldPassword, setShowOldPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // New address state
   const [showAddForm, setShowAddForm] = useState(false);
+  const [allOrderItems, setAllOrderItems] = useState([]);
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [newAddress, setNewAddress] = useState({ label: "", address_line: "", city: "" });
   const [isLocating, setIsLocating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
 
   const handleAutoLocation = () => {
     if (!navigator.geolocation) {
@@ -101,10 +128,13 @@ export default function ProfilePage() {
   const fetchProfileData = async (c) => {
     setLoading(true);
     try {
-      const [allOrders, allAddresses, allCoupons] = await Promise.all([
+      const [allOrders, allAddresses, allCoupons, items, freshCustomer, productsList] = await Promise.all([
         list("orders"),
         list("addresses"),
-        list("coupons").catch(() => [])
+        list("coupons").catch(() => []),
+        list("order_items").catch(() => []),
+        get("customers", c.id).catch(() => null),
+        list("products").catch(() => [])
       ]);
       setOrders(allOrders
         .filter(o => String(o.customer_id) === String(c.id) || o.customer_phone === c.phone)
@@ -112,6 +142,15 @@ export default function ProfilePage() {
       );
       setAddresses(allAddresses.filter(a => String(a.customer_id) === String(c.id)));
       setCoupons(allCoupons);
+      setAllOrderItems(items || []);
+      setAllProducts(productsList || []);
+
+      // Verify if password is set on the customer
+      if (freshCustomer && freshCustomer.password_hash) {
+        setHasPassword(true);
+      } else {
+        setHasPassword(false);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -127,7 +166,7 @@ export default function ProfilePage() {
     }
     const c = JSON.parse(auth);
     setCustomer(c);
-    setSettingsForm({ name: c.name || "", email: c.email || "", phone: c.phone || "", password: "" });
+    setSettingsForm({ name: c.name || "", email: c.email || "", phone: c.phone || "", password: "", confirmPassword: "", oldPassword: "" });
     fetchProfileData(c);
     loadFavorites();
 
@@ -146,24 +185,129 @@ export default function ProfilePage() {
     }
   }, [location.search]);
 
-  const handleUpdateSettings = async (e) => {
+  // Send OTP for Forgot Password inside Profile Settings
+  const handleSendForgotOTP = async () => {
+    if (!settingsForm.email) {
+      toast.error("Email is required to send OTP.");
+      return;
+    }
+    setIsSendingOTP(true);
+    try {
+      const { API_URL } = await import("@/lib/api");
+      const response = await fetch(`${API_URL}/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: settingsForm.email }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to send OTP");
+      }
+      toast.success("OTP sent to your email!");
+      setShowOTPDialog(true);
+    } catch (err) {
+      toast.error(err.message || "Failed to send OTP.");
+    } finally {
+      setIsSendingOTP(false);
+    }
+  };
+
+  // Verify OTP for Forgot Password inside Profile Settings
+  const handleVerifyForgotOTP = async () => {
+    if (otpCode.length < 6) {
+      toast.error("Please enter a 6-digit OTP.");
+      return;
+    }
+    setIsVerifyingOTP(true);
+    try {
+      const { API_URL } = await import("@/lib/api");
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: settingsForm.email, otp: otpCode }),
+      });
+      if (!response.ok) {
+        throw new Error("Invalid or expired OTP");
+      }
+      toast.success("OTP verified! You can now create your new password without typing the current one.");
+      setHasPassword(false); // Reset hasPassword locally so they don't have to fill oldPassword
+      setShowOTPDialog(false);
+      setOtpCode("");
+    } catch (err) {
+      toast.error(err.message || "Verification failed.");
+    } finally {
+      setIsVerifyingOTP(false);
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setIsUpdatingSettings(true);
     try {
       const dataToUpdate = { name: settingsForm.name, phone: settingsForm.phone, email: settingsForm.email };
-      if (settingsForm.password) {
-        dataToUpdate.password_hash = settingsForm.password;
-      }
       await update("customers", customer.id, dataToUpdate);
       
       const updatedCustomer = { ...customer, ...dataToUpdate };
       delete updatedCustomer.password;
       localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
       setCustomer(updatedCustomer);
-      setSettingsForm(prev => ({ ...prev, password: "" }));
-      toast.success("Profile updated successfully!");
+      window.dispatchEvent(new Event("authChanged"));
+      toast.success("Profile information updated successfully!");
     } catch (err) {
-      toast.error("Failed to update profile");
+      toast.error("Failed to update profile information");
+    } finally {
+      setIsUpdatingSettings(false);
+    }
+  };
+
+  const handleUpdateSecurity = async (e) => {
+    e.preventDefault();
+    if (!settingsForm.password) {
+      toast.error("Please enter a new password.");
+      return;
+    }
+    setIsUpdatingSettings(true);
+    
+    // Hash password to SHA-256
+    const sha256 = async (str) => {
+      const buf = new TextEncoder().encode(str);
+      const hash = await crypto.subtle.digest('SHA-256', buf);
+      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+    };
+
+    try {
+      // 1. We no longer fetch all customers to check old password client-side
+      // The backend AdminCrudController will hash the new password.
+      // We skip the old password check on the frontend to avoid exposing hashes.
+      
+      const dataToUpdate = { name: customer.name, phone: customer.phone, email: customer.email };
+      
+      // Require double-check verification password validation
+      if (settingsForm.password !== settingsForm.confirmPassword) {
+        toast.error("New password and confirm password do not match.");
+        setIsUpdatingSettings(false);
+        return;
+      }
+
+      if (hasPassword && !settingsForm.oldPassword) {
+        toast.error("Please enter your current password to confirm changes.");
+        setIsUpdatingSettings(false);
+        return;
+      }
+      
+      dataToUpdate.password = settingsForm.password;
+      
+      await update("customers", customer.id, dataToUpdate);
+      
+      const updatedCustomer = { ...customer, ...dataToUpdate };
+      delete updatedCustomer.password;
+      localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+      setCustomer(updatedCustomer);
+      window.dispatchEvent(new Event("authChanged"));
+      setSettingsForm(prev => ({ ...prev, password: "", confirmPassword: "", oldPassword: "" }));
+      setHasPassword(true);
+      toast.success("Password updated successfully!");
+    } catch (err) {
+      toast.error("Failed to update password");
     } finally {
       setIsUpdatingSettings(false);
     }
@@ -187,6 +331,8 @@ export default function ProfilePage() {
 
   const handleLogout = () => {
     localStorage.removeItem("customerAuth");
+    localStorage.removeItem("adminAuth");
+    window.dispatchEvent(new Event("authChanged"));
     navigate("/");
   };
 
@@ -201,8 +347,15 @@ export default function ProfilePage() {
       }
       
       orderItems.forEach(item => {
+        let optionsObj = null;
+        try { if (item.options) optionsObj = JSON.parse(item.options); } catch (e) {}
+        
+        const optionString = optionsObj && Object.keys(optionsObj).length > 0 
+          ? Object.values(optionsObj).join('-') 
+          : '';
+
         addItem({
-          id: `${item.product_id}-${item.options || 'default'}`,
+          id: optionString ? `${item.product_id}-${optionString}` : item.product_id,
           originalId: item.product_id,
           name: item.product_name,
           price: item.unit_price,
@@ -221,12 +374,17 @@ export default function ProfilePage() {
 
   if (!customer) return null;
 
+  const isAdmin = Boolean(
+    localStorage.getItem("adminAuth") ||
+    (customer && ["ADMIN", "MANAGER", "STAFF"].includes((customer.role || "").toUpperCase()))
+  );
+
   const displayTab = activeTab === "MENU" ? "SETTINGS" : activeTab;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-24 sm:pt-32 pb-16">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-32 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-16">
         <PageTransition>
           <div className="mx-auto max-w-5xl px-4">
             <div className="grid lg:grid-cols-[300px_1fr] gap-8">
@@ -240,7 +398,7 @@ export default function ProfilePage() {
                   activeTab !== "MENU" ? "hidden lg:block" : "block"
                 )}
               >
-                <div className="lg:hidden mb-6">
+                <div className="lg:hidden mb-6 flex items-center justify-between">
                   <Button 
                     variant="ghost" 
                     className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground"
@@ -249,9 +407,20 @@ export default function ProfilePage() {
                     <ArrowLeft className="size-5 mr-2" />
                     Back to Home
                   </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => navigate("/admin/dashboard")}
+                      className="rounded-full border-primary/40 bg-primary/10 text-primary font-semibold text-xs h-8 px-3"
+                    >
+                      <LayoutDashboard className="size-3.5 mr-1" />
+                      Admin Panel
+                    </Button>
+                  )}
                 </div>
-                <div className="flex flex-col items-center text-center mb-8">
-                  <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center mb-4 overflow-hidden">
+                <div className="flex flex-col items-center text-center mb-6">
+                  <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center mb-4 overflow-hidden shadow-inner">
                     {customer.avatar ? (
                       <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
@@ -261,10 +430,29 @@ export default function ProfilePage() {
                   <h2 className="font-serif text-2xl font-bold text-foreground">
                     {customer.name || "Foodie"}
                   </h2>
-                  <p className="text-muted-foreground">{customer.phone || customer.email}</p>
+                  <p className="text-muted-foreground text-sm">{customer.phone || customer.email}</p>
+                  {isAdmin && (
+                    <span className="mt-2 inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/30">
+                      <ShieldCheck className="size-3.5" />
+                      Administrator
+                    </span>
+                  )}
                 </div>
 
                 <div className="space-y-2">
+                  {isAdmin && (
+                    <Button 
+                      variant="outline" 
+                      className="w-full justify-between bg-primary/10 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground font-semibold rounded-2xl h-11 transition-all mb-3 shadow-sm"
+                      onClick={() => navigate("/admin/dashboard")}
+                    >
+                      <div className="flex items-center">
+                        <LayoutDashboard className="mr-2.5 size-4" />
+                        Admin Dashboard
+                      </div>
+                      <ArrowRight className="size-4" />
+                    </Button>
+                  )}
                   <Button 
                     variant="ghost" 
                     className={cn("w-full justify-start", activeTab === "SETTINGS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
@@ -339,72 +527,231 @@ export default function ProfilePage() {
                 {displayTab === "SETTINGS" && (
                   <>
                     <h3 className="font-serif text-3xl font-bold text-foreground mb-6">Profile Settings</h3>
-                    <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
-                      <form onSubmit={handleUpdateSettings} className="space-y-6">
-                        <div className="grid sm:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                              <User className="size-4" /> Full Name
-                            </label>
-                            <Input 
-                              required 
-                              value={settingsForm.name} 
-                              onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
-                              className="rounded-xl border-border/60 bg-background/50 h-12" 
-                            />
+                    <div className="space-y-6">
+                      {/* Card 1: Profile Information */}
+                      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
+                        <form onSubmit={handleUpdateProfile} className="space-y-6">
+                          <div className="grid sm:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                <User className="size-4" /> Full Name
+                              </label>
+                              <Input 
+                                required 
+                                value={settingsForm.name} 
+                                onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
+                                className="rounded-xl border-border/60 bg-background/50 h-12" 
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                <Phone className="size-4" /> Phone Number
+                              </label>
+                              <Input 
+                                required 
+                                value={settingsForm.phone} 
+                                onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
+                                className="rounded-xl border-border/60 bg-background/50 h-12" 
+                              />
+                            </div>
+                            <div className="space-y-2 sm:col-span-2">
+                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                <Mail className="size-4" /> Email Address (Cannot be changed)
+                              </label>
+                              <Input 
+                                type="email"
+                                value={settingsForm.email} 
+                                readOnly
+                                disabled
+                                autoComplete="off"
+                                className="rounded-xl border-border/60 bg-secondary/80 h-12 cursor-not-allowed opacity-80" 
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                              <Phone className="size-4" /> Phone Number
-                            </label>
-                            <Input 
-                              required 
-                              value={settingsForm.phone} 
-                              onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
-                              className="rounded-xl border-border/60 bg-background/50 h-12" 
-                            />
-                          </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                              <Mail className="size-4" /> Email Address
-                            </label>
-                            <Input 
-                              type="email"
-                              value={settingsForm.email} 
-                              onChange={e => setSettingsForm(prev => ({...prev, email: e.target.value}))} 
-                              className="rounded-xl border-border/60 bg-background/50 h-12" 
-                            />
-                          </div>
-                        </div>
 
-                        <div className="pt-6 border-t border-border/60">
-                          <h4 className="font-serif text-xl font-bold text-foreground mb-4">Security</h4>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                              <Lock className="size-4" /> New Password (leave blank to keep current)
-                            </label>
-                            <Input 
-                              type="password"
-                              placeholder="••••••••"
-                              value={settingsForm.password} 
-                              onChange={e => setSettingsForm(prev => ({...prev, password: e.target.value}))} 
-                              className="rounded-xl border-border/60 bg-background/50 h-12 max-w-md" 
-                            />
+                          <div className="flex justify-end pt-2">
+                            <Button 
+                              type="submit" 
+                              size="lg" 
+                              className="rounded-full px-8"
+                              disabled={isUpdatingSettings}
+                            >
+                              {isUpdatingSettings ? "Saving..." : "Save Profile Info"}
+                            </Button>
                           </div>
-                        </div>
+                        </form>
+                      </div>
 
-                        <div className="flex justify-end pt-4">
-                          <Button 
-                            type="submit" 
-                            size="lg" 
-                            className="rounded-full px-8"
-                            disabled={isUpdatingSettings}
-                          >
-                            {isUpdatingSettings ? "Saving..." : "Save Changes"}
-                          </Button>
-                        </div>
-                      </form>
+                      {/* Card 2: Security & Password Update */}
+                      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
+                        <h4 className="font-serif text-2xl font-bold text-foreground mb-2">Security</h4>
+                        <p className="text-sm text-muted-foreground mb-6">
+                          Update your login password. Leaving these fields blank keeps your current password unchanged.
+                        </p>
+                        <form onSubmit={handleUpdateSecurity} className="space-y-6" autoComplete="off">
+                          <div className="space-y-4 max-w-md animate-fade-in">
+                            {hasPassword && (
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                    <Lock className="size-4" /> Current Password
+                                  </label>
+                                  <button
+                                    type="button"
+                                    onClick={handleSendForgotOTP}
+                                    disabled={isSendingOTP}
+                                    className="text-xs font-semibold text-primary hover:underline"
+                                  >
+                                    {isSendingOTP ? "Sending OTP..." : "Forgot Password?"}
+                                  </button>
+                                </div>
+                                <div className="relative">
+                                  <Input 
+                                    type={showOldPassword ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    autoComplete="new-password"
+                                    value={settingsForm.oldPassword} 
+                                    onChange={e => setSettingsForm(prev => ({...prev, oldPassword: e.target.value}))} 
+                                    className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowOldPassword(!showOldPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                  >
+                                    {showOldPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                <Lock className="size-4" /> {hasPassword ? "New Password" : "Create Password"}
+                              </label>
+                              <div className="relative">
+                                <Input 
+                                  type={showNewPassword ? "text" : "password"}
+                                  placeholder="••••••••"
+                                  autoComplete="new-password"
+                                  value={settingsForm.password} 
+                                  onChange={e => setSettingsForm(prev => ({...prev, password: e.target.value}))} 
+                                  className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowNewPassword(!showNewPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                  {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                </button>
+                              </div>
+
+                              {settingsForm.password && (
+                                <div className="p-3 bg-secondary/40 rounded-xl space-y-1.5 mt-2 text-xs border border-border/40">
+                                  <p className="font-semibold text-muted-foreground">Password requirements:</p>
+                                  <div className="grid grid-cols-2 gap-1.5">
+                                    <div className="flex items-center gap-1">
+                                      {settingsForm.password.length >= 8 ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                      <span className={settingsForm.password.length >= 8 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>8+ characters</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {/[A-Z]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                      <span className={/[A-Z]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>Uppercase letter</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {/[a-z]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                      <span className={/[a-z]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>Lowercase letter</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      {/[0-9]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                      <span className={/[0-9]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>At least one number</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+
+                            {settingsForm.password && (
+                              <div className="space-y-2 animate-card-fade-in">
+                                <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                  <Lock className="size-4" /> Confirm New Password
+                                </label>
+                                <div className="relative">
+                                  <Input 
+                                    type={showConfirmPassword ? "text" : "password"}
+                                    placeholder="••••••••"
+                                    autoComplete="new-password"
+                                    value={settingsForm.confirmPassword} 
+                                    onChange={e => setSettingsForm(prev => ({...prev, confirmPassword: e.target.value}))} 
+                                    className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                  >
+                                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex justify-end pt-4">
+                            <Button 
+                              type="submit" 
+                              size="lg" 
+                              className="rounded-full px-8"
+                              disabled={isUpdatingSettings || (settingsForm.password && (settingsForm.password !== settingsForm.confirmPassword || settingsForm.password.length < 8))}
+                            >
+                              {isUpdatingSettings ? "Saving..." : "Update Password"}
+                            </Button>
+                          </div>
+                        </form>
+                      </div>
                     </div>
+
+                    {/* Reset Password via OTP Dialog Overlay */}
+                    <Dialog open={showOTPDialog} onOpenChange={setShowOTPDialog}>
+                      <DialogContent className="sm:max-w-md rounded-3xl border border-border/60 bg-card p-6 shadow-warm-lg">
+                        <DialogHeader>
+                          <DialogTitle className="font-serif text-2xl font-bold">Bypass Password via OTP</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            We have sent a 6-digit OTP code to your email <strong>{settingsForm.email}</strong>. Enter it below to authorize setting a new password.
+                          </p>
+                          <div className="space-y-2">
+                            <Input 
+                              type="text"
+                              placeholder="000000"
+                              maxLength={6}
+                              value={otpCode}
+                              onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                              className="rounded-xl border-border/60 bg-background/50 h-14 text-center font-mono tracking-[0.5em] text-2xl"
+                            />
+                          </div>
+                          <div className="flex gap-3 justify-end pt-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              onClick={() => setShowOTPDialog(false)}
+                              className="rounded-full px-5"
+                            >
+                              Cancel
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={handleVerifyForgotOTP}
+                              disabled={isVerifyingOTP}
+                              className="rounded-full px-6"
+                            >
+                              {isVerifyingOTP ? "Verifying..." : "Verify OTP"}
+                            </Button>
+                          </div>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </>
                 )}
 
@@ -451,30 +798,41 @@ export default function ProfilePage() {
                           </div>
                         </div>
 
-                        <div className="flex justify-between items-center mt-4 pt-4 border-t border-border/60">
+                        <div className="flex flex-wrap justify-between items-center mt-4 pt-4 border-t border-border/60 gap-3">
                           <span className="font-bold text-primary">${order.total}</span>
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              className="rounded-full text-xs h-8"
+                              className="rounded-full text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleReorder(order.id);
                               }}
                             >
-                              <RefreshCcw className="size-3 mr-1.5" /> Reorder
+                              <RefreshCcw className="size-3 mr-1 sm:mr-1.5" /> Reorder
                             </Button>
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="rounded-full text-xs h-8 text-muted-foreground"
+                              className="rounded-full text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 text-muted-foreground"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOrderDetails(order);
+                              }}
+                            >
+                              Details <ChevronRight className="size-3 ml-0.5 sm:ml-1" />
+                            </Button>
+                            <Button 
+                              variant="default" 
+                              size="sm" 
+                              className="rounded-full text-[11px] sm:text-xs h-7 sm:h-8 px-3 sm:px-4 ml-1 sm:ml-2"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 navigate(`/track/${order.id}`);
                               }}
                             >
-                              View Details <ChevronRight className="size-3 ml-1" />
+                              Track
                             </Button>
                           </div>
                         </div>
@@ -522,17 +880,29 @@ export default function ProfilePage() {
                         <div>
                           <div className="flex items-center justify-between mb-1">
                             <label className="text-xs font-semibold text-muted-foreground">Specific Details (Street, House No, etc.)</label>
-                            <Button 
-                              type="button" 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
-                              onClick={handleAutoLocation}
-                              disabled={isLocating}
-                            >
-                              <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
-                              {isLocating ? "Locating..." : "Use Current Location"}
-                            </Button>
+                            <div className="flex gap-2">
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
+                                onClick={() => setShowMap(true)}
+                              >
+                                <MapPin className="size-3 mr-1" />
+                                Map
+                              </Button>
+                              <Button 
+                                type="button" 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
+                                onClick={handleAutoLocation}
+                                disabled={isLocating}
+                              >
+                                <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
+                                {isLocating ? "Locating..." : "Use Current Location"}
+                              </Button>
+                            </div>
                           </div>
                           <Input required value={newAddress.address_line} onChange={e => setNewAddress(prev => ({...prev, address_line: e.target.value}))} placeholder="e.g. St 271, House 123, Toul Kork" className="rounded-xl border-border/60" />
                         </div>
@@ -582,7 +952,7 @@ export default function ProfilePage() {
                         {favorites.map(item => (
                           <div key={item.id} className="bg-card border border-border/60 rounded-2xl overflow-hidden group cursor-pointer" onClick={() => navigate(`/product/${item.id}`)}>
                             <div className="aspect-square relative overflow-hidden bg-secondary">
-                              <img src={item.image} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                              <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                               <button 
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -692,6 +1062,91 @@ export default function ProfilePage() {
             </div>
           </div>
         </PageTransition>
+
+      {/* Order Details Modal */}
+      <Dialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
+        <DialogContent className="sm:max-w-md bg-background border-border/60">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-xl">Order #{selectedOrderDetails?.order_number}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mt-4">
+            {selectedOrderDetails && allOrderItems
+              .filter(item => String(item.order_id) === String(selectedOrderDetails.id))
+              .map(item => {
+                const foodItem = allProducts.find(f => String(f.id) === String(item.product_id) || f.name === item.product_name) || {};
+                return (
+                  <div key={item.id} className="flex justify-between items-center text-sm gap-3 p-3 bg-secondary/30 rounded-xl border border-border/40">
+                    <div className="flex items-center gap-3">
+                      <div className="size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
+                        {foodItem.image ? (
+                          <img src={foodItem.image} alt={item.product_name} className="w-full h-full object-cover" />
+                        ) : (
+                          <ShoppingBag className="size-5 text-primary/60" />
+                        )}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-semibold text-foreground">
+                          {item.quantity}x {item.product_name}
+                        </span>
+                        {item.options && (
+                          <span className="text-xs text-muted-foreground">
+                            {(() => {
+                              try {
+                                return Object.values(JSON.parse(item.options)).join(", ");
+                              } catch(e) {
+                                return String(item.options);
+                              }
+                            })()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <span className="font-bold">${Number(item.line_total).toFixed(2)}</span>
+                  </div>
+                );
+              })}
+            {selectedOrderDetails && allOrderItems.filter(item => String(item.order_id) === String(selectedOrderDetails.id)).length === 0 && (
+              <div className="text-center py-6 text-muted-foreground">No items found for this order.</div>
+            )}
+          </div>
+          <div className="pt-4 border-t border-border/60 space-y-2 text-sm mt-4">
+            <div className="flex justify-between text-muted-foreground">
+              <span>Subtotal</span>
+              <span>${Number(selectedOrderDetails?.subtotal || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-muted-foreground">
+              <span>Delivery Fee</span>
+              <span>${Number(selectedOrderDetails?.delivery_fee || 0).toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between font-bold text-foreground text-base pt-2">
+              <span>Total</span>
+              <span className="text-primary">${Number(selectedOrderDetails?.total || 0).toFixed(2)}</span>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      <AnimatePresence>
+        {showMap && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-card w-full max-w-lg rounded-3xl p-6 shadow-2xl relative"
+            >
+              <h3 className="font-serif text-xl font-bold text-foreground mb-4">Pick Location</h3>
+              <MapPicker
+                onConfirm={(loc) => {
+                  setNewAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city }));
+                  setShowMap(false);
+                  toast.success("Location picked successfully!");
+                }}
+                onClose={() => setShowMap(false)}
+              />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       </main>
       <CartDrawer />
     </div>

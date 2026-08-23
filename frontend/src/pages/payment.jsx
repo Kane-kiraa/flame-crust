@@ -92,11 +92,10 @@ export default function PaymentGatewayPage() {
         merchantName,
         "Phnom Penh",
         {
-          currency: "116", // 116 is KHR
-          amount: Math.round(Number(total) * 4100),
-          storeLabel: "STORE1",
-          terminalLabel: "TERM1",
-          expirationTimestamp: Date.now() + (5 * 60 * 1000)
+          currency: "840", // 840 is USD
+          amount: Number(Number(total).toFixed(2)),
+          storeLabel: "FlameCrust",
+          terminalLabel: "T1"
         }
       );
       const khqr = new BakongKHQR();
@@ -117,11 +116,13 @@ export default function PaymentGatewayPage() {
     if (loading) return;
     setLoading(true);
     try {
+      const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentMethod) ? paymentMethod : "OTHER";
+      
       // Create payment record
       await create("payments", {
         order_id: orderId,
-        payment_method: paymentMethod,
-        payment_status: "PAID",
+        method: dbMethod,
+        status: "PAID",
         amount: total
       });
 

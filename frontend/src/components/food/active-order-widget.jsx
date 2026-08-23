@@ -138,7 +138,7 @@ export function ActiveOrderWidget() {
             </span>
 
             {!isExpanded ? (
-              <div className="shrink-0 flex items-center justify-center animate-in fade-in zoom-in duration-300">
+              <div className="shrink-0 flex items-center justify-center animate-in fade-in-0 zoom-in-95 duration-300">
                 {hasMultiple ? <Package className="size-5 sm:size-6" /> : getIcon(primaryOrder.status)}
                 {hasMultiple && (
                   <span className="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-background text-foreground text-[10px] font-bold border border-border shadow-sm">
@@ -147,7 +147,7 @@ export function ActiveOrderWidget() {
                 )}
               </div>
             ) : (
-              <div className="flex flex-col w-full h-full gap-2 mt-1 animate-in fade-in duration-300 delay-100">
+              <div className="flex flex-col w-full h-full gap-2 mt-1 animate-in fade-in-0 duration-300 delay-100">
                 {hasMultiple ? (
                   <>
                     <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wide opacity-90 pl-6 sm:pl-8 mb-1">

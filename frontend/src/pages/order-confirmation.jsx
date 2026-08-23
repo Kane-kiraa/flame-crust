@@ -58,7 +58,7 @@ function OrderConfirmationPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-24 sm:pt-28">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
         <PageTransition>
           <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-12 text-center">
             <motion.div
@@ -93,7 +93,7 @@ function OrderConfirmationPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              className="mt-8 rounded-2xl border border-border/60 bg-card p-6 text-left space-y-4"
+              className="mt-6 sm:mt-8 rounded-2xl border border-border/60 bg-card p-5 sm:p-6 text-left space-y-3 sm:space-y-4"
             >
               <div className="flex items-center gap-3">
                 <div className="flex items-center justify-center size-10 rounded-full bg-primary/15">

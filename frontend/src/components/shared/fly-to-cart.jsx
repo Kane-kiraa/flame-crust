@@ -8,25 +8,38 @@ export function FlyToCart() {
 
   useEffect(() => {
     const handleFly = (e) => {
-      const { image, startRect } = e.detail;
-      const newItem = { id: Date.now() + Math.random(), image, startRect };
+      const { image, startRect } = e.detail || {};
+      if (!startRect) return;
+
+      const newItem = {
+        id: Date.now() + Math.random(),
+        image,
+        startRect,
+      };
+
       setItems((prev) => [...prev, newItem]);
 
-      // Trigger cart icon pop animation
+      // Pop the cart icon when the flying item arrives
       const cartIcon = document.getElementById("cart-icon");
       if (cartIcon) {
         setTimeout(() => {
-          cartIcon.style.transform = "scale(1.2)";
-          setTimeout(() => {
-            cartIcon.style.transform = "scale(1)";
-          }, 150);
-        }, 950); // Trigger when item reaches it
+          cartIcon.animate(
+            [
+              { transform: "scale(1)" },
+              { transform: "scale(1.35) rotate(-6deg)" },
+              { transform: "scale(0.9) rotate(3deg)" },
+              { transform: "scale(1.1)" },
+              { transform: "scale(1)" },
+            ],
+            { duration: 450, easing: "cubic-bezier(0.34, 1.56, 0.64, 1)" }
+          );
+        }, 1100);
       }
 
-      // Remove after animation completes
+      // Cleanup item after animation finishes
       setTimeout(() => {
         setItems((prev) => prev.filter((i) => i.id !== newItem.id));
-      }, 1200);
+      }, 1400);
     };
 
     window.addEventListener("fly-to-cart", handleFly);
@@ -36,49 +49,70 @@ export function FlyToCart() {
   if (items.length === 0) return null;
 
   return createPortal(
-    <div className="pointer-events-none fixed inset-0 z-[9999]">
+    <div className="pointer-events-none fixed inset-0 z-[99999] overflow-hidden">
       <AnimatePresence>
         {items.map((item) => {
           const cartIcon = document.getElementById("cart-icon");
-          // Fallback if cart icon is not found
-          const endRect = cartIcon 
-            ? cartIcon.getBoundingClientRect() 
+          const endRect = cartIcon
+            ? cartIcon.getBoundingClientRect()
             : { top: 20, left: window.innerWidth - 60, width: 44, height: 44 };
-          
-          const cx = item.startRect.left + item.startRect.width / 2;
-          const cy = item.startRect.top + item.startRect.height / 2;
-          const midSize = Math.min(item.startRect.width, item.startRect.height) * 0.8;
-          const midTop = cy - midSize / 2;
-          const midLeft = cx - midSize / 2;
 
-          const endTop = endRect.top + endRect.height / 2 - midSize / 2;
-          const endLeft = endRect.left + endRect.width / 2 - midSize / 2;
+          // Start from the exact center of the button (startRect)
+          const startX = item.startRect.left + item.startRect.width / 2;
+          const startY = item.startRect.top + item.startRect.height / 2;
+
+          // End exactly at the center of the cart icon
+          const targetX = endRect.left + endRect.width / 2;
+          const targetY = endRect.top + endRect.height / 2;
+
+          // Curve upward for the parabolic arc
+          const midX = (startX + targetX) / 2;
+          let midY = Math.min(startY, targetY) - 120;
+          
+          // Prevent flying off the top of the screen
+          if (midY < 20) {
+            midY = 20;
+          }
+
+          // Create a fixed square size for the flying image (so it's never squished)
+          const initialSize = 80; // Always start as an 80x80 circle
 
           return (
             <motion.div
               key={item.id}
-              initial={{ 
-                opacity: 0.8, 
-                top: item.startRect.top, 
-                left: item.startRect.left,
-                width: item.startRect.width,
-                height: item.startRect.height,
-                borderRadius: "16px",
-                scale: 1
+              initial={{
+                position: "fixed",
+                left: startX - initialSize / 2,
+                top: startY - initialSize / 2,
+                width: initialSize,
+                height: initialSize,
+                opacity: 1,
+                scale: 0.5,
+                borderRadius: "50%",
+                rotate: 0,
               }}
-              animate={{ 
-                opacity: [0.8, 1, 1, 0],
-                top: [item.startRect.top, midTop, endTop, endTop],
-                left: [item.startRect.left, midLeft, endLeft, endLeft],
-                width: [item.startRect.width, midSize, midSize, midSize],
-                height: [item.startRect.height, midSize, midSize, midSize],
-                scale: [1, 1, 0.2, 0.1],
-                borderRadius: ["16px", "50%", "50%", "50%"]
+              animate={{
+                left: [startX - initialSize / 2, midX - initialSize / 2, targetX - 16],
+                top: [startY - initialSize / 2, midY - initialSize / 2, targetY - 16],
+                scale: [1, 1, 0.25],
+                width: [initialSize, initialSize, 32],
+                height: [initialSize, initialSize, 32],
+                opacity: [1, 1, 0],
+                borderRadius: ["50%", "50%", "50%"],
+                rotate: [0, 180, 360],
               }}
-              transition={{ duration: 1.1, times: [0, 0.35, 0.9, 1], ease: "easeInOut" }}
-              className="absolute overflow-hidden shadow-2xl border-4 border-primary bg-background"
+              transition={{
+                duration: 1.15,
+                times: [0, 0.45, 1],
+                ease: [0.35, 0.8, 0.35, 1],
+              }}
+              className="overflow-hidden shadow-2xl border-2 border-primary bg-background ring-4 ring-primary/25 pointer-events-none"
             >
-              <img src={item.image} alt="" className="w-full h-full object-cover" />
+              <img
+                src={item.image}
+                alt=""
+                className="w-full h-full object-cover"
+              />
             </motion.div>
           );
         })}

@@ -1,9 +1,12 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, Fragment } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, X, Flame, Leaf, ArrowRight } from "lucide-react";
+import { Search, X, Flame, Leaf, ArrowRight, Plus, Check } from "lucide-react";
 import { getProducts } from "@/lib/api";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/lib/cart-store";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
 
 export function SearchModal({ isOpen, onClose }) {
   const [query, setQuery] = useState("");
@@ -11,6 +14,9 @@ export function SearchModal({ isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const inputRef = useRef(null);
   const navigate = useNavigate();
+
+  const addItem = useCart((s) => s.addItem);
+  const lines = useCart((s) => s.lines);
 
   useEffect(() => {
     if (isOpen) {
@@ -21,7 +27,7 @@ export function SearchModal({ isOpen, onClose }) {
       });
       // Focus input
       setTimeout(() => inputRef.current?.focus(), 100);
-      
+
       // Lock scroll
       const orig = document.body.style.overflow;
       document.body.style.overflow = "hidden";
@@ -43,14 +49,36 @@ export function SearchModal({ isOpen, onClose }) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
+  const handleAddToCart = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = e.currentTarget.getBoundingClientRect();
+
+    window.dispatchEvent(
+      new CustomEvent("fly-to-cart", {
+        detail: {
+          image: item.image,
+          startRect: rect,
+        },
+      })
+    );
+
+    const inCart = lines.find((l) => l.id === item.id);
+    addItem(item);
+    toast.success(`${item.name} added to cart`, {
+      description: inCart ? `Now ${inCart.qty + 1} in your order` : "Tap the cart icon to checkout"
+    });
+  };
+
   if (!isOpen) return null;
 
-  const filtered = query.length > 1 
-    ? products.filter(p => 
-        p.name.toLowerCase().includes(query.toLowerCase()) || 
-        p.description?.toLowerCase().includes(query.toLowerCase()) ||
-        (Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' && p.tags ? p.tags.split(',').map(s=>s.trim()) : [])).some(t => t.toLowerCase().includes(query.toLowerCase()))
-      )
+  const filtered = query.length > 1
+    ? products.filter(p =>
+      p.name.toLowerCase().includes(query.toLowerCase()) ||
+      p.description?.toLowerCase().includes(query.toLowerCase()) ||
+      (Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' && p.tags ? p.tags.split(',').map(s => s.trim()) : [])).some(t => t.toLowerCase().includes(query.toLowerCase()))
+    )
     : [];
 
   return (
@@ -81,7 +109,7 @@ export function SearchModal({ isOpen, onClose }) {
               placeholder="Search for pizza, burgers, or ingredients..."
               className="flex-1 bg-transparent border-none outline-none px-4 text-lg sm:text-xl text-foreground placeholder:text-muted-foreground/60"
             />
-            <button 
+            <button
               onClick={() => onClose(false)}
               className="p-2 rounded-full hover:bg-secondary text-muted-foreground transition-colors"
             >
@@ -113,41 +141,68 @@ export function SearchModal({ isOpen, onClose }) {
                 <p>No results found for "{query}"</p>
               </div>
             ) : (
-              <div className="grid gap-2">
-                {filtered.map(product => (
-                  <button
-                    key={product.id}
-                    onClick={() => {
-                      onClose(false);
-                      navigate(`/product/${product.id}`);
-                    }}
-                    className="flex items-center gap-4 p-3 rounded-xl hover:bg-secondary/60 transition-colors text-left group"
-                  >
-                    <div className="size-16 rounded-lg overflow-hidden bg-secondary shrink-0">
-                      <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-foreground truncate">{product.name}</h4>
-                        {product.spicy && <Flame className="size-3 text-primary shrink-0" />}
-                        {product.vegetarian && <Leaf className="size-3 text-green-600 shrink-0" />}
+              <div className="flex flex-col gap-2 w-full overflow-hidden">
+                {filtered.map(product => {
+                  const inCart = lines.find((l) => l.id === product.id);
+                  return (
+                    <div
+                      key={product.id}
+                      onClick={() => {
+                        onClose(false);
+                        navigate(`/product/${product.id}`);
+                      }}
+                      className="search-result-row w-full flex items-center gap-2.5 sm:gap-4 p-2 sm:p-3 rounded-xl hover:bg-secondary/60 transition-colors text-left group cursor-pointer overflow-hidden"
+                    >
+                      <div className="size-14 sm:size-16 rounded-lg overflow-hidden bg-secondary shrink-0 relative">
+                        <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
-                        {product.description}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0 pl-2">
-                      <span className="font-bold text-foreground">${product.price.toFixed(2)}</span>
-                      <div className="size-8 rounded-full bg-background border border-border/60 flex items-center justify-center group-hover:bg-primary group-hover:border-primary group-hover:text-primary-foreground transition-colors">
-                        <ArrowRight className="size-4" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 sm:gap-2">
+                          <h4 className="font-semibold text-sm sm:text-base text-foreground truncate">{product.name}</h4>
+                          {product.spicy && <Flame className="size-3 text-primary shrink-0" />}
+                          {product.vegetarian && <Leaf className="size-3 text-green-600 shrink-0" />}
+                        </div>
+                        <p className="text-[11px] sm:text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                          {product.description}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 sm:gap-3 shrink-0 pl-1 sm:pl-2">
+                        <div className="flex flex-col items-end sm:items-start mr-2 sm:mr-0 hidden sm:flex">
+                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Price</span>
+                          <span className="font-bold text-foreground leading-none">${product.price.toFixed(2)}</span>
+                        </div>
+                        <span className="font-bold text-sm sm:text-base text-foreground sm:hidden shrink-0">${product.price.toFixed(2)}</span>
+
+                        <Button
+                          onClick={(e) => handleAddToCart(e, product)}
+                          size="sm"
+                          className={cn(
+                            "h-8 px-2.5 sm:h-9 sm:px-3 rounded-full font-semibold shadow-sm transition-all group/btn flex items-center gap-1 sm:gap-1.5 shrink-0",
+                            inCart
+                              ? "bg-green-600 hover:bg-green-700 text-white"
+                              : "bg-foreground text-background hover:bg-primary hover:text-primary-foreground"
+                          )}
+                        >
+                          {inCart ? (
+                            <Fragment>
+                              <Check className="size-3.5" />
+                              <span className="ml-0.5 text-xs hidden sm:inline">In cart</span>
+                            </Fragment>
+                          ) : (
+                            <Fragment>
+                              <Plus className="size-3.5 group-hover/btn:rotate-90 transition-transform" />
+                              <span className="ml-0.5 text-xs hidden sm:inline">Add</span>
+                            </Fragment>
+                          )}
+                        </Button>
                       </div>
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
-          
+
           <div className="bg-secondary/30 border-t border-border/60 px-4 py-3 flex justify-between items-center text-xs text-muted-foreground">
             <span>Press <kbd className="font-mono bg-background border rounded px-1.5 py-0.5">ESC</kbd> to close</span>
             <span>Search powered by Flame & Crust</span>

@@ -47,7 +47,7 @@ function Menu() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.4 }}
-          className="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 lg:gap-6"
+          className="mt-12 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
         >
           {displayedItems.map((item, idx) => (
             <FoodCard key={item.id} item={item} index={idx} />

@@ -24,8 +24,9 @@ import { FoodCard } from "@/components/food/food-card";
 import { DetailSkeleton } from "@/components/shared/loading-skeleton";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageTransition } from "@/components/shared/page-transition";
+import { getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
-import { list, get } from "@/lib/api";
+import { list, get, getProducts } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -52,18 +53,33 @@ function ProductDetailPage() {
     setLoading(true);
     async function fetchProduct() {
       try {
-        const [prod, allOptions, allVariants, allReviews] = await Promise.all([
-          get("products", id),
-          list("product_options"),
-          list("product_variants"),
-          list("reviews")
-        ]);
-        
+        const products = await getProducts();
+        const prod = products.find(p => String(p.id) === String(id));
+        if (!prod) throw new Error("Product not found");
+
+        let allOptions = [];
+        let allVariants = [];
+        let allReviews = [];
+
+        try {
+          const res = await Promise.all([
+            list("product_options"),
+            list("product_variants"),
+            list("reviews")
+          ]);
+          allOptions = res[0] || [];
+          allVariants = res[1] || [];
+          allReviews = res[2] || [];
+        } catch (e) {
+          // If we are not admin or these fail, we just ignore and show empty
+          console.warn("Could not fetch product options/variants/reviews", e);
+        }
+
         setProduct(prod);
-        
-        const prodOptions = (allOptions || []).filter(o => String(o.product_id) === String(id));
-        const prodVariants = (allVariants || []).filter(v => prodOptions.some(o => String(o.id) === String(v.option_id)) && v.active);
-        
+
+        const prodOptions = allOptions.filter(o => String(o.product_id) === String(id));
+        const prodVariants = allVariants.filter(v => prodOptions.some(o => String(o.id) === String(v.option_id)) && v.active);
+
         const defaults = {};
         prodOptions.forEach(opt => {
           const optVars = prodVariants.filter(v => String(v.option_id) === String(opt.id));
@@ -75,10 +91,10 @@ function ProductDetailPage() {
         setOptions(prodOptions);
         setVariants(prodVariants);
         setSelectedVariants(defaults);
-        
-        const productReviews = (allReviews || []).filter(r => String(r.product_id) === String(id) && r.status === 'APPROVED');
-        setReviews(productReviews.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)));
-        
+
+        const productReviews = allReviews.filter(r => String(r.product_id) === String(id) && r.status === 'APPROVED');
+        setReviews(productReviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+
         setLoading(false);
       } catch (err) {
         setError("Product not found");
@@ -101,7 +117,7 @@ function ProductDetailPage() {
 
   const handleAdd = (e) => {
     if (!product) return;
-    
+
     if (e && e.preventDefault) {
       e.preventDefault();
       const rect = e.currentTarget.getBoundingClientRect();
@@ -112,7 +128,7 @@ function ProductDetailPage() {
 
     let finalPrice = product.price;
     const selectedVariantDetails = {};
-    
+
     Object.entries(selectedVariants).forEach(([optId, varId]) => {
       const opt = options.find(o => String(o.id) === String(optId));
       const v = variants.find(v => String(v.id) === String(varId));
@@ -125,10 +141,12 @@ function ProductDetailPage() {
     const productWithVariants = {
       ...product,
       price: finalPrice,
-      id: `${product.id}-${Object.values(selectedVariants).join('-')}`,
-      name: Object.keys(selectedVariantDetails).length > 0 
-            ? `${product.name} (${Object.values(selectedVariantDetails).join(', ')})`
-            : product.name,
+      id: Object.keys(selectedVariantDetails).length > 0 
+        ? `${product.id}-${Object.values(selectedVariants).join('-')}`
+        : product.id,
+      name: Object.keys(selectedVariantDetails).length > 0
+        ? `${product.name} (${Object.values(selectedVariantDetails).join(', ')})`
+        : product.name,
       originalId: product.id,
       selectedOptions: selectedVariantDetails
     };
@@ -148,7 +166,7 @@ function ProductDetailPage() {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
-        <main className="flex-1 pt-24">
+        <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))]">
           <ErrorState
             title="Couldn't load this item"
             description={error}
@@ -164,7 +182,7 @@ function ProductDetailPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 pt-20 sm:pt-28 pb-28 sm:pb-12">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28 pb-28 sm:pb-12">
         <PageTransition>
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
             <AnimatePresence mode="wait">
@@ -206,7 +224,7 @@ function ProductDetailPage() {
                       <div className="relative aspect-[4/3] sm:aspect-[4/3] overflow-hidden rounded-3xl bg-secondary/80 shadow-warm-lg">
                         <img
                           id="product-main-image"
-                          src={product.image}
+                          src={getImageUrl(product.image)}
                           alt={product.name}
                           onLoad={() => setImgLoaded(true)}
                           className={cn(
@@ -216,7 +234,7 @@ function ProductDetailPage() {
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent" />
                         <div className="absolute top-3 left-3 sm:top-4 sm:left-4 flex flex-wrap gap-1.5 z-10">
-                          {(Array.isArray(product.tags) ? product.tags : (typeof product.tags === 'string' && product.tags ? product.tags.split(',').map(s=>s.trim()) : []))?.slice(0, 3).map((t) => (
+                          {(Array.isArray(product.tags) ? product.tags : (typeof product.tags === 'string' && product.tags ? product.tags.split(',').map(s => s.trim()) : []))?.slice(0, 3).map((t) => (
                             <Badge
                               key={t}
                               className={cn(
@@ -240,166 +258,166 @@ function ProductDetailPage() {
                       className="flex flex-col"
                     >
 
-                <div className="flex flex-wrap items-center gap-2 mb-3">
-                  {product.spicy && (
-                    <Badge className="bg-primary/15 text-primary border-0 rounded-full gap-1 px-3 py-1 text-xs font-semibold">
-                      <Flame className="size-3.5" /> Spicy
-                    </Badge>
-                  )}
-                  {product.vegetarian && (
-                    <Badge className="bg-green-600/15 text-green-700 dark:text-green-400 border-0 rounded-full gap-1 px-3 py-1 text-xs font-semibold">
-                      <Leaf className="size-3.5" /> Vegetarian
-                    </Badge>
-                  )}
-                  <div className="flex items-center gap-1.5 bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 px-3 py-1 rounded-full text-xs font-semibold">
-                    <Star className="size-3.5 fill-yellow-500 text-yellow-500" />
-                    <span>{avgRating} {reviews.length > 0 && `(${reviews.length})`}</span>
-                  </div>
-                </div>
-
-                <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
-                  {product.name}
-                </h1>
-
-                <p className="mt-3 text-sm sm:text-lg text-muted-foreground leading-relaxed">
-                  {product.description}
-                </p>
-
-                {options.length > 0 && (
-                  <div className="mt-6 sm:mt-8 space-y-5 sm:space-y-6">
-                    {options.map(opt => {
-                      const optVars = variants.filter(v => String(v.option_id) === String(opt.id));
-                      if (optVars.length === 0) return null;
-                      return (
-                        <div key={opt.id} className="space-y-2.5">
-                          <h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">{opt.name}</h3>
-                          <div className="grid grid-cols-2 gap-2.5">
-                            {optVars.map(v => {
-                              const isSelected = String(selectedVariants[opt.id]) === String(v.id);
-                              return (
-                                <button
-                                  key={v.id}
-                                  onClick={() => setSelectedVariants(prev => ({ ...prev, [opt.id]: v.id }))}
-                                  className={cn(
-                                    "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
-                                    isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border/60 bg-card"
-                                  )}
-                                >
-                                  <span className={cn("font-medium text-sm", isSelected ? "text-primary font-semibold" : "text-foreground")}>{v.name}</span>
-                                </button>
-                              );
-                            })}
-                          </div>
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        {product.spicy && (
+                          <Badge className="bg-primary/15 text-primary border-0 rounded-full gap-1 px-3 py-1 text-xs font-semibold">
+                            <Flame className="size-3.5" /> Spicy
+                          </Badge>
+                        )}
+                        {product.vegetarian && (
+                          <Badge className="bg-green-600/15 text-green-700 dark:text-green-400 border-0 rounded-full gap-1 px-3 py-1 text-xs font-semibold">
+                            <Leaf className="size-3.5" /> Vegetarian
+                          </Badge>
+                        )}
+                        <div className="flex items-center gap-1.5 bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 px-3 py-1 rounded-full text-xs font-semibold">
+                          <Star className="size-3.5 fill-yellow-500 text-yellow-500" />
+                          <span>{avgRating} {reviews.length > 0 && `(${reviews.length})`}</span>
                         </div>
-                      );
-                    })}
-                  </div>
-                )}
+                      </div>
 
-                <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-border/60">
-                  <div className="flex items-center justify-between gap-3 mb-5">
-                    <h2 className="font-serif text-xl sm:text-2xl font-bold text-foreground">Customer Reviews</h2>
-                    <Button variant="outline" size="sm" onClick={() => navigate(`/review/${id}`)} className="rounded-full text-xs sm:text-sm">
-                      <Edit className="size-3.5 mr-1.5" /> Write a review
-                    </Button>
-                  </div>
-                  
-                  {reviews.length === 0 ? (
-                    <div className="bg-secondary/40 rounded-2xl p-6 text-center text-muted-foreground">
-                      <MessageCircle className="size-10 mx-auto mb-3 opacity-30" />
-                      <p className="text-sm">No reviews yet. Be the first to try and review!</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3.5">
-                      {reviews.map((review) => (
-                        <div key={review.id} className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5">
-                          <div className="flex items-start justify-between mb-2">
-                            <div className="flex items-center gap-2.5">
-                              <div className="size-9 rounded-full bg-secondary flex items-center justify-center">
-                                <User className="size-4 text-muted-foreground" />
-                              </div>
-                              <div>
-                                <h4 className="font-semibold text-foreground text-sm">Customer</h4>
-                                <div className="flex items-center gap-0.5 mt-0.5">
-                                  {[1,2,3,4,5].map(star => (
-                                    <Star key={star} className={cn("size-3", star <= review.rating ? "fill-yellow-500 text-yellow-500" : "fill-muted text-muted")} />
-                                  ))}
+                      <h1 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-foreground leading-tight">
+                        {product.name}
+                      </h1>
+
+                      <p className="mt-3 text-sm sm:text-lg text-muted-foreground leading-relaxed">
+                        {product.description}
+                      </p>
+
+                      {options.length > 0 && (
+                        <div className="mt-6 sm:mt-8 space-y-5 sm:space-y-6">
+                          {options.map(opt => {
+                            const optVars = variants.filter(v => String(v.option_id) === String(opt.id));
+                            if (optVars.length === 0) return null;
+                            return (
+                              <div key={opt.id} className="space-y-2.5">
+                                <h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">{opt.name}</h3>
+                                <div className="grid grid-cols-2 gap-2.5">
+                                  {optVars.map(v => {
+                                    const isSelected = String(selectedVariants[opt.id]) === String(v.id);
+                                    return (
+                                      <button
+                                        key={v.id}
+                                        onClick={() => setSelectedVariants(prev => ({ ...prev, [opt.id]: v.id }))}
+                                        className={cn(
+                                          "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
+                                          isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border/60 bg-card"
+                                        )}
+                                      >
+                                        <span className={cn("font-medium text-sm", isSelected ? "text-primary font-semibold" : "text-foreground")}>{v.name}</span>
+                                      </button>
+                                    );
+                                  })}
                                 </div>
                               </div>
-                            </div>
-                            <span className="text-[11px] text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</span>
-                          </div>
-                          <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed">{review.comment}</p>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                      )}
 
-                {/* Desktop Action Bar */}
-                <div className="hidden sm:flex items-center justify-between gap-6 mt-8 pt-8 border-t border-border/60">
-                  <div className="flex flex-col">
-                    <span className="font-serif text-3xl lg:text-4xl font-bold text-primary tabular-nums whitespace-nowrap">
-                      ${(() => {
-                        let p = product.price;
-                        Object.values(selectedVariants).forEach(varId => {
-                          const v = variants.find(v => String(v.id) === String(varId));
-                          if (v) p += (v.price_adjustment || 0);
-                        });
-                        return (p * qty).toFixed(2);
-                      })()}
-                    </span>
-                    <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap mt-0.5 font-medium">
-                      ({qty} {qty > 1 ? 'items' : 'item'})
-                    </span>
+                      <div className="mt-6 sm:mt-8 pt-6 sm:pt-8 border-t border-border/60">
+                        <div className="flex items-center justify-between gap-3 mb-5">
+                          <h2 className="font-serif text-xl sm:text-2xl font-bold text-foreground">Customer Reviews</h2>
+                          <Button variant="outline" size="sm" onClick={() => navigate(`/review/${id}`)} className="rounded-full text-xs sm:text-sm">
+                            <Edit className="size-3.5 mr-1.5" /> Write a review
+                          </Button>
+                        </div>
+
+                        {reviews.length === 0 ? (
+                          <div className="bg-secondary/40 rounded-2xl p-6 text-center text-muted-foreground">
+                            <MessageCircle className="size-10 mx-auto mb-3 opacity-30" />
+                            <p className="text-sm">No reviews yet. Be the first to try and review!</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-3.5">
+                            {reviews.map((review) => (
+                              <div key={review.id} className="bg-card border border-border/60 rounded-2xl p-4 sm:p-5">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="size-9 rounded-full bg-secondary flex items-center justify-center">
+                                      <User className="size-4 text-muted-foreground" />
+                                    </div>
+                                    <div>
+                                      <h4 className="font-semibold text-foreground text-sm">Customer</h4>
+                                      <div className="flex items-center gap-0.5 mt-0.5">
+                                        {[1, 2, 3, 4, 5].map(star => (
+                                          <Star key={star} className={cn("size-3", star <= review.rating ? "fill-yellow-500 text-yellow-500" : "fill-muted text-muted")} />
+                                        ))}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <span className="text-[11px] text-muted-foreground">{new Date(review.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed">{review.comment}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Desktop Action Bar */}
+                      <div className="hidden sm:flex items-center justify-between gap-6 mt-8 pt-8 border-t border-border/60">
+                        <div className="flex flex-col">
+                          <span className="font-serif text-3xl lg:text-4xl font-bold text-primary tabular-nums whitespace-nowrap">
+                            ${(() => {
+                              let p = product.price;
+                              Object.values(selectedVariants).forEach(varId => {
+                                const v = variants.find(v => String(v.id) === String(varId));
+                                if (v) p += (v.price_adjustment || 0);
+                              });
+                              return (p * qty).toFixed(2);
+                            })()}
+                          </span>
+                          <span className="text-xs sm:text-sm text-muted-foreground whitespace-nowrap mt-0.5 font-medium">
+                            ({qty} {qty > 1 ? 'items' : 'item'})
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3 shrink-0">
+                          <div className="flex items-center gap-1 rounded-full bg-secondary border border-border/60 p-1">
+                            <button
+                              type="button"
+                              onClick={() => setQty(Math.max(1, qty - 1))}
+                              className="size-10 rounded-full bg-background hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
+                              aria-label="Decrease quantity"
+                            >
+                              <Minus className="size-4" />
+                            </button>
+                            <input
+                              type="number"
+                              min="1"
+                              max="999"
+                              value={qty}
+                              onChange={handleQtyChange}
+                              className="w-12 text-center font-semibold text-lg bg-transparent text-foreground outline-none border-0 focus:outline-none focus:ring-0 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setQty(qty + 1)}
+                              className="size-10 rounded-full bg-background hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
+                              aria-label="Increase quantity"
+                            >
+                              <Plus className="size-4" />
+                            </button>
+                          </div>
+
+                          <Button
+                            onClick={handleAdd}
+                            size="lg"
+                            className="h-13 px-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-warm text-base"
+                          >
+                            <ShoppingCart className="size-5 mr-2" />
+                            Add to Cart
+                          </Button>
+                        </div>
+                      </div>
+                    </motion.div>
                   </div>
-
-                  <div className="flex items-center gap-3 shrink-0">
-                    <div className="flex items-center gap-1 rounded-full bg-secondary border border-border/60 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setQty(Math.max(1, qty - 1))}
-                        className="size-10 rounded-full bg-background hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
-                        aria-label="Decrease quantity"
-                      >
-                        <Minus className="size-4" />
-                      </button>
-                      <input
-                        type="number"
-                        min="1"
-                        max="999"
-                        value={qty}
-                        onChange={handleQtyChange}
-                        className="w-12 text-center font-semibold text-lg bg-transparent text-foreground outline-none border-0 focus:outline-none focus:ring-0 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setQty(qty + 1)}
-                        className="size-10 rounded-full bg-background hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
-                        aria-label="Increase quantity"
-                      >
-                        <Plus className="size-4" />
-                      </button>
-                    </div>
-
-                    <Button
-                      onClick={handleAdd}
-                      size="lg"
-                      className="h-13 px-8 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-warm text-base"
-                    >
-                      <ShoppingCart className="size-5 mr-2" />
-                      Add to Cart
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  </PageTransition>
-</main>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </PageTransition>
+      </main>
 
       {/* Mobile Sticky Bottom Action Bar */}
       {!loading && product && (

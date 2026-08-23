@@ -20,6 +20,7 @@ function AdminResourcePage({ resource }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [dynamicOptions, setDynamicOptions] = useState({});
 
   // Form state
   const [formOpen, setFormOpen] = useState(false);
@@ -38,7 +39,11 @@ function AdminResourcePage({ resource }) {
     setError(null);
     try {
       const result = await list(resource);
-      setData(Array.isArray(result) ? result : []);
+      if (Array.isArray(result)) {
+        setData(result.map((item, index) => ({ ...item, _index: result.length - index })));
+      } else {
+        setData([]);
+      }
     } catch (err) {
       setError(err.message || "Failed to load data");
     } finally {
@@ -49,6 +54,29 @@ function AdminResourcePage({ resource }) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    async function loadDynamicOptions() {
+      const selectFields = config.fields.filter(f => f.type === "select" && f.optionsResource);
+      for (const field of selectFields) {
+        try {
+          const res = await list(field.optionsResource);
+          if (Array.isArray(res)) {
+            setDynamicOptions(prev => ({
+              ...prev,
+              [field.name]: res.map(item => ({
+                value: item[field.optionsMap?.value || "id"],
+                label: item[field.optionsMap?.label || "name"]
+              }))
+            }));
+          }
+        } catch (e) {
+          console.error(`Failed to load options for ${field.name}`, e);
+        }
+      }
+    }
+    loadDynamicOptions();
+  }, [config]);
 
   const openCreate = () => {
     setEditingId(null);
@@ -95,12 +123,14 @@ function AdminResourcePage({ resource }) {
       // Clean up form data - convert types
       const cleanData = {};
       config.fields.forEach((f) => {
-        if (f.type === "checkbox") {
-          cleanData[f.name] = !!formData[f.name];
+        if (f.type === "boolean" || f.type === "checkbox") {
+          cleanData[f.name] = Boolean(formData[f.name]);
         } else if (f.type === "number") {
           cleanData[f.name] = formData[f.name] !== "" && formData[f.name] != null
             ? Number(formData[f.name])
             : null;
+        } else if (f.type === "date" || f.type === "datetime-local") {
+          cleanData[f.name] = formData[f.name] === "" ? null : formData[f.name];
         } else {
           cleanData[f.name] = formData[f.name] ?? "";
         }
@@ -185,48 +215,55 @@ function AdminResourcePage({ resource }) {
   ];
 
   return (
-    <div>
+    <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
-            {config.icon} {config.label}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Manage {config.label.toLowerCase()} for your store
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+              {config.label}
+            </h1>
+            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+              {data.length} {data.length === 1 ? "item" : "items"}
+            </span>
+          </div>
+          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+            Manage, search, and update {config.label.toLowerCase()} for Flame & Crust.
           </p>
         </div>
       </div>
 
-      {/* Data Table */}
-      {error ? (
-        <ErrorState
-          title="Failed to load data"
-          description={error}
-          onRetry={fetchData}
-        />
-      ) : (
-        <DataTable
-          columns={columnsWithActions}
-          data={data}
-          loading={loading}
-          searchKeys={config.searchKeys}
-          searchPlaceholder={`Search ${config.label.toLowerCase()}...`}
-          emptyTitle={`No ${config.label.toLowerCase()} found`}
-          emptyDescription={`Create your first ${config.label.slice(0, -1).toLowerCase()} to get started.`}
-          actions={
-            !config.disableCreate && (
-              <Button
-                onClick={openCreate}
-                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-5"
-              >
-                <Plus className="size-4 mr-1" />
-                Add {config.label.slice(0, -1)}
-              </Button>
-            )
-          }
-        />
-      )}
+      {/* Data Table Container */}
+      <div className="rounded-3xl border border-border/70 bg-card p-4 sm:p-6 shadow-warm">
+        {error ? (
+          <ErrorState
+            title="Failed to load data"
+            description={error}
+            onRetry={fetchData}
+          />
+        ) : (
+          <DataTable
+            columns={columnsWithActions}
+            data={data}
+            loading={loading}
+            searchKeys={config.searchKeys}
+            searchPlaceholder={`Search ${config.label.toLowerCase()}...`}
+            emptyTitle={`No ${config.label.toLowerCase()} found`}
+            emptyDescription={`Create your first ${config.label.slice(0, -1).toLowerCase()} to get started.`}
+            actions={
+              !config.disableCreate && (
+                <Button
+                  onClick={openCreate}
+                  className="rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-11 px-5 shadow-warm"
+                >
+                  <Plus className="size-4 mr-1.5" />
+                  Add {config.label.slice(0, -1)}
+                </Button>
+              )
+            }
+          />
+        )}
+      </div>
 
       {/* Create/Edit Form Sheet */}
       <AnimatePresence>
@@ -246,7 +283,7 @@ function AdminResourcePage({ resource }) {
               transition={{ type: "spring", stiffness: 380, damping: 38 }}
               className="fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md bg-background shadow-warm-lg flex flex-col"
             >
-              <div className="flex items-center justify-between px-5 sm:px-6 py-5 border-b border-border/60">
+              <div className="flex items-center justify-between px-5 sm:px-6 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-5 border-b border-border/60">
                 <div>
                   <h3 className="font-serif text-xl font-bold text-foreground">
                     {editingId ? "Edit" : "New"} {config.label.slice(0, -1)}
@@ -304,7 +341,7 @@ function AdminResourcePage({ resource }) {
                           )}
                         >
                           <option value="">Select...</option>
-                          {field.options?.map((opt) => (
+                          {(dynamicOptions[field.name] || field.options || []).map((opt) => (
                             <option key={opt.value} value={opt.value}>
                               {opt.label}
                             </option>
@@ -371,7 +408,7 @@ function AdminResourcePage({ resource }) {
                 ))}
               </div>
 
-              <div className="border-t border-border/60 px-5 sm:px-6 py-4 flex gap-3">
+              <div className="border-t border-border/60 px-5 sm:px-6 pt-4 pb-[calc(env(safe-area-inset-bottom)+1rem)] flex gap-3">
                 <Button
                   variant="outline"
                   onClick={() => setFormOpen(false)}

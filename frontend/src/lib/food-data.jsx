@@ -304,7 +304,12 @@ const categoryMeta = {
   sides: {
     label: "Sides",
     description: "The supporting cast that steals the show.",
-    icon: "\u{1F35F}"
+    icon: "🍟"
+  },
+  drink: {
+    label: "Drink",
+    description: "Refreshing drinks to pair with your meal.",
+    icon: "🥤"
   }
 };
 const categoryOrder = [
@@ -312,7 +317,8 @@ const categoryOrder = [
   "pizza",
   "pizza-bagels",
   "burgers",
-  "sides"
+  "sides",
+  "drink"
 ];
 export {
   categoryMeta,
