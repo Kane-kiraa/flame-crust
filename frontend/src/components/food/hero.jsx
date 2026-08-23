@@ -119,7 +119,7 @@ function Hero() {
               className="absolute inset-2 sm:inset-4 rounded-full overflow-hidden shadow-warm-lg ring-4 ring-background"
             >
               <img
-                src="./../../public/images/library/pizza.jpg"
+                src="https://res.cloudinary.com/gdkctwwo/image/upload/v1787503337/pizza.jpg"
                 alt="Signature wood-fired pepperoni pizza"
                 className="w-full h-full object-cover"
                 loading="eager"
