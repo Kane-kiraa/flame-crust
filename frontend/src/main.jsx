@@ -17,7 +17,7 @@ if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID.includes("mockclientid")) {
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || "1234567890-mockclientid.apps.googleusercontent.com"}>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID || "55635804125-pvsg464061vkl6n8rrb32bfu2f5c1t9e.apps.googleusercontent.com"}>
       <BrowserRouter>
         <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
           <App />
