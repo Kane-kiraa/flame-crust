@@ -1,4 +1,4 @@
-name: CI/CD Pipeline
+name: Frontend CI
 
 on:
   push:
@@ -7,7 +7,6 @@ on:
     branches: [ "main" ]
 
 jobs:
-  # 1. CI សម្រាប់ Frontend (React + Vite)
   frontend-ci:
     runs-on: ubuntu-latest
     defaults:
@@ -29,26 +28,3 @@ jobs:
 
       - name: Build React App
         run: npm run build
-
-  # 2. CI សម្រាប់ Backend (Spring Boot + Java)
-  backend-ci:
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: ./backend
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Java JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-          cache: 'maven'
-
-      - name: Grant Execute Permission for Maven Wrapper
-        run: chmod +x ./mvnw || true
-
-      - name: Build Spring Boot Application
-        run: ./mvnw clean package -DskipTests
