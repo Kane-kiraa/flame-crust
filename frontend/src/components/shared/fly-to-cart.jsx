@@ -11,10 +11,16 @@ export function FlyToCart() {
       const { image, startRect } = e.detail || {};
       if (!startRect) return;
 
+      const cartWrapper = document.getElementById("cart-icon-wrapper") || document.getElementById("cart-icon");
+      const endRect = cartWrapper
+        ? cartWrapper.getBoundingClientRect()
+        : { top: 20, left: window.innerWidth - 60, width: 44, height: 44 };
+
       const newItem = {
         id: Date.now() + Math.random(),
         image,
         startRect,
+        endRect,
       };
 
       setItems((prev) => [...prev, newItem]);
@@ -52,10 +58,7 @@ export function FlyToCart() {
     <div className="pointer-events-none fixed inset-0 z-[99999] overflow-hidden">
       <AnimatePresence>
         {items.map((item) => {
-          const cartIcon = document.getElementById("cart-icon");
-          const endRect = cartIcon
-            ? cartIcon.getBoundingClientRect()
-            : { top: 20, left: window.innerWidth - 60, width: 44, height: 44 };
+          const endRect = item.endRect;
 
           // Start from the exact center of the button (startRect)
           const startX = item.startRect.left + item.startRect.width / 2;

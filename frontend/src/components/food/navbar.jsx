@@ -221,30 +221,32 @@ function Navbar() {
               </Button>
             ) : null}
 
-            <motion.button
-              id="cart-icon"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.94 }}
-              transition={{ duration: 0.15, ease: "easeOut" }}
-              onClick={openCart}
-              className="relative size-10 sm:size-11 aspect-square shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-warm flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              aria-label="Open cart"
-            >
-              <ShoppingBag className="size-4 sm:size-5" />
-              <AnimatePresence>
-                {count > 0 && (
-                  <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 25 }}
-                    className="absolute -top-1 -right-1 min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-[11px] font-bold flex items-center justify-center ring-2 ring-background pointer-events-none"
-                  >
-                    {count}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
+            <div id="cart-icon-wrapper" className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
+              <motion.button
+                id="cart-icon"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.94 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                onClick={openCart}
+                className="relative size-full aspect-square rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-warm flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label="Open cart"
+              >
+                <ShoppingBag className="size-4 sm:size-5" />
+                <AnimatePresence>
+                  {count > 0 && (
+                    <motion.span
+                      initial={{ scale: 0, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      exit={{ scale: 0, opacity: 0 }}
+                      transition={{ type: "spring", stiffness: 500, damping: 25 }}
+                      className="absolute -top-1 -right-1 min-w-4 sm:min-w-5 h-4 sm:h-5 px-1 sm:px-1.5 rounded-full bg-primary text-primary-foreground text-[10px] sm:text-[11px] font-bold flex items-center justify-center ring-2 ring-background pointer-events-none"
+                    >
+                      {count}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </motion.button>
+            </div>
 
             <Button
               variant="ghost"

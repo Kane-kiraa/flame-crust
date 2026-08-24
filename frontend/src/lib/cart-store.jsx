@@ -7,27 +7,27 @@ const useCart = create()(
       lines: [],
       isOpen: false,
       coupon: null,
-      addItem: (item) => set((state) => {
-        const existing = state.lines.find((l) => l.id === item.id);
+      addItem: (item, quantity = 1) => set((state) => {
+        const existing = state.lines.find((l) => String(l.id) === String(item.id));
         if (existing) {
           return {
             lines: state.lines.map(
-              (l) => l.id === item.id ? { ...l, qty: l.qty + 1 } : l
+              (l) => String(l.id) === String(item.id) ? { ...l, qty: l.qty + quantity } : l
             )
           };
         }
-        return { lines: [...state.lines, { ...item, qty: 1 }] };
+        return { lines: [...state.lines, { ...item, qty: quantity }] };
       }),
       removeItem: (id) => set((state) => ({
-        lines: state.lines.filter((l) => l.id !== id)
+        lines: state.lines.filter((l) => String(l.id) !== String(id))
       })),
       increment: (id) => set((state) => ({
         lines: state.lines.map(
-          (l) => l.id === id ? { ...l, qty: l.qty + 1 } : l
+          (l) => String(l.id) === String(id) ? { ...l, qty: l.qty + 1 } : l
         )
       })),
       decrement: (id) => set((state) => ({
-        lines: state.lines.map((l) => l.id === id ? { ...l, qty: l.qty - 1 } : l).filter((l) => l.qty > 0)
+        lines: state.lines.map((l) => String(l.id) === String(id) ? { ...l, qty: l.qty - 1 } : l).filter((l) => l.qty > 0)
       })),
       clear: () => set({ lines: [] }),
       openCart: () => set({ isOpen: true }),
