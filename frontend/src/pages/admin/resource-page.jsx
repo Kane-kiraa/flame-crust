@@ -180,7 +180,10 @@ function AdminResourcePage({ resource }) {
       ...col,
       render: col.render ? (v, row) => col.render(v, row, async (updates) => {
         try {
-          await update(resource, row.id, updates);
+          // Remove UI-only fields and merge updates
+          const { _index, ...restRow } = row;
+          const updatedRow = { ...restRow, ...updates };
+          await update(resource, row.id, updatedRow);
           toast.success("Updated successfully");
           fetchData();
         } catch(err) {

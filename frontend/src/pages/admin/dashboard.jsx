@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getDashboard, list } from "@/lib/api";
 import {
   DollarSign,
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button";
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
   const [recentOrders, setRecentOrders] = useState([]);
+  const [chartData, setChartData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -42,6 +44,30 @@ export default function AdminDashboard() {
         setData(dashData);
         if (Array.isArray(ordersData)) {
           setRecentOrders(ordersData.slice(0, 5));
+          
+          // Process chart data: group revenue by date (last 7 days)
+          const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date();
+            d.setDate(d.getDate() - (6 - i));
+            return {
+              date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+              revenue: 0,
+              fullDate: d
+            };
+          });
+
+          ordersData.forEach(order => {
+            if (order.status !== "CANCELLED" && order.created_at && order.total) {
+              const orderDate = new Date(order.created_at);
+              const dayStr = orderDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+              const point = last7Days.find(p => p.date === dayStr);
+              if (point) {
+                point.revenue += Number(order.total);
+              }
+            }
+          });
+
+          setChartData(last7Days);
         }
       })
       .catch((err) => setError(err.message || "Failed to load dashboard data"))
@@ -185,6 +211,35 @@ export default function AdminDashboard() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Sales Overview Chart */}
+      <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-6 shadow-sm">
+        <h2 className="font-serif text-sm sm:text-base font-bold text-foreground flex items-center gap-2 mb-4">
+          <span className="w-1.5 h-3.5 bg-emerald-500 rounded-full inline-block" /> Sales Overview (Last 7 Days)
+        </h2>
+        <div className="h-[250px] sm:h-[300px] w-full mt-2">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="var(--primary, #f97316)" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="var(--primary, #f97316)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} dy={10} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(val) => `$${val}`} />
+              <Tooltip
+                contentStyle={{ borderRadius: "12px", border: "1px solid hsl(var(--border))", backgroundColor: "hsl(var(--card))", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                itemStyle={{ color: "hsl(var(--foreground))", fontWeight: "bold" }}
+                formatter={(value) => [`$${Number(value).toFixed(2)}`, "Revenue"]}
+                labelStyle={{ color: "hsl(var(--muted-foreground))", fontSize: "12px", marginBottom: "4px" }}
+              />
+              <Area type="monotone" dataKey="revenue" stroke="var(--primary, #f97316)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
       </div>
 
       {/* Quick Actions & Recent Orders Grid */}

@@ -4,7 +4,6 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Star, TrendingUp, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { foodItems } from "@/lib/food-data";
 import { fetchFoodItems } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
@@ -13,10 +12,12 @@ import { cn } from "@/lib/utils";
 export function Featured() {
   const addItem = useCart((s) => s.addItem);
   const lines = useCart((s) => s.lines);
-  const [featured, setFeatured] = useState(foodItems.filter((f) => f.popular).slice(0, 3));
+  const [featured, setFeatured] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
     fetchFoodItems(controller.signal)
       .then((items) => {
         if (Array.isArray(items) && items.length > 0) {
@@ -26,9 +27,14 @@ export function Featured() {
           }
         }
       })
-      .catch(() => { });
+      .catch(() => { })
+      .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
+
+  if (!loading && featured.length === 0) {
+    return null;
+  }
 
   const handleAddToCart = (e, item) => {
     e.preventDefault();
@@ -79,9 +85,16 @@ export function Featured() {
           </Button>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5 lg:gap-6">
-          {featured.map((item, i) => {
-            const inCart = lines.find((l) => l.id === item.id);
+        {loading ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5 lg:gap-6">
+            <div className="aspect-[5/4] bg-card border border-border/60 rounded-3xl animate-pulse shadow-warm"></div>
+            <div className="aspect-[5/4] bg-card border border-border/60 rounded-3xl animate-pulse shadow-warm"></div>
+            <div className="aspect-[5/4] bg-card border border-border/60 rounded-3xl animate-pulse shadow-warm hidden md:block"></div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-5 lg:gap-6">
+            {featured.map((item, i) => {
+              const inCart = lines.find((l) => String(l.id) === String(item.id));
             return (
               <motion.article
                 key={item.id}
@@ -164,6 +177,7 @@ export function Featured() {
             );
           })}
         </div>
+        )}
       </div>
     </section>
   );

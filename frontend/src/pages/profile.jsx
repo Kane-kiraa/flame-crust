@@ -36,7 +36,6 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
 import { list, create, update, get } from "@/lib/api";
 import { fetchDashboard, getImageUrl } from "@/lib/food-api";
-import { foodItems } from "@/lib/food-data";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";

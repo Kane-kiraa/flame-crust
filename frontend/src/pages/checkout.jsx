@@ -191,21 +191,23 @@ function CheckoutPage() {
         });
       }
       const address = await create("addresses", {
-        customer_id: customer.id,
+        customerId: customer.id,
         label: data.addressLabel || "Home",
-        address_line: `${data.address1}${data.address2 ? `, ${data.address2}` : ""}`,
+        addressLine: `${data.address1}${data.address2 ? `, ${data.address2}` : ""}`,
         city: data.city,
         notes: data.notes || null,
-        is_default: true,
+        isDefault: true,
       });
       const order = await create("orders", {
-        order_number: `FC-${Date.now()}`,
-        customer_id: customer.id,
-        address_id: address.id,
+        orderNumber: `FC-${Date.now()}`,
+        customerId: customer.id,
+        addressId: address.id,
         status: "PENDING",
+        orderType: "DELIVERY",
         subtotal,
-        discount_amount: discount,
-        delivery_fee: deliveryFee,
+        discountAmount: discount,
+        deliveryFee: deliveryFee,
+        driverCommission: 0,
         total,
         notes: data.notes || null,
       });
@@ -213,18 +215,19 @@ function CheckoutPage() {
       await Promise.all(
         lines.map((line) =>
           create("order_items", {
-            order_id: orderId,
-            product_id: Number(line.originalId || line.id),
-            product_name: line.name,
+            orderId: orderId,
+            productId: Number(line.originalId || line.id),
+            productName: line.name,
             quantity: line.qty,
-            unit_price: line.price,
-            line_total: line.price * line.qty,
+            unitPrice: line.price,
+            lineTotal: line.price * line.qty,
+            status: "PENDING",
             options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null,
           })
         )
       );
       await create("payments", {
-        order_id: orderId,
+        orderId: orderId,
         method: paymentMethod,
         amount: total,
         status: "PENDING",

@@ -2,7 +2,7 @@
 import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { foodItems, categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-data";
+import { categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-data";
 import { fetchFoodItems, fetchCategories } from "@/lib/food-api";
 import { Navbar } from "@/components/food/navbar";
 import { FoodCard } from "@/components/food/food-card";
@@ -61,7 +61,7 @@ function MenuPage() {
     return () => controller.abort();
   }, []);
 
-  const allItems = itemsFromApi || foodItems;
+  const allItems = itemsFromApi || [];
 
   const filteredItems = useMemo(() => {
     let items = active === "all" ? allItems : allItems.filter((i) => i.category === active);

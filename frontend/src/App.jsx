@@ -41,11 +41,13 @@ function PageLoader() {
 }
 
 function RequireAuth({ children }) {
-  const auth = localStorage.getItem("customerAuth");
+  const customerAuth = localStorage.getItem("customerAuth");
   const adminAuth = localStorage.getItem("adminAuth");
+  const kitchenAuth = localStorage.getItem("kitchenAuth");
+  const driverAuth = localStorage.getItem("driverAuth");
   const location = useLocation();
   
-  if (!auth && !adminAuth) {
+  if (!customerAuth && !adminAuth && !kitchenAuth && !driverAuth) {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
   return children;

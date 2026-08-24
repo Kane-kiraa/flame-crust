@@ -19,8 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { list, get } from "@/lib/api";
-import { foodItems } from "@/lib/food-data";
 import { cn, formatDate } from "@/lib/utils";
+import { getImageUrl } from "@/lib/food-api";
 
 // Leaflet imports
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -72,14 +72,14 @@ export default function OrderTrackingPage() {
       if (!orderData) throw new Error("Order not found");
       setOrder(orderData);
 
-      if (orderData.driver_id) {
-        const driverData = await get("drivers", orderData.driver_id);
+      if (orderData.driverId) {
+        const driverData = await get("drivers", orderData.driverId);
         setDriver(driverData);
       }
       
-      if (orderData.address_id) {
+      if (orderData.addressId) {
         try {
-          const addressData = await get("addresses", orderData.address_id);
+          const addressData = await get("addresses", orderData.addressId);
           setAddress(addressData);
         } catch(e) {}
       }
@@ -88,7 +88,7 @@ export default function OrderTrackingPage() {
         // Fetch only if items haven't been loaded yet to save bandwidth on polling
         if (items.length === 0) {
           const allItems = await list("order_items");
-          setItems(allItems.filter(item => String(item.order_id) === String(orderData.id)));
+          setItems(allItems.filter(item => String(item.orderId) === String(orderData.id)));
           
           const allProducts = await list("products");
           setProducts(allProducts);
@@ -161,10 +161,10 @@ export default function OrderTrackingPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start mb-2 sm:mb-4 border-b border-border/60 pb-4 sm:pb-6 gap-2 sm:gap-3">
                 <div>
                   <h1 className="font-serif text-lg sm:text-3xl font-bold bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm break-all">
-                    Order #{order.order_number}
+                    Order #{order.orderNumber || order.id}
                   </h1>
                   <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                    Placed on <span className="font-medium text-foreground">{formatDate(order.created_at)}</span>
+                    Placed on <span className="font-medium text-foreground">{formatDate(order.createdAt)}</span>
                   </p>
                 </div>
                 <div className="text-left sm:text-right">
@@ -237,8 +237,8 @@ export default function OrderTrackingPage() {
                     className="bg-secondary/40 rounded-2xl p-5 border border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-center gap-4">
-                      {driver.profile_photo ? (
-                        <img src={driver.profile_photo} alt={driver.name} className="size-14 rounded-full object-cover border-2 border-primary/50 shadow-sm" />
+                      {driver.profilePhoto ? (
+                        <img src={driver.profilePhoto} alt={driver.name} className="size-14 rounded-full object-cover border-2 border-primary/50 shadow-sm" />
                       ) : (
                         <div className="size-14 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/50">
                           <Bike className="size-6 text-primary" />
@@ -249,7 +249,7 @@ export default function OrderTrackingPage() {
                           {driver.name}
                           <span className="text-[10px] bg-green-500/20 text-green-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Assigned</span>
                         </h4>
-                        <p className="text-sm text-muted-foreground">{driver.vehicle_info || "Delivery Partner"}</p>
+                        <p className="text-sm text-muted-foreground">{driver.vehicleInfo || "Delivery Partner"}</p>
                         {order.status === "OUT_FOR_DELIVERY" && (
                           <p className="text-xs text-primary font-medium mt-0.5 flex items-center gap-1">
                             <Navigation className="size-3" /> Heading to your location...
@@ -314,7 +314,7 @@ export default function OrderTrackingPage() {
                       <Home className="size-4 sm:size-5 text-primary" /> Delivery Address
                     </h3>
                     <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1">
-                      <p className="font-medium text-sm sm:text-base text-foreground mb-1">{address.address_line}</p>
+                      <p className="font-medium text-sm sm:text-base text-foreground mb-1">{address.addressLine}</p>
                       <p className="text-xs sm:text-sm text-muted-foreground mb-3">{address.city}</p>
                       {address.notes && (
                         <div className="text-xs bg-background/50 p-2.5 sm:p-3 rounded-xl border border-border/40">
@@ -337,15 +337,14 @@ export default function OrderTrackingPage() {
                   <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1 flex flex-col">
                     <div className="space-y-2 sm:space-y-3 mb-4 flex-1 overflow-y-auto max-h-[250px] sm:max-h-[350px] pr-2 custom-scrollbar">
                       {items.map(item => {
-                        const dbProduct = products.find(p => String(p.id) === String(item.product_id));
-                        const foodItem = foodItems.find(f => f.name === item.product_name) || {};
-                        const displayImage = (dbProduct && dbProduct.image) ? dbProduct.image : foodItem.image;
+                        const dbProduct = products.find(p => String(p.id) === String(item.productId));
+                        const displayImage = dbProduct ? getImageUrl(dbProduct.image) : "/images/library/pizza.jpg";
                         return (
-                          <Link key={item.id} to={`/product/${item.product_id}`} className="flex justify-between items-center text-sm gap-3 p-2 -mx-2 rounded-xl hover:bg-secondary/40 transition-colors group cursor-pointer">
+                          <Link key={item.id} to={`/product/${item.productId}`} className="flex justify-between items-center text-sm gap-3 p-2 -mx-2 rounded-xl hover:bg-secondary/40 transition-colors group cursor-pointer">
                             <div className="flex items-center gap-2.5 sm:gap-3">
                               <div className="size-8 sm:size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 shadow-sm flex items-center justify-center">
                                 {displayImage ? (
-                                  <img src={displayImage} alt={item.product_name} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                                  <img src={displayImage} alt={item.productName} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
                                 ) : (
                                   <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                                     <ShoppingBag className="size-4 sm:size-6 text-primary/60" />
@@ -354,7 +353,7 @@ export default function OrderTrackingPage() {
                               </div>
                               <div className="flex flex-col">
                                 <span className="font-semibold text-xs sm:text-sm text-foreground">
-                                  {item.quantity}x {item.product_name}
+                                  {item.quantity}x {item.productName}
                                 </span>
                                 {item.options && (
                                   <span className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
@@ -369,7 +368,7 @@ export default function OrderTrackingPage() {
                                 )}
                               </div>
                             </div>
-                            <span className="font-bold text-xs sm:text-sm whitespace-nowrap">${Number(item.line_total).toFixed(2)}</span>
+                            <span className="font-bold text-xs sm:text-sm whitespace-nowrap">${Number(item.lineTotal || 0).toFixed(2)}</span>
                           </Link>
                         );
                       })}
@@ -383,15 +382,15 @@ export default function OrderTrackingPage() {
                     <div className="pt-2 sm:pt-3 border-t border-border/60 space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                       <div className="flex justify-between text-muted-foreground">
                         <span>Subtotal</span>
-                        <span>${Number(order.subtotal).toFixed(2)}</span>
+                        <span>${Number(order.subtotal || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between text-muted-foreground">
                         <span>Delivery Fee</span>
-                        <span>${Number(order.delivery_fee).toFixed(2)}</span>
+                        <span>${Number(order.deliveryFee || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-foreground pt-1.5 sm:pt-2 text-sm sm:text-base">
                         <span>Total</span>
-                        <span className="text-primary">${Number(order.total).toFixed(2)}</span>
+                        <span className="text-primary">${Number(order.total || 0).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>

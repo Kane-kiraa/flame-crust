@@ -4,22 +4,25 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { foodItems } from "@/lib/food-data";
 import { fetchFoodItems } from "@/lib/food-api";
 import { FoodCard } from "./food-card";
+import { CardGridSkeleton } from "@/components/shared/loading-skeleton";
 
 function Menu() {
-  const [items, setItems] = useState(foodItems);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const controller = new AbortController();
+    setLoading(true);
     fetchFoodItems(controller.signal)
       .then((data) => {
         if (Array.isArray(data) && data.length > 0) {
           setItems(data);
         }
       })
-      .catch(() => void 0);
+      .catch(() => void 0)
+      .finally(() => setLoading(false));
     return () => controller.abort();
   }, []);
 
@@ -42,17 +45,25 @@ function Menu() {
           </p>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-50px" }}
-          transition={{ duration: 0.4 }}
-          className="mt-12 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
-        >
-          {displayedItems.map((item, idx) => (
-            <FoodCard key={item.id} item={item} index={idx} />
-          ))}
-        </motion.div>
+        {loading ? (
+          <CardGridSkeleton count={8} className="mt-12" />
+        ) : displayedItems.length === 0 ? (
+          <div className="mt-12 text-center text-muted-foreground">
+            No items available at the moment.
+          </div>
+        ) : (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-50px" }}
+            transition={{ duration: 0.4 }}
+            className="mt-12 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
+          >
+            {displayedItems.map((item, idx) => (
+              <FoodCard key={item.id} item={item} index={idx} />
+            ))}
+          </motion.div>
+        )}
 
         <div className="mt-12 text-center">
           <Button

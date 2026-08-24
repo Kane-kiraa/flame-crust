@@ -84,36 +84,39 @@ function CartDrawer() {
       }
 
       const addressRes = await create("addresses", {
-        customer_id: customerId,
+        customerId: customerId,
         label: "Delivery",
-        address_line: paymentDetails.address || "Unknown location",
+        addressLine: paymentDetails.address || "Unknown location",
         city: paymentDetails.city || "Phnom Penh",
-        is_default: 1
+        isDefault: true
       });
 
       const finalDeliveryAndServiceFee = deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
       const orderNumber = "ORD-" + Math.floor(100000 + Math.random() * 900000);
       const orderRes = await create("orders", {
-        order_number: orderNumber,
-        customer_id: customerId,
-        address_id: addressRes.id,
-        coupon_id: coupon?.id || null,
+        orderNumber: orderNumber,
+        customerId: customerId,
+        addressId: addressRes.id,
+        couponId: coupon?.id || null,
         status: "PENDING",
+        orderType: "DELIVERY",
         subtotal: subtotal,
-        discount_amount: discount,
-        delivery_fee: finalDeliveryAndServiceFee,
+        discountAmount: discount,
+        deliveryFee: finalDeliveryAndServiceFee,
+        driverCommission: 0,
         total: total,
         notes: "Payment: " + paymentDetails.method
       });
 
       for (const line of lines) {
         await create("order_items", {
-          order_id: orderRes.id,
-          product_id: Number(line.originalId || line.id) || parseInt(String(line.originalId || line.id).replace(/\D/g, '')) || 1,
-          product_name: line.name,
+          orderId: orderRes.id,
+          productId: Number(line.originalId || line.id) || parseInt(String(line.originalId || line.id).replace(/\D/g, '')) || 1,
+          productName: line.name,
           quantity: line.qty,
-          unit_price: line.price,
-          line_total: line.price * line.qty,
+          unitPrice: line.price,
+          lineTotal: line.price * line.qty,
+          status: "PENDING",
           options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null
         });
       }
@@ -122,11 +125,11 @@ function CartDrawer() {
       const dbStatus = paymentDetails.method === "CASH" ? "PENDING" : "PAID";
 
       await create("payments", {
-        order_id: orderRes.id,
+        orderId: orderRes.id,
         method: dbMethod,
         status: dbStatus,
         amount: total,
-        transaction_id: paymentDetails.method === "CASH" ? null : "TXN-" + Date.now()
+        transactionId: paymentDetails.method === "CASH" ? null : "TXN-" + Date.now()
       });
 
       setPaymentOpen(false);
@@ -136,13 +139,7 @@ function CartDrawer() {
       window.dispatchEvent(new CustomEvent("orderPlaced"));
       navigate(`/track/${orderRes.id}`);
     } catch (error) {
-      if (error.message && error.message.toLowerCase().includes("constraint")) {
-        localStorage.removeItem("customerAuth");
-        toast.error("Your session has expired or is invalid. Please sign in again.");
-        window.location.href = "/login";
-      } else {
-        toast.error("Failed to place order: " + error.message);
-      }
+      toast.error("Failed to place order: " + error.message);
     }
   };
   const handleApplyCoupon = async (e) => {

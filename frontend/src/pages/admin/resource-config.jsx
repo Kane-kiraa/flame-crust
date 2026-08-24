@@ -351,4 +351,70 @@ export const resourceConfig = {
       ]},
     ],
   },
+  ingredients: {
+    label: "Ingredients",
+    icon: "🥕",
+    searchKeys: ["name"],
+    columns: [
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "unit", label: "Unit", sortable: true, className: "text-xs sm:text-sm" },
+    ],
+    fields: [
+      { name: "name", label: "Name (e.g. Flour)", type: "text", required: true },
+      { name: "unit", label: "Unit (e.g. kg, grams)", type: "text", required: true },
+    ],
+  },
+  ingredient_stock: {
+    label: "Ingredient Stock",
+    icon: "⚖️",
+    searchKeys: ["ingredient_id"],
+    columns: [
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "ingredient_id", label: "Ingredient ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "stock_quantity", label: "Stock Qty", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "low_stock_threshold", label: "Threshold", sortable: true, className: "hidden sm:table-cell" },
+      { key: "updated_at", label: "Updated", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleString() : "—" },
+    ],
+    fields: [
+      { name: "branch_id", label: "Branch ID", type: "number", required: true },
+      { name: "ingredient_id", label: "Ingredient ID", type: "number", required: true },
+      { name: "stock_quantity", label: "Stock Quantity", type: "number", required: true, step: "0.01" },
+      { name: "low_stock_threshold", label: "Low Stock Threshold", type: "number", required: true, step: "0.01" },
+    ],
+  },
+  inventory: {
+    label: "Product Inventory",
+    icon: "📦",
+    searchKeys: ["product_id"],
+    columns: [
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "product_id", label: "Product ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "stock_quantity", label: "Stock Qty", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "low_stock_threshold", label: "Threshold", sortable: true, className: "hidden sm:table-cell" },
+      { key: "updated_at", label: "Updated", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleString() : "—" },
+    ],
+    fields: [
+      { name: "branch_id", label: "Branch ID", type: "number", required: true },
+      { name: "product_id", label: "Product ID", type: "number", required: true },
+      { name: "stock_quantity", label: "Stock Quantity", type: "number", required: true },
+      { name: "low_stock_threshold", label: "Low Stock Threshold", type: "number", required: true },
+    ],
+  },
+  product_recipes: {
+    label: "Product Recipes",
+    icon: "🧑‍🍳",
+    searchKeys: ["variant_id", "ingredient_id"],
+    columns: [
+      { key: "id", label: "ID", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
+      { key: "variant_id", label: "Variant ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "ingredient_id", label: "Ingredient ID", sortable: true, className: "text-xs sm:text-sm" },
+      { key: "quantity_needed", label: "Qty Needed", sortable: true, className: "text-xs sm:text-sm" },
+    ],
+    fields: [
+      { name: "variant_id", label: "Product Variant ID", type: "number", required: true },
+      { name: "ingredient_id", label: "Ingredient ID", type: "number", required: true },
+      { name: "quantity_needed", label: "Quantity Needed", type: "number", required: true, step: "0.01" },
+    ],
+  },
 };

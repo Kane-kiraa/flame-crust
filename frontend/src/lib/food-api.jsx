@@ -1,4 +1,3 @@
-import { foodItems } from "./food-data";
 import { getDashboard, getProducts } from "./api";
 
 async function fetchDashboard(signal) {
@@ -44,7 +43,6 @@ async function fetchCategories(signal) {
 }
 
 export {
-  foodItems as fallbackFoodItems,
   fetchFoodItems,
   fetchCategories,
   fetchDashboard

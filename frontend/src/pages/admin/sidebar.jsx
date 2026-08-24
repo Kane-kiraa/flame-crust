@@ -19,7 +19,11 @@ import {
   LogOut,
   ChevronRight,
   ShieldCheck,
-  ChefHat
+  ChefHat,
+  Warehouse,
+  Carrot,
+  Scale,
+  UtensilsCrossed
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -42,6 +46,10 @@ const iconMap = {
   roles: Shield,
   reviews: Star,
   audit_logs: ScrollText,
+  inventory: Warehouse,
+  ingredients: Carrot,
+  ingredient_stock: Scale,
+  product_recipes: UtensilsCrossed,
 };
 
 // Categorized navigation groups
@@ -69,6 +77,15 @@ const navGroups = [
       { key: "payments", label: "Payments" },
       { key: "drivers", label: "Drivers" },
       { key: "coupons", label: "Coupons" },
+    ]
+  },
+  {
+    title: "Inventory & Recipes",
+    items: [
+      { key: "inventory", label: "Inventory" },
+      { key: "ingredients", label: "Ingredients" },
+      { key: "ingredient_stock", label: "Ingredient Stock" },
+      { key: "product_recipes", label: "Product Recipes" },
     ]
   },
   {

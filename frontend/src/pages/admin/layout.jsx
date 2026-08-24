@@ -23,6 +23,10 @@ const adminResources = [
   "reviews",
   "audit_logs",
   "kitchen_staff",
+  "inventory",
+  "ingredients",
+  "ingredient_stock",
+  "product_recipes",
 ];
 
 function AdminLayout() {
