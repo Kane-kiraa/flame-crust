@@ -2,8 +2,9 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock } from "lucide-react";
+import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -40,31 +41,34 @@ function Navbar() {
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
   const openCart = useCart((s) => s.openCart);
 
-  const [activeOrder, setActiveOrder] = useState(null);
+  const [activeOrders, setActiveOrders] = useState([]);
+  const [ordersModalOpen, setOrdersModalOpen] = useState(false);
 
   useEffect(() => {
-    const checkActiveOrder = async () => {
+    const checkActiveOrders = async () => {
       try {
         const stored = localStorage.getItem("customerAuth");
-        if (!stored) { setActiveOrder(null); return; }
+        if (!stored) { setActiveOrders([]); return; }
         const c = JSON.parse(stored);
         const { list } = await import("@/lib/api");
         const orders = await list("orders");
-        const active = orders
+        const activeList = orders
           .filter(o => String(o.customer_id) === String(c.id) && o.status !== "DELIVERED" && o.status !== "CANCELLED")
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
-        setActiveOrder(active || null);
-      } catch (e) {}
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        setActiveOrders(activeList);
+      } catch (e) {
+        setActiveOrders([]);
+      }
     };
 
-    checkActiveOrder();
-    const interval = setInterval(checkActiveOrder, 15000);
-    window.addEventListener("orderPlaced", checkActiveOrder);
-    window.addEventListener("authChanged", checkActiveOrder);
+    checkActiveOrders();
+    const interval = setInterval(checkActiveOrders, 15000);
+    window.addEventListener("orderPlaced", checkActiveOrders);
+    window.addEventListener("authChanged", checkActiveOrders);
     return () => {
       clearInterval(interval);
-      window.removeEventListener("orderPlaced", checkActiveOrder);
-      window.removeEventListener("authChanged", checkActiveOrder);
+      window.removeEventListener("orderPlaced", checkActiveOrders);
+      window.removeEventListener("authChanged", checkActiveOrders);
     };
   }, []);
 
@@ -166,13 +170,13 @@ function Navbar() {
               />
             </Link>
 
-            {/* Active Order Tracking Badge right inside Top Navbar */}
-            {activeOrder && (
+            {/* 1 Active Order Badge */}
+            {activeOrders.length === 1 && (
               <button
                 type="button"
-                onClick={() => navigate(`/track/${activeOrder.id}`)}
+                onClick={() => navigate(`/track/${activeOrders[0].id}`)}
                 className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs"
-                title={`Order #${activeOrder.order_number} (${activeOrder.status})`}
+                title={`Order #${activeOrders[0].order_number} (${activeOrders[0].status})`}
               >
                 <span className="relative flex size-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
@@ -180,8 +184,25 @@ function Navbar() {
                 </span>
                 <Clock className="size-3.5" />
                 <span className="truncate max-w-[90px] sm:max-w-[150px]">
-                  #{activeOrder.order_number}
+                  #{activeOrders[0].order_number}
                 </span>
+              </button>
+            )}
+
+            {/* Multiple Active Orders Badge */}
+            {activeOrders.length > 1 && (
+              <button
+                type="button"
+                onClick={() => setOrdersModalOpen(true)}
+                className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs"
+                title="View All Active Orders"
+              >
+                <span className="relative flex size-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full size-2 bg-green-500"></span>
+                </span>
+                <Package className="size-3.5" />
+                <span>{activeOrders.length} Orders</span>
               </button>
             )}
           </div>
@@ -413,6 +434,48 @@ function Navbar() {
           )}
         </AnimatePresence>
       </div>
+      {/* Active Orders List Modal */}
+      <Dialog open={ordersModalOpen} onOpenChange={setOrdersModalOpen}>
+        <DialogContent className="max-w-md w-[92vw] rounded-3xl p-5 border-border/60">
+          <DialogHeader className="pb-3 border-b border-border/60">
+            <DialogTitle className="font-serif text-xl font-bold flex items-center gap-2">
+              <Package className="size-5 text-primary" /> Active Orders ({activeOrders.length})
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
+            {activeOrders.map((order) => (
+              <div 
+                key={order.id} 
+                className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 flex flex-col gap-2.5 hover:bg-secondary/70 transition-colors"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-sm text-foreground">Order #{order.order_number}</span>
+                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                      {order.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                  <span className="text-sm font-bold text-primary">${Number(order.total).toFixed(2)}</span>
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Time: {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </div>
+                <Button 
+                  size="sm" 
+                  className="rounded-full w-full mt-1 bg-primary text-primary-foreground font-semibold gap-1.5 h-9"
+                  onClick={() => {
+                    setOrdersModalOpen(false);
+                    navigate(`/track/${order.id}`);
+                  }}
+                >
+                  <Bike className="size-4" /> Track Order Status
+                </Button>
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <SearchModal isOpen={searchOpen} onClose={setSearchOpen} />
     </header>
   );
