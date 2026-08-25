@@ -191,23 +191,23 @@ function CheckoutPage() {
         });
       }
       const address = await create("addresses", {
-        customerId: customer.id,
+        customer_id: customer.id,
         label: data.addressLabel || "Home",
-        addressLine: `${data.address1}${data.address2 ? `, ${data.address2}` : ""}`,
+        address_line: `${data.address1}${data.address2 ? `, ${data.address2}` : ""}`,
         city: data.city,
         notes: data.notes || null,
-        isDefault: true,
+        is_default: true,
       });
       const order = await create("orders", {
-        orderNumber: `FC-${Date.now()}`,
-        customerId: customer.id,
-        addressId: address.id,
+        order_number: `FC-${Date.now()}`,
+        customer_id: customer.id,
+        address_id: address.id,
         status: "PENDING",
-        orderType: "DELIVERY",
+        order_type: "DELIVERY",
         subtotal,
-        discountAmount: discount,
-        deliveryFee: deliveryFee,
-        driverCommission: 0,
+        discount_amount: discount,
+        delivery_fee: deliveryFee,
+        driver_commission: 0,
         total,
         notes: data.notes || null,
       });
@@ -215,19 +215,19 @@ function CheckoutPage() {
       await Promise.all(
         lines.map((line) =>
           create("order_items", {
-            orderId: orderId,
-            productId: Number(line.originalId || line.id),
-            productName: line.name,
+            order_id: orderId,
+            product_id: Number(line.originalId || line.id),
+            product_name: line.name,
             quantity: line.qty,
-            unitPrice: line.price,
-            lineTotal: line.price * line.qty,
+            unit_price: line.price,
+            line_total: line.price * line.qty,
             status: "PENDING",
             options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null,
           })
         )
       );
       await create("payments", {
-        orderId: orderId,
+        order_id: orderId,
         method: paymentMethod,
         amount: total,
         status: "PENDING",

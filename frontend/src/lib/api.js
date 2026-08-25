@@ -94,7 +94,7 @@ export function create(resource, data, options = {}) {
 export function update(resource, id, data, options = {}) {
   return request(`/admin/${encodeURIComponent(resource)}/${encodeURIComponent(id)}`, {
     ...options,
-    method: "PUT",
+    method: "PATCH",
     body: jsonBody(data)
   });
 }

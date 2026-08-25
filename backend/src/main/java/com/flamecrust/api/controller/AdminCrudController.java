@@ -109,15 +109,19 @@ public class AdminCrudController {
     public ResponseEntity<?> update(@PathVariable String resource, @PathVariable long id, @RequestBody Map<String, Object> body) {
         try {
             JpaRepository<Object, Long> repo = getRepository(resource);
-            if (!repo.existsById(id)) return ResponseEntity.notFound().build();
+            Optional<Object> existingOpt = repo.findById(id);
+            if (existingOpt.isEmpty()) return ResponseEntity.notFound().build();
+            Object existingEntity = existingOpt.get();
             
             if (body.containsKey("password") && body.get("password") != null && !body.get("password").toString().isBlank()) {
                 body.put("passwordHash", passwordEncoder.encode(body.get("password").toString()));
             }
             
             body.put("id", id);
-            Object entity = mapper.convertValue(body, getEntityClass(resource));
-            Object saved = repo.save(entity);
+            String jsonBody = mapper.writeValueAsString(body);
+            Object updatedEntity = mapper.readerForUpdating(existingEntity).readValue(jsonBody);
+            
+            Object saved = repo.save(updatedEntity);
             return ResponseEntity.ok(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));

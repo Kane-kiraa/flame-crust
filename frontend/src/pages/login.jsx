@@ -303,6 +303,11 @@ export default function LoginPage() {
         const data = await response.json();
         const customer = data.customer;
 
+        // Clear any potentially stale auth tokens that have higher precedence in api.js
+        localStorage.removeItem("adminAuth");
+        localStorage.removeItem("driverAuth");
+        localStorage.removeItem("kitchenAuth");
+
         localStorage.setItem(
           "customerAuth",
           JSON.stringify({ 
@@ -537,7 +542,7 @@ export default function LoginPage() {
                         variant="outline"
                         type="button"
                         disabled={loading}
-                        onClick={() => handleGoogleLogin()}
+                        onClick={handleGoogleLogin}
                         className="w-full h-13 rounded-2xl bg-background hover:bg-secondary/70 border-border/80 font-semibold text-foreground transition-all flex items-center justify-center gap-2"
                       >
                         <svg className="size-5" viewBox="0 0 24 24">

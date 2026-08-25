@@ -35,7 +35,7 @@ export default defineConfig({
         ]
       },
       devOptions: {
-        enabled: true
+        enabled: false
       }
     })
   ],
@@ -44,7 +44,7 @@ export default defineConfig({
     host: true,
     allowedHosts: true,
     headers: {
-      "Cross-Origin-Opener-Policy": "same-origin-allow-popups",
+      "Cross-Origin-Opener-Policy": "unsafe-none",
     },
   },
   resolve: {

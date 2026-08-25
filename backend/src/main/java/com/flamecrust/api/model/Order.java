@@ -27,13 +27,13 @@ public class Order {
     private String status;
 
     @Column(name = "subtotal")
-    private BigDecimal subtotal;
+    private BigDecimal subtotal = BigDecimal.ZERO;
 
     @Column(name = "delivery_fee")
-    private BigDecimal deliveryFee;
+    private BigDecimal deliveryFee = BigDecimal.ZERO;
 
     @Column(name = "total")
-    private BigDecimal total;
+    private BigDecimal total = BigDecimal.ZERO;
 
     @Column(name = "notes")
     private String notes;
@@ -53,7 +53,7 @@ public class Order {
     private Long driverId;
 
     @Column(name = "discount_amount")
-    private BigDecimal discountAmount;
+    private BigDecimal discountAmount = BigDecimal.ZERO;
 
     @Column(name = "branch_id")
     private Long branchId;

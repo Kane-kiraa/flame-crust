@@ -72,14 +72,14 @@ export default function OrderTrackingPage() {
       if (!orderData) throw new Error("Order not found");
       setOrder(orderData);
 
-      if (orderData.driverId) {
-        const driverData = await get("drivers", orderData.driverId);
+      if (orderData.driverId || orderData.driver_id) {
+        const driverData = await get("drivers", orderData.driverId || orderData.driver_id);
         setDriver(driverData);
       }
       
-      if (orderData.addressId) {
+      if (orderData.addressId || orderData.address_id) {
         try {
-          const addressData = await get("addresses", orderData.addressId);
+          const addressData = await get("addresses", orderData.addressId || orderData.address_id);
           setAddress(addressData);
         } catch(e) {}
       }
@@ -88,7 +88,7 @@ export default function OrderTrackingPage() {
         // Fetch only if items haven't been loaded yet to save bandwidth on polling
         if (items.length === 0) {
           const allItems = await list("order_items");
-          setItems(allItems.filter(item => String(item.orderId) === String(orderData.id)));
+          setItems(allItems.filter(item => String(item.orderId || item.order_id) === String(orderData.id)));
           
           const allProducts = await list("products");
           setProducts(allProducts);
@@ -161,10 +161,10 @@ export default function OrderTrackingPage() {
               <div className="flex flex-col sm:flex-row justify-between items-start mb-2 sm:mb-4 border-b border-border/60 pb-4 sm:pb-6 gap-2 sm:gap-3">
                 <div>
                   <h1 className="font-serif text-lg sm:text-3xl font-bold bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm break-all">
-                    Order #{order.orderNumber || order.id}
+                    Order #{order.orderNumber || order.order_number || order.id}
                   </h1>
                   <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                    Placed on <span className="font-medium text-foreground">{formatDate(order.createdAt)}</span>
+                    Placed on <span className="font-medium text-foreground">{formatDate(order.createdAt || order.created_at)}</span>
                   </p>
                 </div>
                 <div className="text-left sm:text-right">
@@ -181,54 +181,89 @@ export default function OrderTrackingPage() {
                   <p className="text-sm mt-1">This order was cancelled and will not be delivered.</p>
                 </div>
               ) : (
-                <div className="relative mb-6 sm:mb-8 mt-0 sm:mt-2 pb-8 w-full max-w-full">
-                  <div className="relative pt-6 w-full px-2 sm:px-12">
-                    {/* Progress Line */}
-                    <div className="absolute top-[2.1rem] sm:top-12 left-4 right-4 sm:left-12 sm:right-12 h-1 bg-secondary rounded-full overflow-hidden">
-                      <motion.div 
-                        className="h-full bg-primary shadow-[0_0_10px_2px_rgba(239,68,68,0.7)]"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${Math.max(0, currentStepIndex) / (STATUS_STEPS.length - 1) * 100}%` }}
-                        transition={{ duration: 1, ease: "easeOut" }}
-                      />
-                    </div>
+                <div className="relative mb-6 sm:mb-8 mt-0 sm:mt-2 w-full max-w-full">
+                  <div className="w-full overflow-x-auto custom-scrollbar pb-10 sm:pb-12 pt-2 sm:pt-6 -mx-4 px-4 sm:mx-0 sm:px-0">
+                    <div className="min-w-[450px] sm:min-w-0 relative px-4 sm:px-8">
+                      {/* Progress Line */}
+                      <div className="absolute top-[17px] sm:top-[22px] left-8 right-8 sm:left-14 sm:right-14 h-1 bg-secondary rounded-full overflow-hidden">
+                        <motion.div 
+                          className="h-full bg-primary shadow-[0_0_10px_2px_rgba(239,68,68,0.7)]"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${Math.max(0, currentStepIndex) / (STATUS_STEPS.length - 1) * 100}%` }}
+                          transition={{ duration: 1, ease: "easeOut" }}
+                        />
+                      </div>
 
-                    {/* Steps */}
-                    <div className="relative flex justify-between w-full">
-                      {STATUS_STEPS.map((step, idx) => {
-                        const isCompleted = idx <= currentStepIndex;
-                        const isCurrent = idx === currentStepIndex;
-                        const Icon = step.icon;
-                        return (
-                          <div key={step.id} className="relative flex flex-col items-center">
-                            <motion.div 
-                              initial={{ scale: 0.8, opacity: 0 }}
-                              animate={{ scale: 1, opacity: 1 }}
-                              transition={{ delay: idx * 0.1 }}
-                              className={cn(
-                                "size-7 sm:size-12 rounded-full border-[3px] sm:border-4 flex items-center justify-center bg-card z-10 transition-all duration-500",
-                                isCompleted ? "border-primary text-primary" : "border-secondary text-muted-foreground",
-                                isCurrent && "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(239,68,68,0.6)] animate-pulse ring-4 ring-primary/30"
-                              )}
-                            >
-                              <Icon className="size-3 sm:size-5" />
-                            </motion.div>
-                            <span className={cn(
-                              "text-[8px] sm:text-xs font-semibold mt-2 text-center absolute -bottom-5 sm:-bottom-6 w-14 sm:w-20 -ml-7 sm:-ml-10 left-1/2 leading-tight",
-                              isCurrent ? "text-primary" : (isCompleted ? "text-foreground" : "text-muted-foreground")
-                            )}>
-                              {step.label}
-                            </span>
-                          </div>
-                        );
-                      })}
+                      {/* Steps */}
+                      <div className="relative flex justify-between w-full">
+                        {STATUS_STEPS.map((step, idx) => {
+                          const isCompleted = idx <= currentStepIndex;
+                          const isCurrent = idx === currentStepIndex;
+                          const Icon = step.icon;
+                          return (
+                            <div key={step.id} className="relative flex flex-col items-center">
+                              <motion.div 
+                                initial={{ scale: 0.8, opacity: 0 }}
+                                animate={{ scale: 1, opacity: 1 }}
+                                transition={{ delay: idx * 0.1 }}
+                                className={cn(
+                                  "size-9 sm:size-12 rounded-full border-[3px] sm:border-4 flex items-center justify-center bg-card z-10 transition-all duration-500",
+                                  isCompleted ? "border-primary text-primary" : "border-secondary text-muted-foreground",
+                                  isCurrent && "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(239,68,68,0.6)] animate-pulse ring-4 ring-primary/30"
+                                )}
+                              >
+                                <Icon className="size-4 sm:size-5" />
+                              </motion.div>
+                              <span className={cn(
+                                "text-[10px] sm:text-xs font-semibold mt-2 text-center absolute -bottom-7 sm:-bottom-8 w-16 sm:w-20 -ml-8 sm:-ml-10 left-1/2 leading-tight",
+                                isCurrent ? "text-primary" : (isCompleted ? "text-foreground" : "text-muted-foreground")
+                              )}>
+                                {step.label}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* Delivered Celebration State */}
+              {order.status === "DELIVERED" && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                  animate={{ opacity: 1, scale: 1, y: 0 }}
+                  className="mb-8 p-6 sm:p-12 rounded-3xl bg-gradient-to-br from-green-500/10 via-green-400/5 to-transparent border border-green-500/20 text-center relative overflow-hidden"
+                >
+                  <div className="absolute -top-10 -right-10 size-40 bg-green-500/20 blur-3xl rounded-full" />
+                  <div className="absolute -bottom-10 -left-10 size-40 bg-green-500/20 blur-3xl rounded-full" />
+                  
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
+                    className="size-24 sm:size-32 mx-auto bg-green-500 text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.4)] mb-6"
+                  >
+                    <CheckCircle2 className="size-12 sm:size-16" />
+                  </motion.div>
+                  
+                  <h2 className="text-3xl sm:text-5xl font-black text-foreground mb-3 font-serif">Enjoy Your Meal!</h2>
+                  <p className="text-muted-foreground text-sm sm:text-base max-w-md mx-auto mb-8">
+                    Your order has been successfully delivered{driver ? ` by ` : "."}
+                    {driver && <span className="font-bold text-foreground">{driver.name}</span>}
+                    {driver && ". "}
+                    Thank you for choosing Flame & Crust!
+                  </p>
+                  
+                  <Button onClick={() => navigate("/")} className="rounded-full h-12 px-8 font-bold text-base shadow-lg hover:scale-105 transition-transform">
+                    Order Again
+                  </Button>
+                </motion.div>
+              )}
+
               {/* Live Map & Driver Details */}
-              {driver && (order.status === "OUT_FOR_DELIVERY" || order.status === "DELIVERED") && (
+              {driver && order.status === "OUT_FOR_DELIVERY" && (
                 <div className="mb-8 space-y-4">
                   {/* Driver Card */}
                   <motion.div 
@@ -237,8 +272,8 @@ export default function OrderTrackingPage() {
                     className="bg-secondary/40 rounded-2xl p-5 border border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
                   >
                     <div className="flex items-center gap-4">
-                      {driver.profilePhoto ? (
-                        <img src={driver.profilePhoto} alt={driver.name} className="size-14 rounded-full object-cover border-2 border-primary/50 shadow-sm" />
+                      {driver.profilePhoto || driver.profile_photo ? (
+                        <img src={driver.profilePhoto || driver.profile_photo} alt={driver.name} className="size-14 rounded-full object-cover border-2 border-primary/50 shadow-sm" />
                       ) : (
                         <div className="size-14 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/50">
                           <Bike className="size-6 text-primary" />
@@ -249,7 +284,7 @@ export default function OrderTrackingPage() {
                           {driver.name}
                           <span className="text-[10px] bg-green-500/20 text-green-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Assigned</span>
                         </h4>
-                        <p className="text-sm text-muted-foreground">{driver.vehicleInfo || "Delivery Partner"}</p>
+                        <p className="text-sm text-muted-foreground">{driver.vehicleInfo || driver.vehicle_info || "Delivery Partner"}</p>
                         {order.status === "OUT_FOR_DELIVERY" && (
                           <p className="text-xs text-primary font-medium mt-0.5 flex items-center gap-1">
                             <Navigation className="size-3" /> Heading to your location...
@@ -314,7 +349,7 @@ export default function OrderTrackingPage() {
                       <Home className="size-4 sm:size-5 text-primary" /> Delivery Address
                     </h3>
                     <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1">
-                      <p className="font-medium text-sm sm:text-base text-foreground mb-1">{address.addressLine}</p>
+                      <p className="font-medium text-sm sm:text-base text-foreground mb-1">{address.addressLine || address.address_line}</p>
                       <p className="text-xs sm:text-sm text-muted-foreground mb-3">{address.city}</p>
                       {address.notes && (
                         <div className="text-xs bg-background/50 p-2.5 sm:p-3 rounded-xl border border-border/40">
@@ -337,14 +372,14 @@ export default function OrderTrackingPage() {
                   <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1 flex flex-col">
                     <div className="space-y-2 sm:space-y-3 mb-4 flex-1 overflow-y-auto max-h-[250px] sm:max-h-[350px] pr-2 custom-scrollbar">
                       {items.map(item => {
-                        const dbProduct = products.find(p => String(p.id) === String(item.productId));
+                        const dbProduct = products.find(p => String(p.id) === String(item.productId || item.product_id));
                         const displayImage = dbProduct ? getImageUrl(dbProduct.image) : "/images/library/pizza.jpg";
                         return (
-                          <Link key={item.id} to={`/product/${item.productId}`} className="flex justify-between items-center text-sm gap-3 p-2 -mx-2 rounded-xl hover:bg-secondary/40 transition-colors group cursor-pointer">
+                          <Link key={item.id} to={`/product/${item.productId || item.product_id}`} className="flex justify-between items-center text-sm gap-3 p-2 -mx-2 rounded-xl hover:bg-secondary/40 transition-colors group cursor-pointer">
                             <div className="flex items-center gap-2.5 sm:gap-3">
                               <div className="size-8 sm:size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 shadow-sm flex items-center justify-center">
                                 {displayImage ? (
-                                  <img src={displayImage} alt={item.productName} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
+                                  <img src={displayImage} alt={item.productName || item.product_name} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
                                 ) : (
                                   <div className="w-full h-full bg-primary/10 flex items-center justify-center">
                                     <ShoppingBag className="size-4 sm:size-6 text-primary/60" />
@@ -353,7 +388,7 @@ export default function OrderTrackingPage() {
                               </div>
                               <div className="flex flex-col">
                                 <span className="font-semibold text-xs sm:text-sm text-foreground">
-                                  {item.quantity}x {item.productName}
+                                  {item.quantity}x {item.productName || item.product_name}
                                 </span>
                                 {item.options && (
                                   <span className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
@@ -368,7 +403,7 @@ export default function OrderTrackingPage() {
                                 )}
                               </div>
                             </div>
-                            <span className="font-bold text-xs sm:text-sm whitespace-nowrap">${Number(item.lineTotal || 0).toFixed(2)}</span>
+                            <span className="font-bold text-xs sm:text-sm whitespace-nowrap">${Number(item.lineTotal || item.line_total || 0).toFixed(2)}</span>
                           </Link>
                         );
                       })}
@@ -386,7 +421,7 @@ export default function OrderTrackingPage() {
                       </div>
                       <div className="flex justify-between text-muted-foreground">
                         <span>Delivery Fee</span>
-                        <span>${Number(order.deliveryFee || 0).toFixed(2)}</span>
+                        <span>${Number(order.deliveryFee || order.delivery_fee || 0).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between font-bold text-foreground pt-1.5 sm:pt-2 text-sm sm:text-base">
                         <span>Total</span>

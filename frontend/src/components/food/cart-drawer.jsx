@@ -84,38 +84,38 @@ function CartDrawer() {
       }
 
       const addressRes = await create("addresses", {
-        customerId: customerId,
+        customer_id: customerId,
         label: "Delivery",
-        addressLine: paymentDetails.address || "Unknown location",
+        address_line: paymentDetails.address || "Unknown location",
         city: paymentDetails.city || "Phnom Penh",
-        isDefault: true
+        is_default: true
       });
 
       const finalDeliveryAndServiceFee = deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
       const orderNumber = "ORD-" + Math.floor(100000 + Math.random() * 900000);
       const orderRes = await create("orders", {
-        orderNumber: orderNumber,
-        customerId: customerId,
-        addressId: addressRes.id,
-        couponId: coupon?.id || null,
+        order_number: orderNumber,
+        customer_id: customerId,
+        address_id: addressRes.id,
+        coupon_id: coupon?.id || null,
         status: "PENDING",
-        orderType: "DELIVERY",
+        order_type: "DELIVERY",
         subtotal: subtotal,
-        discountAmount: discount,
-        deliveryFee: finalDeliveryAndServiceFee,
-        driverCommission: 0,
+        discount_amount: discount,
+        delivery_fee: finalDeliveryAndServiceFee,
+        driver_commission: 0,
         total: total,
         notes: "Payment: " + paymentDetails.method
       });
 
       for (const line of lines) {
         await create("order_items", {
-          orderId: orderRes.id,
-          productId: Number(line.originalId || line.id) || parseInt(String(line.originalId || line.id).replace(/\D/g, '')) || 1,
-          productName: line.name,
+          order_id: orderRes.id,
+          product_id: Number(line.originalId || line.id) || parseInt(String(line.originalId || line.id).replace(/\D/g, '')) || 1,
+          product_name: line.name,
           quantity: line.qty,
-          unitPrice: line.price,
-          lineTotal: line.price * line.qty,
+          unit_price: line.price,
+          line_total: line.price * line.qty,
           status: "PENDING",
           options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null
         });
@@ -125,11 +125,11 @@ function CartDrawer() {
       const dbStatus = paymentDetails.method === "CASH" ? "PENDING" : "PAID";
 
       await create("payments", {
-        orderId: orderRes.id,
+        order_id: orderRes.id,
         method: dbMethod,
         status: dbStatus,
         amount: total,
-        transactionId: paymentDetails.method === "CASH" ? null : "TXN-" + Date.now()
+        transaction_id: paymentDetails.method === "CASH" ? null : "TXN-" + Date.now()
       });
 
       setPaymentOpen(false);
