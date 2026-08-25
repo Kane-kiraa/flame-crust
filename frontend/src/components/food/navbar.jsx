@@ -501,7 +501,7 @@ function Navbar() {
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.25 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
               className="lg:hidden overflow-hidden border-t border-border/60"
             >
               <div className="flex flex-col py-3 px-2 gap-1 max-h-[75vh] overflow-y-auto no-scrollbar">
