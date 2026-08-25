@@ -28,6 +28,33 @@ export function PaymentForm({ total, onBack, onSuccess }) {
   const [qrCodeString, setQrCodeString] = useState("");
   const [paymentSlip, setPaymentSlip] = useState("");
   const [savedAddresses, setSavedAddresses] = useState([]);
+  const [timeLeft, setTimeLeft] = useState(300);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  };
+
+  useEffect(() => {
+    if (!qrCodeString) return;
+    
+    setTimeLeft(300);
+
+    const interval = setInterval(() => {
+      setTimeLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          setQrCodeString("");
+          toast.error("Payment session expired. Please generate a new QR Code.");
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [qrCodeString]);
 
   useEffect(() => {
     const fetchAddresses = async () => {
@@ -89,15 +116,15 @@ export function PaymentForm({ total, onBack, onSuccess }) {
 
   const generateQR = () => {
     try {
-      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "0965755963@acleda";
+      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
       const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
       const qrInfo = new IndividualInfo(
         accountId,
         merchantName,
         "Phnom Penh",
         {
-          currency: "840", // 840 is USD
-          amount: Number(Number(total).toFixed(2)),
+          currency: "840", // USD for real store pricing
+          amount: Number(Number(total).toFixed(2)), // Dynamic calculation from order total
           storeLabel: "FlameCrust",
           terminalLabel: "T1"
         }
@@ -106,12 +133,13 @@ export function PaymentForm({ total, onBack, onSuccess }) {
       const res = khqr.generateIndividual(qrInfo);
       if (res && res.data && res.data.qr) {
         setQrCodeString(res.data.qr);
+        console.log("Generated KHQR String in payment-form.jsx:", res.data.qr);
         toast.success("QR Code generated");
       } else {
         throw new Error(res?.status?.message || "Invalid QR response");
       }
     } catch (e) {
-      console.error("Failed to generate KHQR", e);
+      console.error("Failed to generate KHQR in form", e);
       toast.error(e.message || "Failed to generate QR");
     }
   };
@@ -268,11 +296,22 @@ export function PaymentForm({ total, onBack, onSuccess }) {
           <div className="rounded-2xl border border-border/60 bg-card p-5 flex flex-col items-center text-center">
             {qrCodeString ? (
               <>
-                <div className="mx-auto flex size-44 items-center justify-center rounded-xl bg-white shadow-inner overflow-hidden" aria-label="KHQR payment code">
-                  <QRCodeCanvas value={qrCodeString} size={176} includeMargin={false} />
+                <div className="mx-auto flex size-44 items-center justify-center rounded-2xl bg-white p-3 shadow-inner" aria-label="KHQR payment code">
+                  <QRCodeCanvas value={qrCodeString} size={152} includeMargin={true} />
                 </div>
                 <p className="mt-3 font-semibold text-foreground">Scan with Bakong App</p>
-                <p className="mt-1 text-sm text-muted-foreground">Flame &amp; Crust · Total ${total.toFixed(2)}</p>
+                <div className="mt-2.5 flex items-center justify-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-semibold rounded-full animate-pulse">
+                  <span>⏱️</span>
+                  <span>Expires in: {formatTime(timeLeft)}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={generateQR}
+                  className="mt-3.5 px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold rounded-full transition flex items-center gap-1"
+                >
+                  <span>🔄</span> Generate New QR
+                </button>
+                <p className="mt-2.5 text-xs text-muted-foreground">Flame &amp; Crust · Total ${total.toFixed(2)}</p>
               </>
             ) : (
               <div className="flex flex-col items-center py-4">

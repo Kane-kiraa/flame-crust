@@ -23,7 +23,7 @@ import { AvailableCoupons } from "./available-coupons.jsx";
 import { useNavigate } from "react-router-dom";
 const DELIVERY_FEE = 3.99;
 const FREE_DELIVERY_THRESHOLD = 25;
-const SERVICE_FEE = 0.99;
+
 function CartDrawer() {
   const navigate = useNavigate();
   const { isOpen, closeCart, lines, increment, decrement, removeItem, clear, coupon, applyCoupon, clearCoupon } = useCart();
@@ -51,7 +51,7 @@ function CartDrawer() {
   const deliveryFee = (isCouponValid && coupon.discount_type === "FREE_DELIVERY") 
     ? 0 
     : (grossSubtotal === 0 ? 0 : DELIVERY_FEE);
-  const total = subtotal + deliveryFee + (grossSubtotal > 0 ? SERVICE_FEE : 0);
+  const total = subtotal + deliveryFee;
   const handleCheckout = () => {
     try {
       const stored = localStorage.getItem("customerAuth");
@@ -91,7 +91,7 @@ function CartDrawer() {
         is_default: true
       });
 
-      const finalDeliveryAndServiceFee = deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
+      const finalDeliveryAndServiceFee = deliveryFee;
       const orderNumber = "ORD-" + Math.floor(100000 + Math.random() * 900000);
       const orderRes = await create("orders", {
         order_number: orderNumber,
@@ -348,13 +348,7 @@ function CartDrawer() {
                     }
                   )
                 ] }),
-                /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
-                  /* @__PURE__ */ jsx("span", { children: "Service fee" }),
-                  /* @__PURE__ */ jsxs("span", { className: "font-medium text-foreground", children: [
-                    "$",
-                    SERVICE_FEE.toFixed(2)
-                  ] })
-                ] })
+
               ] }),
               /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-baseline pt-2 border-t border-border/60", children: [
                 /* @__PURE__ */ jsx("span", { className: "font-serif text-lg font-bold text-foreground", children: "Total" }),

@@ -85,15 +85,15 @@ export default function PaymentGatewayPage() {
 
   const generateQR = () => {
     try {
-      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "0965755963@acleda";
+      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
       const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
       const qrInfo = new IndividualInfo(
         accountId,
         merchantName,
         "Phnom Penh",
         {
-          currency: "840", // 840 is USD
-          amount: Number(Number(total).toFixed(2)),
+          currency: "840", // USD for real store pricing
+          amount: Number(Number(total).toFixed(2)), // Dynamic calculation from order total
           storeLabel: "FlameCrust",
           terminalLabel: "T1"
         }
@@ -102,13 +102,14 @@ export default function PaymentGatewayPage() {
       const res = khqr.generateIndividual(qrInfo);
       if (res && res.data && res.data.qr) {
         setQrCodeString(res.data.qr);
+        console.log("Generated KHQR String:", res.data.qr);
         toast.success("QR Code generated");
       } else {
         throw new Error(res?.status?.message || "Invalid QR response");
       }
     } catch (e) {
       console.error("Failed to generate KHQR", e);
-      toast.error("Failed to generate QR");
+      toast.error("Failed to generate QR: " + e.message);
     }
   };
 
@@ -181,17 +182,20 @@ export default function PaymentGatewayPage() {
                 </motion.div>
               </div>
             ) : qrCodeString ? (
-              <QRCodeCanvas
-                value={qrCodeString}
-                size={192}
-                includeMargin={false}
-                imageSettings={{
-                  src: "/logo-192.png",
-                  height: 48,
-                  width: 48,
-                  excavate: true
-                }}
-              />
+              <div className="p-4 bg-white rounded-2xl shadow-md">
+                <QRCodeCanvas
+                  value={qrCodeString}
+                  size={192}
+                  level="H"
+                  includeMargin={true}
+                  imageSettings={{
+                    src: "/logo-192.png",
+                    height: 40,
+                    width: 40,
+                    excavate: true
+                  }}
+                />
+              </div>
             ) : (
               <div className="size-48 flex flex-col items-center justify-center border-2 border-dashed border-border/60 rounded-xl bg-muted/30">
                 <QrCode className="size-12 text-muted-foreground mb-3 opacity-50" />
@@ -218,6 +222,15 @@ export default function PaymentGatewayPage() {
               {paymentMethod === "CARD" ? "Processing card payment..." : "Waiting for payment..."} ({formatTime(timeLeft)})
             </span>
           </div>
+
+          {qrCodeString && (
+            <button
+              onClick={generateQR}
+              className="mt-1 px-3 py-1.5 bg-secondary hover:bg-secondary/80 text-foreground text-xs font-semibold rounded-full transition flex items-center gap-1"
+            >
+              <span>🔄</span> Generate New QR
+            </button>
+          )}
 
           {/* Hidden button for backward compatibility or extreme edge cases, but visually removed since it's auto-confirming */}
 

@@ -28,7 +28,7 @@ import { cn } from "@/lib/utils";
 
 const DELIVERY_FEE = 3.99;
 const FREE_DELIVERY_THRESHOLD = 25;
-const SERVICE_FEE = 0.99;
+
 
 function CartPage() {
   const navigate = useNavigate();
@@ -51,7 +51,7 @@ function CartPage() {
   const deliveryFee = (isCouponValid && couponApplied.discount_type === "FREE_DELIVERY")
     ? 0
     : (subtotal === 0 ? 0 : DELIVERY_FEE);
-  const total = subtotal - discount + deliveryFee + (subtotal > 0 ? SERVICE_FEE : 0);
+  const total = subtotal - discount + deliveryFee;
 
   const handleApplyCoupon = async () => {
     if (!coupon.trim()) {
@@ -237,10 +237,7 @@ function CartPage() {
                         {deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`}
                       </span>
                     </div>
-                    <div className="flex justify-between text-foreground/80">
-                      <span>Service fee</span>
-                      <span className="font-medium text-foreground">${SERVICE_FEE.toFixed(2)}</span>
-                    </div>
+
                   </div>
                   <div className="flex justify-between items-baseline pt-3 border-t border-border/60">
                     <span className="font-serif text-lg font-bold text-foreground">Total</span>
