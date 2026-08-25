@@ -97,8 +97,11 @@ export function MobileBottomNav() {
           {/* 3. Search */}
           <button
             type="button"
-            onClick={() => setSearchOpen(true)}
-            className="flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl text-muted-foreground hover:text-foreground font-medium transition-all"
+            onClick={() => {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+              window.dispatchEvent(new Event("focusNavbarSearch"));
+            }}
+            className="flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl text-muted-foreground hover:text-foreground font-medium transition-all cursor-pointer"
           >
             <Search className="size-5" />
             <span className="text-[11px] leading-none tracking-tight">Search</span>

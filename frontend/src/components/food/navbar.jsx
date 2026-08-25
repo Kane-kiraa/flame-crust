@@ -72,6 +72,63 @@ function Navbar() {
     };
   }, []);
 
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const searchInputRef = useRef(null);
+  const searchContainerRef = useRef(null);
+
+  useEffect(() => {
+    const loadProducts = async () => {
+      try {
+        const { getProducts } = await import("@/lib/api");
+        const data = await getProducts();
+        setAllProducts(Array.isArray(data) ? data : (data.products || []));
+      } catch (e) {}
+    };
+    loadProducts();
+  }, []);
+
+  useEffect(() => {
+    const handleFocusSearch = () => {
+      setSearchFocused(true);
+      setTimeout(() => searchInputRef.current?.focus(), 50);
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleFocusSearch();
+      }
+      if (e.key === "Escape") {
+        setSearchFocused(false);
+      }
+    };
+    window.addEventListener("focusNavbarSearch", handleFocusSearch);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("focusNavbarSearch", handleFocusSearch);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, []);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(e.target)) {
+        setSearchFocused(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredProducts = searchQuery.trim().length > 0
+    ? allProducts.filter(p =>
+        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' && p.tags ? p.tags.split(',').map(s => s.trim()) : [])).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+    : [];
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
@@ -207,20 +264,95 @@ function Navbar() {
             )}
           </div>
 
-          {/* Centered Search Bar in Top Navbar */}
-          <div className="flex-1 max-w-sm sm:max-w-md mx-2 sm:mx-4 relative">
-            <div 
-              onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-secondary/70 border border-border/60 text-muted-foreground hover:border-primary/50 hover:bg-secondary transition-all cursor-pointer shadow-2xs"
-            >
-              <Search className="size-4 text-primary shrink-0" />
-              <span className="text-xs sm:text-sm font-medium truncate flex-1 text-left">
-                Search pizza, burgers...
-              </span>
-              <span className="hidden sm:inline-block text-[10px] bg-background/80 px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground font-mono">
-                ⌘K
-              </span>
+          {/* Centered Top Navbar Search Input */}
+          <div ref={searchContainerRef} className="flex-1 max-w-[170px] xs:max-w-xs sm:max-w-md mx-1.5 sm:mx-4 relative">
+            <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 rounded-full bg-secondary/80 border transition-all ${
+              searchFocused ? "border-primary ring-2 ring-primary/20 bg-background shadow-md" : "border-border/60 hover:border-primary/50"
+            }`}>
+              <Search className="size-3.5 sm:size-4 text-primary shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onFocus={() => setSearchFocused(true)}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search pizza, burgers..."
+                className="w-full bg-transparent text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none border-none p-0"
+              />
+              {searchQuery ? (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
+                >
+                  <X className="size-3.5" />
+                </button>
+              ) : (
+                <span className="hidden sm:inline-block text-[10px] bg-background/80 px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground font-mono">
+                  ⌘K
+                </span>
+              )}
             </div>
+
+            {/* Dropdown Search Results */}
+            <AnimatePresence>
+              {searchFocused && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute top-full left-0 right-0 mt-2 bg-card rounded-2xl shadow-2xl border border-border/60 p-2 sm:p-3 max-h-[60vh] overflow-y-auto z-50 flex flex-col gap-1.5 min-w-[260px] sm:min-w-[340px]"
+                >
+                  {searchQuery.trim().length === 0 ? (
+                    <div className="p-3 text-center">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Popular Searches</p>
+                      <div className="flex flex-wrap gap-1.5 justify-center">
+                        {["Pepperoni", "Margherita", "Burgers", "Bagels", "Spicy"].map((tag) => (
+                          <button
+                            key={tag}
+                            type="button"
+                            onClick={() => setSearchQuery(tag)}
+                            className="px-2.5 py-1 rounded-full bg-secondary text-[11px] font-semibold hover:bg-primary/10 hover:text-primary border border-border/40 transition-colors"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : filteredProducts.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground">
+                      No items found for "{searchQuery}"
+                    </div>
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <div
+                        key={product.id}
+                        onClick={() => {
+                          setSearchFocused(false);
+                          setSearchQuery("");
+                          navigate(`/product/${product.id}`);
+                        }}
+                        className="flex items-center gap-3 p-2 rounded-xl hover:bg-secondary/70 cursor-pointer transition-colors"
+                      >
+                        <img 
+                          src={product.image} 
+                          alt={product.name} 
+                          className="size-10 sm:size-12 rounded-lg object-cover bg-secondary shrink-0" 
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-xs sm:text-sm text-foreground truncate">{product.name}</p>
+                          <p className="text-[11px] text-muted-foreground truncate">{product.description}</p>
+                        </div>
+                        <span className="font-bold text-xs sm:text-sm text-primary shrink-0">
+                          ${Number(product.price).toFixed(2)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
 
           <nav className="hidden lg:flex items-center justify-center gap-1 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
