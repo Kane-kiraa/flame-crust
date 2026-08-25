@@ -183,7 +183,7 @@ export function PaymentForm({ total, onBack, onSuccess }) {
   };
 
   return (
-    <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-4 py-4 sm:px-6 pb-16 sm:pb-8">
+    <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-4 pt-12 pb-16 sm:px-6 sm:pt-6 sm:pb-8">
       <div className="flex items-center gap-3 border-b border-border/60 pb-4">
         <Button variant="ghost" size="icon" className="rounded-full" onClick={onBack} aria-label="Back to cart">
           <ArrowLeft className="size-5" />
