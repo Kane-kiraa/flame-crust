@@ -218,7 +218,7 @@ input[type="number"] {
 
 /* Card hover lift */
 .card-lift {
-  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .card-lift:hover {
   transform: translateY(-6px);
@@ -227,7 +227,7 @@ input[type="number"] {
 @keyframes cardFadeIn {
   from {
     opacity: 0;
-    transform: translateY(16px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -236,8 +236,19 @@ input[type="number"] {
 }
 
 .animate-card-fade-in {
-  animation: cardFadeIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: cardFadeIn 0.2s ease-out forwards;
   will-change: opacity, transform;
+}
+
+@media (max-width: 640px) {
+  .card-lift:hover {
+    transform: none !important;
+  }
+  .animate-card-fade-in {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
 
 /* Custom Sonner Notification Toast Styling */

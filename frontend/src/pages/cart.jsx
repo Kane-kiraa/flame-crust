@@ -100,11 +100,10 @@ function CartPage() {
                     {lines.map((line) => (
                       <motion.div
                         key={line.id}
-                        layout
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: "auto" }}
-                        exit={{ opacity: 0, x: -40 }}
-                        transition={{ duration: 0.25 }}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.12 }}
                         className="flex gap-4 py-5 border-b border-border/60"
                       >
                         <Link
