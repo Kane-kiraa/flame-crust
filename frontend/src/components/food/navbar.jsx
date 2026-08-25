@@ -227,31 +227,45 @@ function Navbar() {
               />
             </Link>
 
-            {/* Active Orders Compact Icon Badge */}
+            {/* Active Orders Compact Icon Badge with Motion Animation */}
             {activeOrders.length > 0 && (
-              <button
+              <motion.button
                 type="button"
+                whileHover={{ scale: 1.06 }}
+                whileTap={{ scale: 0.92 }}
+                initial={{ scale: 0, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 onClick={() => {
                   if (activeOrders.length === 1) navigate(`/track/${activeOrders[0].id}`);
                   else setOrdersModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs relative"
+                className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/40 ring-2 ring-primary/20 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs relative group"
                 title={activeOrders.length === 1 ? `Order #${activeOrders[0].order_number}` : `${activeOrders.length} Active Orders`}
               >
                 <span className="relative flex size-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full size-2 bg-green-500"></span>
                 </span>
-                <Package className="size-4" />
-                <span className="hidden sm:inline">
+                <motion.div 
+                  animate={{ rotate: [0, 8, -8, 0] }} 
+                  transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                >
+                  <Package className="size-4 group-hover:scale-110 transition-transform" />
+                </motion.div>
+                <span className="hidden sm:inline font-bold">
                   {activeOrders.length === 1 ? `#${activeOrders[0].order_number}` : `${activeOrders.length} Orders`}
                 </span>
                 {activeOrders.length > 1 && (
-                  <span className="sm:hidden absolute -top-1 -right-1 text-[9px] bg-primary text-primary-foreground font-bold size-4 rounded-full flex items-center justify-center border border-background shadow-xs">
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="sm:hidden absolute -top-1 -right-1 text-[9px] bg-primary text-primary-foreground font-bold size-4 rounded-full flex items-center justify-center border border-background shadow-xs"
+                  >
                     {activeOrders.length}
-                  </span>
+                  </motion.span>
                 )}
-              </button>
+              </motion.button>
             )}
           </div>
 
@@ -583,15 +597,19 @@ function Navbar() {
             </DialogTitle>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
-            {activeOrders.map((order) => (
-              <div 
+            {activeOrders.map((order, idx) => (
+              <motion.div 
                 key={order.id} 
-                className="p-3.5 rounded-2xl bg-secondary/40 border border-border/60 flex flex-col gap-2.5 hover:bg-secondary/70 transition-colors"
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.2, delay: idx * 0.06 }}
+                whileTap={{ scale: 0.98 }}
+                className="p-4 rounded-2xl bg-secondary/40 border border-border/60 flex flex-col gap-2.5 hover:bg-secondary/70 hover:border-primary/40 transition-all shadow-xs"
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-sm text-foreground">Order #{order.order_number}</span>
-                    <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                    <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
                       {order.status.replace(/_/g, " ")}
                     </span>
                   </div>
@@ -602,15 +620,15 @@ function Navbar() {
                 </div>
                 <Button 
                   size="sm" 
-                  className="rounded-full w-full mt-1 bg-primary text-primary-foreground font-semibold gap-1.5 h-9"
+                  className="rounded-full w-full mt-1 bg-primary text-primary-foreground font-semibold gap-1.5 h-9.5 hover:bg-primary/90 transition-all"
                   onClick={() => {
                     setOrdersModalOpen(false);
                     navigate(`/track/${order.id}`);
                   }}
                 >
-                  <Bike className="size-4" /> Track Order Status
+                  <Bike className="size-4 animate-bounce" /> Track Order Status
                 </Button>
-              </div>
+              </motion.div>
             ))}
           </div>
         </DialogContent>
