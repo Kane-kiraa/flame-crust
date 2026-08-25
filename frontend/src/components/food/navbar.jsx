@@ -227,76 +227,68 @@ function Navbar() {
               />
             </Link>
 
-            {/* 1 Active Order Badge */}
-            {activeOrders.length === 1 && (
+            {/* Active Orders Compact Icon Badge */}
+            {activeOrders.length > 0 && (
               <button
                 type="button"
-                onClick={() => navigate(`/track/${activeOrders[0].id}`)}
-                className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs"
-                title={`Order #${activeOrders[0].order_number} (${activeOrders[0].status})`}
+                onClick={() => {
+                  if (activeOrders.length === 1) navigate(`/track/${activeOrders[0].id}`);
+                  else setOrdersModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs relative"
+                title={activeOrders.length === 1 ? `Order #${activeOrders[0].order_number}` : `${activeOrders.length} Active Orders`}
               >
                 <span className="relative flex size-2 shrink-0">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full size-2 bg-green-500"></span>
                 </span>
-                <Clock className="size-3.5" />
-                <span className="truncate max-w-[90px] sm:max-w-[150px]">
-                  #{activeOrders[0].order_number}
+                <Package className="size-4" />
+                <span className="hidden sm:inline">
+                  {activeOrders.length === 1 ? `#${activeOrders[0].order_number}` : `${activeOrders.length} Orders`}
                 </span>
-              </button>
-            )}
-
-            {/* Multiple Active Orders Badge */}
-            {activeOrders.length > 1 && (
-              <button
-                type="button"
-                onClick={() => setOrdersModalOpen(true)}
-                className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs"
-                title="View All Active Orders"
-              >
-                <span className="relative flex size-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full size-2 bg-green-500"></span>
-                </span>
-                <Package className="size-3.5" />
-                <span>{activeOrders.length} Orders</span>
+                {activeOrders.length > 1 && (
+                  <span className="sm:hidden absolute -top-1 -right-1 text-[9px] bg-primary text-primary-foreground font-bold size-4 rounded-full flex items-center justify-center border border-background shadow-xs">
+                    {activeOrders.length}
+                  </span>
+                )}
               </button>
             )}
           </div>
 
-          {/* Centered Top Navbar Search Input */}
-          <div ref={searchContainerRef} className="flex-1 max-w-[170px] xs:max-w-xs sm:max-w-md mx-1.5 sm:mx-4 relative">
-            <div className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 rounded-full bg-secondary/80 border transition-all ${
-              searchFocused ? "border-primary ring-2 ring-primary/20 bg-background shadow-md" : "border-border/60 hover:border-primary/50"
-            }`}>
-              <Search className="size-3.5 sm:size-4 text-primary shrink-0" />
-              <input
-                ref={searchInputRef}
-                type="text"
-                value={searchQuery}
-                onFocus={() => setSearchFocused(true)}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search pizza, burgers..."
-                className="w-full bg-transparent text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none border-none p-0"
-              />
-              {searchQuery ? (
-                <button
-                  type="button"
-                  onClick={() => setSearchQuery("")}
-                  className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
-                >
-                  <X className="size-3.5" />
-                </button>
-              ) : (
-                <span className="hidden sm:inline-block text-[10px] bg-background/80 px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground font-mono">
-                  ⌘K
-                </span>
-              )}
-            </div>
+          {/* Centered Top Navbar Search Input (Shown only when triggered/searchFocused) */}
+          <AnimatePresence>
+            {searchFocused && (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.15 }}
+                ref={searchContainerRef} 
+                className="flex-1 max-w-sm sm:max-w-md mx-2 relative z-50"
+              >
+                <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-background border border-primary ring-2 ring-primary/20 shadow-lg">
+                  <Search className="size-4 text-primary shrink-0" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search pizza, burgers..."
+                    className="w-full bg-transparent text-xs sm:text-sm font-medium text-foreground placeholder:text-muted-foreground outline-none border-none p-0"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchQuery("");
+                      setSearchFocused(false);
+                    }}
+                    className="text-muted-foreground hover:text-foreground shrink-0 p-0.5"
+                  >
+                    <X className="size-4" />
+                  </button>
+                </div>
 
-            {/* Dropdown Search Results */}
-            <AnimatePresence>
-              {searchFocused && (
+                {/* Dropdown Search Results */}
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
@@ -351,9 +343,9 @@ function Navbar() {
                     ))
                   )}
                 </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <nav className="hidden lg:flex items-center justify-center gap-1 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
             {navLinks.map((l) => (
