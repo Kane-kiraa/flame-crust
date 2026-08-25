@@ -164,26 +164,27 @@ function CartDrawer() {
     }
   };
   if (!mounted) return null;
+  const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
   return /* @__PURE__ */ jsx(AnimatePresence, { children: isOpen && /* @__PURE__ */ jsxs(Fragment, { children: [
-    /* @__PURE__ */ jsx(
-      motion.div,
-      {
-        initial: { opacity: 0 },
-        animate: { opacity: 1 },
-        exit: { opacity: 0 },
-        transition: { duration: 0.2, ease: "linear" },
-        onClick: closeCart,
-        className: "fixed inset-0 z-50 bg-black/55 backdrop-blur-md touch-none overscroll-contain"
-      }
-    ),
-    /* @__PURE__ */ jsxs(
-      motion.aside,
-      {
-        initial: { x: "100%" },
-        animate: { x: 0 },
-        exit: { x: "100%" },
-        transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
-        className: "fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-background/85 backdrop-blur-3xl shadow-2xl sm:border-l border-border/50 flex flex-col will-change-transform transform-gpu sm:rounded-l-[2.5rem] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
+      /* @__PURE__ */ jsx(
+        motion.div,
+        {
+          initial: { opacity: 0 },
+          animate: { opacity: 1 },
+          exit: { opacity: 0 },
+          transition: { duration: 0.2, ease: "linear" },
+          onClick: closeCart,
+          className: "fixed inset-0 z-50 bg-black/55 backdrop-blur-md touch-none overscroll-contain"
+        }
+      ),
+      /* @__PURE__ */ jsxs(
+        motion.aside,
+        {
+          initial: { x: isMobile ? 0 : "100%", y: isMobile ? "100%" : 0 },
+          animate: { x: 0, y: 0 },
+          exit: { x: isMobile ? 0 : "100%", y: isMobile ? "100%" : 0 },
+          transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] },
+          className: "fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-background/95 sm:bg-background/85 backdrop-blur-3xl shadow-2xl sm:border-l border-border/50 flex flex-col will-change-transform transform-gpu rounded-t-[2rem] sm:rounded-t-none sm:rounded-l-[2.5rem] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
         children: [
           /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-5 sm:px-6 pt-10 sm:pt-6 pb-5 border-b border-border/60 shrink-0", children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [

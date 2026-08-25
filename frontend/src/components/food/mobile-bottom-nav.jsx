@@ -20,6 +20,8 @@ export function MobileBottomNav() {
 
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
   const openCart = useCart((s) => s.openCart);
+  const closeCart = useCart((s) => s.closeCart);
+  const isCartOpen = useCart((s) => s.isOpen);
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -49,6 +51,11 @@ export function MobileBottomNav() {
   const isCart = location.pathname === "/cart";
   const isProfile = location.pathname.startsWith("/profile");
 
+  const handleTabClick = () => {
+    closeCart();
+    window.dispatchEvent(new Event("closeNavbarModals"));
+  };
+
   return (
     <>
       <nav 
@@ -59,7 +66,7 @@ export function MobileBottomNav() {
           {/* 1. Home / Food */}
           <Link
             to="/"
-            onClick={() => window.dispatchEvent(new Event("closeNavbarModals"))}
+            onClick={handleTabClick}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isHome ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
@@ -79,7 +86,7 @@ export function MobileBottomNav() {
           {/* 2. Menu */}
           <Link
             to="/menu"
-            onClick={() => window.dispatchEvent(new Event("closeNavbarModals"))}
+            onClick={handleTabClick}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isMenu ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
@@ -100,7 +107,7 @@ export function MobileBottomNav() {
           <button
             type="button"
             onClick={() => {
-              window.dispatchEvent(new Event("closeNavbarModals"));
+              handleTabClick();
               window.scrollTo({ top: 0, behavior: "smooth" });
               window.dispatchEvent(new Event("focusNavbarSearch"));
             }}
@@ -117,14 +124,15 @@ export function MobileBottomNav() {
             type="button"
             onClick={() => {
               window.dispatchEvent(new Event("closeNavbarModals"));
-              openCart();
+              if (isCartOpen) closeCart();
+              else openCart();
             }}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
-              isCart ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+              isCart || isCartOpen ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
             <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              <ShoppingBag className={`size-5 transition-transform ${isCart ? "scale-110" : ""}`} />
+              <ShoppingBag className={`size-5 transition-transform ${isCart || isCartOpen ? "scale-110" : ""}`} />
               <AnimatePresence>
                 {count > 0 && (
                   <motion.span
@@ -137,7 +145,7 @@ export function MobileBottomNav() {
                   </motion.span>
                 )}
               </AnimatePresence>
-              {isCart && (
+              {(isCart || isCartOpen) && (
                 <motion.div 
                   layoutId="activeTabIndicator" 
                   className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
@@ -150,7 +158,7 @@ export function MobileBottomNav() {
           {/* 5. Account / Profile */}
           <Link
             to={customer ? "/profile" : "/login"}
-            onClick={() => window.dispatchEvent(new Event("closeNavbarModals"))}
+            onClick={handleTabClick}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isProfile ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
