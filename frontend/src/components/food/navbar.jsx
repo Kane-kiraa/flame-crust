@@ -122,9 +122,9 @@ function Navbar() {
     <header
       className={cn(
         "fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b border-transparent pt-[env(safe-area-inset-top)]",
-        scrolled || mobileOpen
-          ? "bg-background/60 backdrop-blur-md border-border/40 shadow-xs"
-          : "bg-transparent"
+        mobileOpen
+          ? "bg-background/90 backdrop-blur-2xl border-border/60 shadow-2xl"
+          : "bg-transparent backdrop-blur-none"
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
