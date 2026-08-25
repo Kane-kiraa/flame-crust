@@ -185,7 +185,7 @@ function CartDrawer() {
         transition: { duration: 0.22, ease: [0.16, 1, 0.3, 1] },
         className: "fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-background/85 backdrop-blur-3xl shadow-2xl sm:border-l border-border/50 flex flex-col will-change-transform transform-gpu sm:rounded-l-[2.5rem] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
         children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-5 sm:px-6 py-5 border-b border-border/60", children: [
+          /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-5 sm:px-6 pt-10 sm:pt-6 pb-5 border-b border-border/60 shrink-0", children: [
             /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
               /* @__PURE__ */ jsx("span", { className: "flex items-center justify-center size-10 rounded-full bg-primary text-primary-foreground", children: /* @__PURE__ */ jsx(ShoppingBag, { className: "size-5" }) }),
               /* @__PURE__ */ jsxs("div", { children: [
@@ -226,7 +226,7 @@ function CartDrawer() {
           ] }),
           paymentOpen && <PaymentForm total={total} onBack={() => setPaymentOpen(false)} onSuccess={handlePaymentSuccess} />,
           lines.length === 0 ? (
-            /* @__PURE__ */ jsxs("div", { className: "flex-1 flex flex-col items-center justify-center px-8 text-center gap-4", children: [
+            /* @__PURE__ */ jsxs("div", { className: "flex-1 flex flex-col items-center justify-center px-8 text-center gap-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6", children: [
               /* @__PURE__ */ jsxs("div", { className: "relative", children: [
                 /* @__PURE__ */ jsx("div", { className: "size-28 rounded-full bg-secondary flex items-center justify-center", children: /* @__PURE__ */ jsx(ShoppingBag, { className: "size-12 text-muted-foreground" }) }),
                 /* @__PURE__ */ jsx("div", { className: "absolute -top-1 -right-1 size-8 rounded-full bg-accent flex items-center justify-center animate-flicker", children: /* @__PURE__ */ jsx(Sparkles, { className: "size-4 text-accent-foreground" }) })
