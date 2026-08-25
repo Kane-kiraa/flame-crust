@@ -52,18 +52,19 @@ export function MobileBottomNav() {
   return (
     <>
       <nav 
-        className="fixed bottom-0 inset-x-0 z-[60] lg:hidden bg-background/95 backdrop-blur-xl border-t border-border/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 px-2 shadow-2xl transition-all"
+        className="fixed bottom-0 inset-x-0 z-[70] lg:hidden bg-background/95 backdrop-blur-xl border-t border-border/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 px-2 shadow-2xl transition-all"
         aria-label="Mobile Bottom Navigation"
       >
         <div className="grid grid-cols-5 items-center justify-items-center max-w-md mx-auto">
           {/* 1. Home / Food */}
           <Link
             to="/"
+            onClick={() => window.dispatchEvent(new Event("closeNavbarModals"))}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isHome ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
-            <div className="relative">
+            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               <UtensilsCrossed className={`size-5 transition-transform ${isHome ? "scale-110" : ""}`} />
               {isHome && (
                 <motion.div 
@@ -71,18 +72,19 @@ export function MobileBottomNav() {
                   className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
                 />
               )}
-            </div>
+            </motion.div>
             <span className="text-[11px] leading-none tracking-tight">Food</span>
           </Link>
 
           {/* 2. Menu */}
           <Link
             to="/menu"
+            onClick={() => window.dispatchEvent(new Event("closeNavbarModals"))}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isMenu ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
-            <div className="relative">
+            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               <Store className={`size-5 transition-transform ${isMenu ? "scale-110" : ""}`} />
               {isMenu && (
                 <motion.div 
@@ -90,7 +92,7 @@ export function MobileBottomNav() {
                   className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
                 />
               )}
-            </div>
+            </motion.div>
             <span className="text-[11px] leading-none tracking-tight">Menu</span>
           </Link>
 
@@ -98,24 +100,30 @@ export function MobileBottomNav() {
           <button
             type="button"
             onClick={() => {
+              window.dispatchEvent(new Event("closeNavbarModals"));
               window.scrollTo({ top: 0, behavior: "smooth" });
               window.dispatchEvent(new Event("focusNavbarSearch"));
             }}
             className="flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl text-muted-foreground hover:text-foreground font-medium transition-all cursor-pointer"
           >
-            <Search className="size-5" />
+            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
+              <Search className="size-5" />
+            </motion.div>
             <span className="text-[11px] leading-none tracking-tight">Search</span>
           </button>
 
           {/* 4. Cart */}
           <button
             type="button"
-            onClick={openCart}
+            onClick={() => {
+              window.dispatchEvent(new Event("closeNavbarModals"));
+              openCart();
+            }}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isCart ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
-            <div className="relative">
+            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               <ShoppingBag className={`size-5 transition-transform ${isCart ? "scale-110" : ""}`} />
               <AnimatePresence>
                 {count > 0 && (
@@ -135,18 +143,19 @@ export function MobileBottomNav() {
                   className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
                 />
               )}
-            </div>
+            </motion.div>
             <span className="text-[11px] leading-none tracking-tight">Carts</span>
           </button>
 
           {/* 5. Account / Profile */}
           <Link
             to={customer ? "/profile" : "/login"}
+            onClick={() => window.dispatchEvent(new Event("closeNavbarModals"))}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
               isProfile ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
-            <div className="relative">
+            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               {customer?.avatar ? (
                 <div className={`size-5.5 rounded-full overflow-hidden border ${isProfile ? "border-primary ring-2 ring-primary/30" : "border-border/60"}`}>
                   <img src={customer.avatar} alt="Account" className="size-full object-cover" />
@@ -160,7 +169,7 @@ export function MobileBottomNav() {
                   className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
                 />
               )}
-            </div>
+            </motion.div>
             <span className="text-[11px] leading-none tracking-tight">Account</span>
           </Link>
         </div>

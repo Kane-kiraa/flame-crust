@@ -177,7 +177,19 @@ function Navbar() {
 
   useEffect(() => {
     setMobileOpen(false);
+    setOrdersModalOpen(false);
+    setSearchFocused(false);
   }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    const handleCloseModals = () => {
+      setMobileOpen(false);
+      setOrdersModalOpen(false);
+      setSearchFocused(false);
+    };
+    window.addEventListener("closeNavbarModals", handleCloseModals);
+    return () => window.removeEventListener("closeNavbarModals", handleCloseModals);
+  }, []);
 
   const navLinks = [
     { label: "Menu", href: "/menu" },
