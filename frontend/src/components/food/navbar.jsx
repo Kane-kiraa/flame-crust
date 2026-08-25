@@ -207,7 +207,23 @@ function Navbar() {
             )}
           </div>
 
-          <nav className="hidden lg:flex items-center justify-center gap-1 flex-1 px-2 overflow-x-auto no-scrollbar scroll-smooth">
+          {/* Centered Search Bar in Top Navbar */}
+          <div className="flex-1 max-w-sm sm:max-w-md mx-2 sm:mx-4 relative">
+            <div 
+              onClick={() => setSearchOpen(true)}
+              className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-secondary/70 border border-border/60 text-muted-foreground hover:border-primary/50 hover:bg-secondary transition-all cursor-pointer shadow-2xs"
+            >
+              <Search className="size-4 text-primary shrink-0" />
+              <span className="text-xs sm:text-sm font-medium truncate flex-1 text-left">
+                Search pizza, burgers...
+              </span>
+              <span className="hidden sm:inline-block text-[10px] bg-background/80 px-1.5 py-0.5 rounded border border-border/50 text-muted-foreground font-mono">
+                ⌘K
+              </span>
+            </div>
+          </div>
+
+          <nav className="hidden lg:flex items-center justify-center gap-1 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
             {navLinks.map((l) => (
               <Link
                 key={l.label}
