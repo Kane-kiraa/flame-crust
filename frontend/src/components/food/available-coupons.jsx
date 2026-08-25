@@ -44,9 +44,9 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
           <Ticket className="size-3.5" /> View Available Coupons
         </button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[80vh] flex flex-col p-0 overflow-hidden bg-background">
-        <DialogHeader className="p-6 pb-4 border-b border-border/60">
-          <DialogTitle className="font-serif text-xl">Available Coupons</DialogTitle>
+      <DialogContent className="w-[92vw] sm:max-w-md max-h-[85vh] flex flex-col p-0 overflow-hidden bg-background rounded-3xl border border-border/80">
+        <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border/60">
+          <DialogTitle className="font-serif text-lg sm:text-xl">Available Coupons</DialogTitle>
         </DialogHeader>
         
         <div className="flex-1 overflow-hidden">
@@ -55,8 +55,8 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
               <Loader2 className="size-6 animate-spin text-muted-foreground" />
             </div>
           ) : coupons.length > 0 ? (
-            <ScrollArea className="h-[350px]">
-              <div className="p-6 space-y-3">
+            <ScrollArea className="h-[360px]">
+              <div className="p-3.5 sm:p-5 space-y-2.5">
                 {coupons.map((coupon) => {
                   const isExpired = coupon.expires_at && new Date(coupon.expires_at) <= new Date();
                   const minOrder = Number(coupon.min_order_amount || 0);
@@ -66,10 +66,10 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
                   return (
                     <div 
                       key={coupon.id} 
-                      className={`group border rounded-2xl p-4 flex items-center justify-between transition-colors ${
+                      className={`group border rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-2 transition-colors ${
                         isDisabled 
-                          ? "border-border/40 bg-muted/20 opacity-70 cursor-not-allowed" 
-                          : "border-border/60 bg-card hover:border-primary/50 cursor-pointer hover:shadow-sm"
+                          ? "border-border/40 bg-muted/20 opacity-75 cursor-not-allowed" 
+                          : "border-border/60 bg-card hover:border-primary/50 cursor-pointer hover:shadow-xs"
                       }`}
                       onClick={() => {
                         if (isExpired) {
@@ -83,20 +83,20 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
                         handleSelect(coupon);
                       }}
                     >
-                      <div className="flex-1 mr-3">
-                        <h4 className="font-bold text-foreground flex items-center gap-2 text-base">
-                          <span className="flex size-7 rounded-full bg-primary/10 items-center justify-center shrink-0">
-                            <Ticket className="size-3.5 text-primary" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <span className="flex size-6 sm:size-7 rounded-full bg-primary/10 items-center justify-center shrink-0">
+                            <Ticket className="size-3 sm:size-3.5 text-primary" />
                           </span>
-                          <span>{coupon.code}</span>
+                          <span className="font-bold text-foreground text-sm sm:text-base truncate">{coupon.code}</span>
                           {isExpired && (
-                            <span className="text-[10px] bg-red-500/10 text-red-500 px-2 py-0.5 rounded-full font-semibold shrink-0">Expired</span>
+                            <span className="text-[9px] sm:text-[10px] bg-red-500/10 text-red-500 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Expired</span>
                           )}
                           {isMinOrderNotMet && !isExpired && (
-                            <span className="text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-2 py-0.5 rounded-full font-semibold shrink-0">Min ${minOrder}</span>
+                            <span className="text-[9px] sm:text-[10px] bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 rounded-full font-semibold shrink-0">Min ${minOrder}</span>
                           )}
-                        </h4>
-                        <p className="text-sm text-muted-foreground mt-2 font-medium">
+                        </div>
+                        <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 font-medium leading-tight">
                           {coupon.discount_type === "FREE_DELIVERY" 
                             ? "Free Delivery on your order!" 
                             : coupon.discount_type === "PERCENTAGE" 
@@ -104,7 +104,7 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
                               : `$${coupon.discount_value} OFF your total`}
                         </p>
                         {minOrder > 0 && (
-                          <p className={`text-[11px] mt-1 ${isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground/70"}`}>
+                          <p className={`text-[10px] sm:text-[11px] mt-1 ${isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground/70"}`}>
                             Min. order: ${minOrder} {isMinOrderNotMet && `(Need $${(minOrder - subtotal).toFixed(2)} more)`}
                           </p>
                         )}
@@ -114,7 +114,7 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
                         variant={isDisabled ? "outline" : "secondary"} 
                         size="sm" 
                         disabled={isDisabled}
-                        className={`rounded-full shrink-0 ${!isDisabled ? "group-hover:bg-primary group-hover:text-primary-foreground" : ""} transition-colors`}
+                        className={`rounded-full shrink-0 h-7 sm:h-8 text-xs px-2.5 sm:px-3.5 ${!isDisabled ? "group-hover:bg-primary group-hover:text-primary-foreground" : ""} transition-colors`}
                       >
                         {isDisabled ? "Unavailable" : "Apply"}
                       </Button>

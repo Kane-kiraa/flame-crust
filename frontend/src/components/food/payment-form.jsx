@@ -183,8 +183,8 @@ export function PaymentForm({ total, onBack, onSuccess }) {
   };
 
   return (
-    <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-5 py-5 sm:px-6">
-      <div className="flex items-center gap-3 border-b border-border/60 pb-5">
+    <div className="absolute inset-0 z-10 overflow-y-auto bg-background px-4 py-4 sm:px-6 pb-16 sm:pb-8">
+      <div className="flex items-center gap-3 border-b border-border/60 pb-4">
         <Button variant="ghost" size="icon" className="rounded-full" onClick={onBack} aria-label="Back to cart">
           <ArrowLeft className="size-5" />
         </Button>
@@ -194,7 +194,7 @@ export function PaymentForm({ total, onBack, onSuccess }) {
         </div>
       </div>
 
-      <form onSubmit={submitPayment} className="space-y-6 pt-6">
+      <form onSubmit={submitPayment} className="space-y-6 pt-5 pb-8">
 
         <div className="space-y-4">
           <div className="flex items-center justify-between pb-1">
