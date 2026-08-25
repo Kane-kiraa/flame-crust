@@ -65,7 +65,7 @@ export default function App() {
       <ActiveOrderWidget />
       <FlyToCart />
       <MobileBottomNav />
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
           <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />
