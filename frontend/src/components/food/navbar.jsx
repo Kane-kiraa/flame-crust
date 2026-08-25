@@ -40,6 +40,34 @@ function Navbar() {
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
   const openCart = useCart((s) => s.openCart);
 
+  const [activeOrder, setActiveOrder] = useState(null);
+
+  useEffect(() => {
+    const checkActiveOrder = async () => {
+      try {
+        const stored = localStorage.getItem("customerAuth");
+        if (!stored) { setActiveOrder(null); return; }
+        const c = JSON.parse(stored);
+        const { list } = await import("@/lib/api");
+        const orders = await list("orders");
+        const active = orders
+          .filter(o => String(o.customer_id) === String(c.id) && o.status !== "DELIVERED" && o.status !== "CANCELLED")
+          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        setActiveOrder(active || null);
+      } catch (e) {}
+    };
+
+    checkActiveOrder();
+    const interval = setInterval(checkActiveOrder, 15000);
+    window.addEventListener("orderPlaced", checkActiveOrder);
+    window.addEventListener("authChanged", checkActiveOrder);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("orderPlaced", checkActiveOrder);
+      window.removeEventListener("authChanged", checkActiveOrder);
+    };
+  }, []);
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
@@ -129,7 +157,7 @@ function Navbar() {
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">
-          <div className="flex items-center justify-start shrink-0">
+          <div className="flex items-center justify-start shrink-0 gap-2">
             <Link to="/" className="flex items-center group" onClick={() => setMobileOpen(false)}>
               <img
                 src="/images/library/logo.jpg"
@@ -137,6 +165,25 @@ function Navbar() {
                 className="h-10 sm:h-16 w-auto object-contain"
               />
             </Link>
+
+            {/* Active Order Tracking Badge right inside Top Navbar */}
+            {activeOrder && (
+              <button
+                type="button"
+                onClick={() => navigate(`/track/${activeOrder.id}`)}
+                className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/30 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs"
+                title={`Order #${activeOrder.order_number} (${activeOrder.status})`}
+              >
+                <span className="relative flex size-2 shrink-0">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full size-2 bg-green-500"></span>
+                </span>
+                <Clock className="size-3.5" />
+                <span className="truncate max-w-[90px] sm:max-w-[150px]">
+                  #{activeOrder.order_number}
+                </span>
+              </button>
+            )}
           </div>
 
           <nav className="hidden lg:flex items-center justify-center gap-1 flex-1 px-2 overflow-x-auto no-scrollbar scroll-smooth">

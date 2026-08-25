@@ -83,7 +83,8 @@ export function ActiveOrderWidget() {
     };
   }, [location.pathname]);
 
-  if (activeOrders.length === 0 || dismissed) return null;
+  // Active order tracking is now rendered directly inside top navbar (navbar.jsx)
+  return null;
 
   // Don't show on any tracking page
   if (location.pathname.startsWith("/track/")) return null;
@@ -116,7 +117,7 @@ export function ActiveOrderWidget() {
           if (info.offset.x < -10) setIsExpanded(true);
           else if (info.offset.x > 10) setIsExpanded(false);
         }}
-        className={`fixed ${location.pathname.startsWith('/product/') ? 'bottom-24' : 'bottom-6'} sm:bottom-8 right-0 z-[100]`}
+        className="fixed top-[calc(4.5rem+env(safe-area-inset-top))] sm:top-24 right-3 sm:right-6 z-[90]"
       >
         <div className="relative">
           <div 

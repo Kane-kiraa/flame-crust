@@ -310,7 +310,7 @@ function CartDrawer() {
               },
               line.id
             )) }) }),
-            /* @__PURE__ */ jsxs("div", { className: "border-t border-border/50 px-5 sm:px-6 py-5 bg-background/90 backdrop-blur-md space-y-4", children: [
+            /* @__PURE__ */ jsxs("div", { className: "border-t border-border/50 px-5 sm:px-6 pt-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-5 bg-background/90 backdrop-blur-md space-y-4", children: [
               /* @__PURE__ */ jsxs("div", { className: "space-y-1.5 text-sm", children: [
                 /* Coupon section */
                 /* @__PURE__ */ jsxs("div", { className: "pb-2 mb-2 border-b border-border/60", children: [
