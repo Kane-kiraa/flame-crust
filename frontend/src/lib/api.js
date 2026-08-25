@@ -1,10 +1,14 @@
-const host = typeof window !== 'undefined' ? window.location.hostname : 'localhost';
-const defaultApiUrl = host.includes('trycloudflare.com')
-  ? "https://backup-tommy-jesse-engine.trycloudflare.com/api"
-  : (host.includes('loca.lt') || host.includes('lhr.life'))
-    ? "http://172.20.10.2:8080/api" 
-    : `${typeof window !== 'undefined' ? window.location.protocol : 'http:'}//${host}:8080/api`;
-const API_URL = (import.meta.env.VITE_API_URL ?? defaultApiUrl).replace(/\/$/, "");
+const API_URL = (() => {
+  // Use env variable if set (Cloudflare Pages sets VITE_API_URL to the backend tunnel URL)
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL.replace(/\/$/, "");
+  }
+  // Local development: same host, port 8080
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.hostname}:8080/api`;
+  }
+  return 'http://localhost:8080/api';
+})();
 
 async function request(path, options = {}) {
   let token = null;
