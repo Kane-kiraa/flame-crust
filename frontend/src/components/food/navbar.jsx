@@ -123,7 +123,7 @@ function Navbar() {
       className={cn(
         "fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b border-transparent pt-[env(safe-area-inset-top)]",
         scrolled || mobileOpen
-          ? "bg-background/85 backdrop-blur-xl border-border/60 shadow-warm"
+          ? "bg-background/60 backdrop-blur-md border-border/40 shadow-xs"
           : "bg-transparent"
       )}
     >
@@ -156,11 +156,11 @@ function Navbar() {
             ))}
           </nav>
 
-          <div className="flex items-center justify-end gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center justify-end gap-1.5 sm:gap-2 shrink-0">
             <Button
               variant="ghost"
               size="icon"
-              className="size-9 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary hover:bg-secondary/60 transition-colors"
+              className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary hover:bg-secondary/60 transition-colors"
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
             >
@@ -194,14 +194,14 @@ function Navbar() {
             {customer ? (
               <button 
                 type="button"
-                className="flex shrink-0 items-center gap-2 p-0.5 rounded-full border border-border/60 hover:border-primary/60 bg-secondary/40 transition-all cursor-pointer"
+                className="hidden sm:flex shrink-0 items-center gap-2 p-0.5 rounded-full border border-border/60 hover:border-primary/60 bg-secondary/40 transition-all cursor-pointer"
                 onClick={() => {
                   setMobileOpen(false);
                   navigate("/profile");
                 }}
                 aria-label="User Profile"
               >
-                <div className="size-8 sm:size-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0 border border-primary/30">
+                <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0 border border-primary/30">
                   {customer.avatar ? (
                     <img src={customer.avatar} alt="Profile" className="size-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
@@ -212,7 +212,7 @@ function Navbar() {
               </button>
             ) : location.pathname !== "/login" ? (
               <Button 
-                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 sm:h-11 px-4 sm:px-6 font-semibold text-xs sm:text-sm transition-all shadow-warm"
+                className="hidden sm:flex rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 sm:h-11 px-4 sm:px-6 font-semibold text-xs sm:text-sm transition-all shadow-warm"
                 onClick={() => {
                   setMobileOpen(false);
                   navigate("/login");
@@ -222,7 +222,7 @@ function Navbar() {
               </Button>
             ) : null}
 
-            <div id="cart-icon-wrapper" className="relative flex items-center justify-center size-9 sm:size-11 shrink-0">
+            <div id="cart-icon-wrapper" className="hidden sm:flex relative items-center justify-center size-10 sm:size-11 shrink-0">
               <motion.button
                 id="cart-icon"
                 whileHover={{ scale: 1.05 }}
@@ -252,11 +252,11 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden size-9 sm:size-11 shrink-0 rounded-full"
+              className="lg:hidden size-10 shrink-0 rounded-full text-foreground hover:bg-secondary/60"
               onClick={() => setMobileOpen((s) => !s)}
               aria-label="Toggle menu"
             >
-              {mobileOpen ? <X className="size-4 sm:size-5" /> : <MenuIcon className="size-4 sm:size-5" />}
+              {mobileOpen ? <X className="size-6" /> : <MenuIcon className="size-6" />}
             </Button>
           </div>
         </div>
