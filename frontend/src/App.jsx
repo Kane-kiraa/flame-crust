@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner.jsx";
 import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
 import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
+import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
 
 const Home = lazy(() => import("./pages/home.jsx"));
 const MenuPage = lazy(() => import("./pages/menu.jsx"));
@@ -63,6 +64,7 @@ export default function App() {
       <Toaster position="bottom-left" richColors closeButton offset="24px" />
       <ActiveOrderWidget />
       <FlyToCart />
+      <MobileBottomNav />
       <AnimatePresence mode="wait">
         <Routes location={location} key={location.pathname}>
           <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />

@@ -25,8 +25,10 @@ import {
   X,
   LayoutDashboard,
   ShieldCheck,
-  ArrowRight
+  ArrowRight,
+  Camera
 } from "lucide-react";
+import ImageUpload from "@/components/ImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
@@ -165,7 +167,7 @@ export default function ProfilePage() {
     }
     const c = JSON.parse(auth);
     setCustomer(c);
-    setSettingsForm({ name: c.name || "", email: c.email || "", phone: c.phone || "", password: "", confirmPassword: "", oldPassword: "" });
+    setSettingsForm({ name: c.name || "", email: c.email || "", phone: c.phone || "", avatar: c.avatar || c.profile_image || c.image_url || "", password: "", confirmPassword: "", oldPassword: "" });
     fetchProfileData(c);
     loadFavorites();
 
@@ -242,7 +244,7 @@ export default function ProfilePage() {
     e.preventDefault();
     setIsUpdatingSettings(true);
     try {
-      const dataToUpdate = { name: settingsForm.name, phone: settingsForm.phone, email: settingsForm.email };
+      const dataToUpdate = { name: settingsForm.name, phone: settingsForm.phone, email: settingsForm.email, avatar: settingsForm.avatar };
       await update("customers", customer.id, dataToUpdate);
       
       const updatedCustomer = { ...customer, ...dataToUpdate };
@@ -530,6 +532,30 @@ export default function ProfilePage() {
                       {/* Card 1: Profile Information */}
                       <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
                         <form onSubmit={handleUpdateProfile} className="space-y-6">
+                          {/* Profile Avatar Upload */}
+                          <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-border/60">
+                            <div className="relative shrink-0">
+                              <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/30 shadow-md">
+                                {settingsForm.avatar ? (
+                                  <img src={settingsForm.avatar} alt="Profile Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="size-10 text-primary" />
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex-1 space-y-2 text-center sm:text-left w-full">
+                              <label className="text-sm font-semibold text-foreground flex items-center gap-2 justify-center sm:justify-start">
+                                <Camera className="size-4 text-primary" /> Profile Picture (Avatar)
+                              </label>
+                              <div className="max-w-md">
+                                <ImageUpload 
+                                  value={settingsForm.avatar} 
+                                  onUploadSuccess={(url) => setSettingsForm(prev => ({ ...prev, avatar: url }))} 
+                                />
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="grid sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
                               <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">

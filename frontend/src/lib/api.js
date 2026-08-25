@@ -1,13 +1,15 @@
 const API_URL = (() => {
-  // Use env variable if set (Cloudflare Pages sets VITE_API_URL to the backend tunnel URL)
-  if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL.replace(/\/$/, "");
-  }
-  // Local development: same host, port 8080
   if (typeof window !== 'undefined') {
-    return `${window.location.protocol}//${window.location.hostname}:8080/api`;
+    const host = window.location.hostname;
+    // If accessing via IP (e.g., 172.20.10.2) or non-localhost domain, route to port 8080 on that host
+    if (host !== 'localhost' && host !== '127.0.0.1') {
+      if (host.includes('trycloudflare.com')) {
+        return (import.meta.env.VITE_API_URL || 'https://backup-tommy-jesse-engine.trycloudflare.com/api').replace(/\/$/, "");
+      }
+      return `${window.location.protocol}//${host}:8080/api`;
+    }
   }
-  return 'http://localhost:8080/api';
+  return (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/$/, "");
 })();
 
 async function request(path, options = {}) {

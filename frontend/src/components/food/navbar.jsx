@@ -160,7 +160,7 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary hover:bg-secondary/60 transition-colors"
+              className="size-9 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary hover:bg-secondary/60 transition-colors"
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
             >
@@ -170,7 +170,7 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary"
+              className="hidden sm:inline-flex size-10 sm:size-11 shrink-0 rounded-full text-foreground/70 hover:text-primary"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
             >
@@ -192,26 +192,27 @@ function Navbar() {
             )}
 
             {customer ? (
-              <Button 
-                variant="outline" 
-                className="hidden sm:flex shrink-0 rounded-full border-border/60 hover:border-primary gap-2 pl-2 pr-4 h-11 bg-secondary/50"
+              <button 
+                type="button"
+                className="flex shrink-0 items-center gap-2 p-0.5 rounded-full border border-border/60 hover:border-primary/60 bg-secondary/40 transition-all cursor-pointer"
                 onClick={() => {
                   setMobileOpen(false);
                   navigate("/profile");
                 }}
+                aria-label="User Profile"
               >
-                <div className="size-7 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0">
+                <div className="size-8 sm:size-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0 border border-primary/30">
                   {customer.avatar ? (
-                    <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    <img src={customer.avatar} alt="Profile" className="size-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     <User className="size-4 text-primary" />
                   )}
                 </div>
-                <span className="text-sm font-semibold truncate max-w-[110px]">{customer.name || customer.phone}</span>
-              </Button>
+                <span className="hidden md:inline text-xs font-semibold pr-2.5 truncate max-w-[100px]">{customer.name || customer.phone}</span>
+              </button>
             ) : location.pathname !== "/login" ? (
               <Button 
-                className="hidden sm:flex shrink-0 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 font-semibold transition-all shadow-warm"
+                className="rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 sm:h-11 px-4 sm:px-6 font-semibold text-xs sm:text-sm transition-all shadow-warm"
                 onClick={() => {
                   setMobileOpen(false);
                   navigate("/login");
@@ -221,7 +222,7 @@ function Navbar() {
               </Button>
             ) : null}
 
-            <div id="cart-icon-wrapper" className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
+            <div id="cart-icon-wrapper" className="relative flex items-center justify-center size-9 sm:size-11 shrink-0">
               <motion.button
                 id="cart-icon"
                 whileHover={{ scale: 1.05 }}
@@ -251,7 +252,7 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden size-10 sm:size-11 shrink-0 rounded-full"
+              className="lg:hidden size-9 sm:size-11 shrink-0 rounded-full"
               onClick={() => setMobileOpen((s) => !s)}
               aria-label="Toggle menu"
             >
@@ -269,7 +270,32 @@ function Navbar() {
               transition={{ duration: 0.25 }}
               className="lg:hidden overflow-hidden border-t border-border/60"
             >
-              <div className="flex flex-col py-2 gap-0.5 max-h-[70vh] overflow-y-auto no-scrollbar">
+              <div className="flex flex-col py-3 px-2 gap-1 max-h-[75vh] overflow-y-auto no-scrollbar">
+                {/* Mobile User Card */}
+                {customer && (
+                  <div 
+                    onClick={() => { setMobileOpen(false); navigate("/profile"); }}
+                    className="p-3 mb-2 rounded-2xl bg-secondary/50 border border-border/60 flex items-center justify-between cursor-pointer hover:bg-secondary transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-11 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/40 shrink-0">
+                        {customer.avatar ? (
+                          <img src={customer.avatar} alt="Profile" className="size-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <User className="size-5 text-primary" />
+                        )}
+                      </div>
+                      <div>
+                        <p className="font-bold text-sm text-foreground">{customer.name || "Customer"}</p>
+                        <p className="text-xs text-muted-foreground">{customer.phone || customer.email}</p>
+                      </div>
+                    </div>
+                    <Button variant="ghost" size="sm" className="rounded-full text-xs text-primary font-semibold">
+                      Settings
+                    </Button>
+                  </div>
+                )}
+
                 {isAdmin && (
                   <Link
                     to="/admin/dashboard"
@@ -304,6 +330,19 @@ function Navbar() {
                 
                 <div className="h-px bg-border/60 my-1 mx-4" />
                 
+                {/* Theme Switcher in Mobile Drawer */}
+                <button
+                  type="button"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-foreground/80 hover:text-primary hover:bg-secondary/60 flex items-center justify-between"
+                >
+                  <span className="flex items-center gap-2">
+                    {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4 text-indigo-400" />}
+                    <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground capitalize">{theme} mode</span>
+                </button>
+
                 {customer ? (
                   <Link
                     to="/profile"

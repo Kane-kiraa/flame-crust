@@ -566,12 +566,29 @@ public class AuthController {
 
     private boolean verifyPassword(String rawPassword, String passwordHash, String table, Object id) {
         if (passwordHash == null) return false;
-        boolean isMatch = passwordEncoder.matches(rawPassword, passwordHash);
+        boolean isMatch = false;
+        
+        // 1. Try BCrypt match
+        try {
+            isMatch = passwordEncoder.matches(rawPassword, passwordHash);
+        } catch (Exception ignored) {}
+        
+        // 2. Try Plain text match (and auto-upgrade to BCrypt)
+        if (!isMatch && passwordHash.equals(rawPassword)) {
+            isMatch = true;
+            try {
+                jdbc.update("UPDATE " + table + " SET password_hash = ? WHERE id = ?", passwordEncoder.encode(rawPassword), id);
+            } catch (Exception ignored) {}
+        }
+        
+        // 3. Try SHA-256 match (and auto-upgrade to BCrypt)
         if (!isMatch && passwordHash.length() == 64) {
             String sha256Hex = hashPasswordSha256(rawPassword);
             if (passwordHash.equals(sha256Hex)) {
                 isMatch = true;
-                jdbc.update("UPDATE " + table + " SET password_hash = ? WHERE id = ?", passwordEncoder.encode(rawPassword), id);
+                try {
+                    jdbc.update("UPDATE " + table + " SET password_hash = ? WHERE id = ?", passwordEncoder.encode(rawPassword), id);
+                } catch (Exception ignored) {}
             }
         }
         return isMatch;
