@@ -321,8 +321,14 @@ function CartDrawer() {
                     /* @__PURE__ */ jsx("input", { type: "text", value: couponCode, onChange: (e) => setCouponCode(e.target.value), placeholder: "Promo code", className: "flex-1 h-8 px-2 rounded bg-background border border-border/60 text-xs uppercase" }),
                     /* @__PURE__ */ jsx(Button, { type: "submit", disabled: !couponCode || isApplying, size: "sm", className: "h-8 px-3 rounded text-xs", children: isApplying ? /* @__PURE__ */ jsx(Loader2, { className: "size-3 animate-spin" }) : "Apply" })
                   ] }),
-                  couponError && /* @__PURE__ */ jsx("p", { className: "text-[10px] text-destructive mt-1", children: couponError }),
-                  !coupon && /* @__PURE__ */ jsx(AvailableCoupons, { onSelectCoupon: setCouponCode })
+                  !coupon && /* @__PURE__ */ jsx(AvailableCoupons, { 
+                    subtotal: grossSubtotal, 
+                    onSelectCoupon: (selectedCoupon) => {
+                      applyCoupon(selectedCoupon);
+                      setCouponCode("");
+                      toast.success(`Coupon "${selectedCoupon.code}" applied!`);
+                    } 
+                  })
                 ] }),
                 /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
                   /* @__PURE__ */ jsx("span", { children: "Subtotal" }),

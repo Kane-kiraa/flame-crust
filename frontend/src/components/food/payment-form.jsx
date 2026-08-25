@@ -197,18 +197,31 @@ export function PaymentForm({ total, onBack, onSuccess }) {
       <form onSubmit={submitPayment} className="space-y-6 pt-6">
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h4 className="font-semibold text-sm flex items-center gap-2">
+          <div className="flex items-center justify-between pb-1">
+            <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
               <Truck className="size-4 text-primary" /> Delivery Details
             </h4>
-            <div className="flex gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setShowMap(true)} className="h-7 text-[11px] rounded-full px-3">
-                <MapPin className="size-3 mr-1.5" />
+            <div className="flex items-center gap-1.5">
+              <Button 
+                type="button" 
+                variant="secondary" 
+                size="sm" 
+                onClick={() => setShowMap(true)} 
+                className="h-8 text-xs rounded-full px-3 bg-secondary/80 hover:bg-secondary text-foreground border border-border/50 font-medium shadow-xs transition-colors flex items-center"
+              >
+                <MapPin className="size-3.5 mr-1.5 text-primary" />
                 Map
               </Button>
-              <Button type="button" variant="outline" size="sm" onClick={handleAutoLocation} disabled={isLocating} className="h-7 text-[11px] rounded-full px-3">
-                <LocateFixed className={`size-3 mr-1.5 ${isLocating ? "animate-spin" : ""}`} />
-                Auto
+              <Button 
+                type="button" 
+                variant="secondary" 
+                size="sm" 
+                onClick={handleAutoLocation} 
+                disabled={isLocating} 
+                className="h-8 text-xs rounded-full px-3 bg-secondary/80 hover:bg-secondary text-foreground border border-border/50 font-medium shadow-xs transition-colors flex items-center"
+              >
+                <LocateFixed className={`size-3.5 mr-1.5 text-primary ${isLocating ? "animate-spin" : ""}`} />
+                {isLocating ? "Locating..." : "Auto"}
               </Button>
             </div>
           </div>

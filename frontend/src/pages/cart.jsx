@@ -196,10 +196,15 @@ function CartPage() {
                     {couponError && <p className="text-sm text-destructive mt-2 ml-4">{couponError}</p>}
                     {!couponApplied && (
                       <div className="ml-4">
-                        <AvailableCoupons onSelectCoupon={(c) => {
-                          setCoupon(c);
-                          // Auto apply could be done, but let's just populate the field and they can click apply
-                        }} />
+                        <AvailableCoupons 
+                          subtotal={subtotal} 
+                          onSelectCoupon={(selectedCoupon) => {
+                            setCoupon(selectedCoupon.code);
+                            setCouponApplied(selectedCoupon);
+                            setCouponError("");
+                            toast.success(`Coupon "${selectedCoupon.code}" applied!`);
+                          }} 
+                        />
                       </div>
                     )}
                     {couponApplied && (

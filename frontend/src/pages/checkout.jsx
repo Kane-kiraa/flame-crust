@@ -507,9 +507,15 @@ function CheckoutPage() {
                     )}
                     {couponError && <p className="text-xs text-destructive mt-2">{couponError}</p>}
                     {!coupon && (
-                      <AvailableCoupons onSelectCoupon={(c) => {
-                        setCouponCode(c);
-                      }} />
+                      <AvailableCoupons 
+                        subtotal={grossSubtotal} 
+                        onSelectCoupon={(selectedCoupon) => {
+                          applyCoupon(selectedCoupon);
+                          setCouponCode("");
+                          setCouponError("");
+                          toast.success(`Coupon "${selectedCoupon.code}" applied!`);
+                        }} 
+                      />
                     )}
                   </div>
 
