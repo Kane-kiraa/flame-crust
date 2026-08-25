@@ -78,7 +78,7 @@ function CartPage() {
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28 pb-28 md:pb-8">
         <PageTransition>
           <div className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
             <h1 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">Your Cart</h1>

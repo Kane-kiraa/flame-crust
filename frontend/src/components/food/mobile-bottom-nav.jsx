@@ -120,19 +120,15 @@ export function MobileBottomNav() {
           </button>
 
           {/* 4. Cart */}
-          <button
-            type="button"
-            onClick={() => {
-              window.dispatchEvent(new Event("closeNavbarModals"));
-              if (isCartOpen) closeCart();
-              else openCart();
-            }}
+          <Link
+            to="/cart"
+            onClick={handleTabClick}
             className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
-              isCart || isCartOpen ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+              isCart ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
           >
             <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              <ShoppingBag className={`size-5 transition-transform ${isCart || isCartOpen ? "scale-110" : ""}`} />
+              <ShoppingBag className={`size-5 transition-transform ${isCart ? "scale-110" : ""}`} />
               <AnimatePresence>
                 {count > 0 && (
                   <motion.span
@@ -145,7 +141,7 @@ export function MobileBottomNav() {
                   </motion.span>
                 )}
               </AnimatePresence>
-              {(isCart || isCartOpen) && (
+              {isCart && (
                 <motion.div 
                   layoutId="activeTabIndicator" 
                   className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
@@ -153,7 +149,7 @@ export function MobileBottomNav() {
               )}
             </motion.div>
             <span className="text-[11px] leading-none tracking-tight">Carts</span>
-          </button>
+          </Link>
 
           {/* 5. Account / Profile */}
           <Link
