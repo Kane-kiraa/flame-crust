@@ -1087,60 +1087,25 @@ function CheckoutPage() {
                             </p>
                           </div>
 
-                          {/* Quick Bank App Openers */}
-                          <div className="w-full max-w-xs space-y-2 mb-3">
-                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-center">
-                              ⚡ ចុចដើម្បីបើក App ធនាគារទូទាត់
-                            </p>
-                            <div className="grid grid-cols-3 gap-2">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenBankApp("bakong")}
-                                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
-                              >
-                                <span className="text-sm mb-0.5">🔴</span>
-                                <span className="text-[11px]">Bakong</span>
-                              </button>
+                          {/* Save QR Image & Copy Account Actions */}
+                          <div className="flex items-center justify-center gap-2.5 mb-3">
+                            <button
+                              type="button"
+                              onClick={handleDownloadQR}
+                              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
+                            >
+                              <Download className="size-3.5" />
+                              <span>Save QR Image</span>
+                            </button>
 
-                              <button
-                                type="button"
-                                onClick={() => handleOpenBankApp("aba")}
-                                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
-                              >
-                                <span className="text-sm mb-0.5">🔵</span>
-                                <span className="text-[11px]">ABA Mobile</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleOpenBankApp("acleda")}
-                                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
-                              >
-                                <span className="text-sm mb-0.5">🟡</span>
-                                <span className="text-[11px]">ACLEDA</span>
-                              </button>
-                            </div>
-
-                            {/* Download QR & Copy Account helpers */}
-                            <div className="flex items-center justify-center gap-2 pt-1">
-                              <button
-                                type="button"
-                                onClick={handleDownloadQR}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground text-[11px] font-medium transition-all active:scale-95 cursor-pointer border border-border/60"
-                              >
-                                <Download className="size-3 text-primary" />
-                                <span>Save QR Image</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={handleCopyAccount}
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground text-[11px] font-medium transition-all active:scale-95 cursor-pointer border border-border/60"
-                              >
-                                {copiedAccount ? <Check className="size-3 text-green-500" /> : <Copy className="size-3 text-muted-foreground" />}
-                                <span>{copiedAccount ? "Copied" : "Copy Account"}</span>
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={handleCopyAccount}
+                              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary hover:bg-secondary/80 text-foreground border border-border/60 text-xs font-medium transition-all active:scale-95 cursor-pointer shadow-xs"
+                            >
+                              {copiedAccount ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5 text-muted-foreground" />}
+                              <span>{copiedAccount ? "Copied" : "Copy Account"}</span>
+                            </button>
                           </div>
 
                           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">

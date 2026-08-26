@@ -564,6 +564,71 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Location updated"));
     }
 
+    @PostMapping("/customer-change-password")
+    public ResponseEntity<?> customerChangePassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String oldPassword = body.get("oldPassword");
+        String newPassword = body.get("newPassword");
+        String otp = body.get("otp");
+
+        if (email == null || email.isBlank() || newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email and new password are required"));
+        }
+
+        List<Map<String, Object>> customers = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email);
+        if (customers.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Customer not found"));
+        }
+
+        Map<String, Object> customer = customers.getFirst();
+        long customerId = ((Number) customer.get("id")).longValue();
+        String currentHash = (String) customer.get("password_hash");
+
+        // If customer already has a password and no OTP is provided, verify old password
+        if (currentHash != null && !currentHash.isBlank() && (otp == null || otp.isBlank())) {
+            if (oldPassword == null || oldPassword.isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Current password is required to change password"));
+            }
+            boolean isOldMatch = verifyPassword(oldPassword, currentHash, "customers", customerId);
+            if (!isOldMatch) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Current password is incorrect"));
+            }
+        }
+
+        // Hash and save new password with BCrypt
+        String encoded = passwordEncoder.encode(newPassword);
+        jdbc.update("UPDATE customers SET password_hash = ? WHERE id = ?", encoded, customerId);
+
+        return ResponseEntity.ok(Map.of("message", "Password updated successfully", "hasPassword", true));
+    }
+
+    @PostMapping("/customer-update-profile")
+    public ResponseEntity<?> customerUpdateProfile(@RequestBody Map<String, Object> body) {
+        String email = (String) body.get("email");
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+        String name = (String) body.get("name");
+        String phone = (String) body.get("phone");
+
+        List<Map<String, Object>> customers = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email);
+        if (customers.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Customer not found"));
+        }
+        long customerId = ((Number) customers.getFirst().get("id")).longValue();
+
+        if (name != null) {
+            jdbc.update("UPDATE customers SET name = ? WHERE id = ?", name, customerId);
+        }
+        if (phone != null) {
+            jdbc.update("UPDATE customers SET phone = ? WHERE id = ?", phone, customerId);
+        }
+
+        Map<String, Object> updated = jdbc.queryForList("SELECT * FROM customers WHERE id = ? LIMIT 1", customerId).getFirst();
+        updated.remove("password_hash");
+        return ResponseEntity.ok(updated);
+    }
+
     private boolean verifyPassword(String rawPassword, String passwordHash, String table, Object id) {
         if (passwordHash == null) return false;
         boolean isMatch = false;

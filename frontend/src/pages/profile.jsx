@@ -301,17 +301,28 @@ export default function ProfilePage() {
     e.preventDefault();
     setIsUpdatingSettings(true);
     try {
-      const dataToUpdate = { name: settingsForm.name, phone: settingsForm.phone, email: settingsForm.email, avatar: settingsForm.avatar };
-      await update("customers", customer.id, dataToUpdate);
+      const response = await fetch(`${API_URL}/auth/customer-update-profile`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: customer.email,
+          name: settingsForm.name,
+          phone: settingsForm.phone,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update profile information");
+      }
       
-      const updatedCustomer = { ...customer, ...dataToUpdate };
+      const updatedCustomer = { ...customer, name: settingsForm.name, phone: settingsForm.phone };
       delete updatedCustomer.password;
       localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
       setCustomer(updatedCustomer);
       window.dispatchEvent(new Event("authChanged"));
       toast.success("Profile information updated successfully!");
     } catch (err) {
-      toast.error("Failed to update profile information");
+      toast.error(err.message || "Failed to update profile information");
     } finally {
       setIsUpdatingSettings(false);
     }
@@ -323,49 +334,46 @@ export default function ProfilePage() {
       toast.error("Please enter a new password.");
       return;
     }
-    setIsUpdatingSettings(true);
     
-    // Hash password to SHA-256
-    const sha256 = async (str) => {
-      const buf = new TextEncoder().encode(str);
-      const hash = await crypto.subtle.digest('SHA-256', buf);
-      return Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
-    };
+    // Require double-check verification password validation
+    if (settingsForm.password !== settingsForm.confirmPassword) {
+      toast.error("New password and confirm password do not match.");
+      return;
+    }
+
+    if (hasPassword && !settingsForm.oldPassword) {
+      toast.error("Please enter your current password to confirm changes.");
+      return;
+    }
+
+    setIsUpdatingSettings(true);
 
     try {
-      // 1. We no longer fetch all customers to check old password client-side
-      // The backend AdminCrudController will hash the new password.
-      // We skip the old password check on the frontend to avoid exposing hashes.
+      const response = await fetch(`${API_URL}/auth/customer-change-password`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: customer.email,
+          oldPassword: settingsForm.oldPassword,
+          newPassword: settingsForm.password,
+        }),
+      });
       
-      const dataToUpdate = { name: customer.name, phone: customer.phone, email: customer.email };
-      
-      // Require double-check verification password validation
-      if (settingsForm.password !== settingsForm.confirmPassword) {
-        toast.error("New password and confirm password do not match.");
-        setIsUpdatingSettings(false);
-        return;
-      }
-
-      if (hasPassword && !settingsForm.oldPassword) {
-        toast.error("Please enter your current password to confirm changes.");
-        setIsUpdatingSettings(false);
-        return;
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to update password");
       }
       
-      dataToUpdate.password = settingsForm.password;
-      
-      await update("customers", customer.id, dataToUpdate);
-      
-      const updatedCustomer = { ...customer, ...dataToUpdate };
+      const updatedCustomer = { ...customer };
       delete updatedCustomer.password;
       localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
       setCustomer(updatedCustomer);
       window.dispatchEvent(new Event("authChanged"));
       setSettingsForm(prev => ({ ...prev, password: "", confirmPassword: "", oldPassword: "" }));
       setHasPassword(true);
-      toast.success("Password updated successfully!");
+      toast.success("Password updated successfully! ពាក្យសម្ងាត់ត្រូវបានរក្សាទុកជោគជ័យ");
     } catch (err) {
-      toast.error("Failed to update password");
+      toast.error(err.message || "Failed to update password");
     } finally {
       setIsUpdatingSettings(false);
     }
