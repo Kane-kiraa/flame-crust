@@ -33,15 +33,19 @@ public class PaymentVerificationController {
     public ResponseEntity<Map<String, Object>> verifyKhqr(@RequestBody BakongVerificationRequest request) {
         Map<String, Object> response = new HashMap<>();
 
-        if (request.getQrCodeString() == null || request.getOrderId() == null) {
+        boolean hasQr = request.getQrCodeString() != null && !request.getQrCodeString().trim().isEmpty();
+        boolean hasMd5 = request.getMd5() != null && !request.getMd5().trim().isEmpty();
+
+        if (!hasQr && !hasMd5) {
             response.put("status", "ERROR");
-            response.put("message", "Missing qrCodeString or orderId");
+            response.put("message", "Missing qr_code_string or md5");
             return ResponseEntity.badRequest().body(response);
         }
 
         try {
-            // 1. Generate MD5 of the QR Code string
-            String md5Hash = DigestUtils.md5DigestAsHex(request.getQrCodeString().getBytes());
+            // 1. Generate MD5 of the QR Code string or use provided MD5
+            String md5Hash = hasMd5 ? request.getMd5().trim() : DigestUtils.md5DigestAsHex(request.getQrCodeString().getBytes());
+            System.out.println("Checking Bakong MD5: " + md5Hash);
 
             // 2. Call Bakong Open API
             HttpHeaders headers = new HttpHeaders();
@@ -68,12 +72,17 @@ public class PaymentVerificationController {
                 int responseCode = responseCodeObj instanceof Number ? ((Number) responseCodeObj).intValue() : Integer.parseInt(responseCodeObj.toString());
 
                 if (responseCode == 0) {
-                    // Success! Update payment and order in database
-                    Long orderId = Long.parseLong(request.getOrderId());
-                    
-                    jdbcTemplate.update("UPDATE payments SET status = 'PAID', paid_at = CURRENT_TIMESTAMP WHERE order_id = ?", orderId);
-                    jdbcTemplate.update("UPDATE orders SET status = 'CONFIRMED' WHERE id = ?", orderId);
-                    jdbcTemplate.update("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, 'CONFIRMED', 'Payment verified')", orderId);
+                    // Success! Update payment and order in database if orderId exists
+                    if (request.getOrderId() != null && !request.getOrderId().trim().isEmpty()) {
+                        try {
+                            Long orderId = Long.parseLong(request.getOrderId());
+                            jdbcTemplate.update("UPDATE payments SET status = 'PAID', paid_at = CURRENT_TIMESTAMP WHERE order_id = ?", orderId);
+                            jdbcTemplate.update("UPDATE orders SET status = 'CONFIRMED' WHERE id = ?", orderId);
+                            jdbcTemplate.update("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, 'CONFIRMED', 'Payment verified')", orderId);
+                        } catch (Exception ex) {
+                            // orderId might not be numeric or not found yet
+                        }
+                    }
                     
                     response.put("status", "SUCCESS");
                     response.put("message", "Payment verified successfully");
@@ -84,9 +93,8 @@ public class PaymentVerificationController {
                     return ResponseEntity.ok(response);
                 }
             } else {
-                // If API fails or returns unexpected format
                 response.put("status", "PENDING");
-                response.put("message", "Invalid response from Bakong API");
+                response.put("message", "Payment pending on Bakong");
                 return ResponseEntity.ok(response);
             }
 

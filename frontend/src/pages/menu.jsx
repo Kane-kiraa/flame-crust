@@ -3,7 +3,7 @@ import { useEffect, useState, useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-data";
-import { fetchFoodItems, fetchCategories } from "@/lib/food-api";
+import { fetchFoodItems, fetchCategories, getCachedFoodItems, getCachedCategories } from "@/lib/food-api";
 import { Navbar } from "@/components/food/navbar";
 import { FoodCard } from "@/components/food/food-card";
 import { CartDrawer } from "@/components/food/cart-drawer";
@@ -19,9 +19,9 @@ function MenuPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const categoryFromUrl = searchParams.get("category") || "all";
   const [active, setActive] = useState(categoryFromUrl);
-  const [itemsFromApi, setItemsFromApi] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [itemsFromApi, setItemsFromApi] = useState(() => getCachedFoodItems());
+  const [categories, setCategories] = useState(() => getCachedCategories());
+  const [loading, setLoading] = useState(() => getCachedFoodItems().length === 0);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
   const [visibleCount, setVisibleCount] = useState(8);
@@ -40,25 +40,33 @@ function MenuPage() {
   }, [active, search]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
+    let isMounted = true;
+    if (getCachedFoodItems().length === 0) {
+      setLoading(true);
+    }
     setError(null);
     Promise.all([
-      fetchFoodItems(controller.signal),
-      fetchCategories(controller.signal)
+      fetchFoodItems(),
+      fetchCategories()
     ])
       .then(([items, cats]) => {
-        setItemsFromApi(items);
-        setCategories(cats);
-        setLoading(false);
+        if (isMounted) {
+          setItemsFromApi(items);
+          setCategories(cats);
+          setLoading(false);
+        }
       })
       .catch((err) => {
-        if (err.name !== "AbortError") {
-          setError(err.message || "Failed to load menu items");
+        if (isMounted) {
+          if (!itemsFromApi || itemsFromApi.length === 0) {
+            setError(err.message || "Failed to load menu items");
+          }
           setLoading(false);
         }
       });
-    return () => controller.abort();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const allItems = itemsFromApi || [];

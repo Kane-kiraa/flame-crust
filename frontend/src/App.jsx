@@ -65,28 +65,26 @@ export default function App() {
       <ActiveOrderWidget />
       <FlyToCart />
       <MobileBottomNav />
-      <AnimatePresence>
-        <Routes location={location} key={location.pathname}>
-          <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
-          <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />
-          <Route path="/product/:id" element={<RequireAuth><ProductDetailPage /></RequireAuth>} />
-          <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
-          <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
-          <Route path="/payment/:orderId" element={<RequireAuth><PaymentGatewayPage /></RequireAuth>} />
-          <Route path="/order-confirmation" element={<RequireAuth><OrderConfirmationPage /></RequireAuth>} />
-          <Route path="/track/:orderId" element={<RequireAuth><OrderTrackingPage /></RequireAuth>} />
-          <Route path="/review/:productId" element={<RequireAuth><LeaveReviewPage /></RequireAuth>} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-          <Route path="/admin/*" element={<AdminLayout />} />
-          <Route path="/driver/login" element={<Navigate to="/login" replace />} />
-          <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
-          <Route path="/driver/profile" element={<DriverProfilePage />} />
-          <Route path="/kitchen/login" element={<Navigate to="/login" replace />} />
-          <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
-        </Routes>
-      </AnimatePresence>
+      <Routes>
+        <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
+        <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />
+        <Route path="/product/:id" element={<RequireAuth><ProductDetailPage /></RequireAuth>} />
+        <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
+        <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
+        <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
+        <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+        <Route path="/track/:orderId" element={<OrderTrackingPage />} />
+        <Route path="/review/:productId" element={<RequireAuth><LeaveReviewPage /></RequireAuth>} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+        <Route path="/admin/*" element={<AdminLayout />} />
+        <Route path="/driver/login" element={<Navigate to="/login" replace />} />
+        <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
+        <Route path="/driver/profile" element={<DriverProfilePage />} />
+        <Route path="/kitchen/login" element={<Navigate to="/login" replace />} />
+        <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
+      </Routes>
     </Suspense>
   );
 }

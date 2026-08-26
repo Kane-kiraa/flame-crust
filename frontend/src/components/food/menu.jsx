@@ -4,26 +4,32 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Utensils } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchFoodItems } from "@/lib/food-api";
+import { fetchFoodItems, getCachedFoodItems } from "@/lib/food-api";
 import { FoodCard } from "./food-card";
 import { CardGridSkeleton } from "@/components/shared/loading-skeleton";
 
 function Menu() {
-  const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState(() => getCachedFoodItems());
+  const [loading, setLoading] = useState(() => getCachedFoodItems().length === 0);
 
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    fetchFoodItems(controller.signal)
+    let isMounted = true;
+    if (getCachedFoodItems().length === 0) {
+      setLoading(true);
+    }
+    fetchFoodItems()
       .then((data) => {
-        if (Array.isArray(data) && data.length > 0) {
+        if (isMounted && Array.isArray(data) && data.length > 0) {
           setItems(data);
         }
       })
       .catch(() => void 0)
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const displayedItems = items.slice(0, 8);

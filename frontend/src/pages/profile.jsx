@@ -26,7 +26,12 @@ import {
   LayoutDashboard,
   ShieldCheck,
   ArrowRight,
-  Camera
+  Camera,
+  Sun,
+  Moon,
+  Sparkles,
+  Flame,
+  Award
 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import { Button } from "@/components/ui/button";
@@ -39,6 +44,7 @@ import { MapPicker } from "@/components/food/map-picker";
 import { list, create, update, get } from "@/lib/api";
 import { fetchDashboard, getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
+import { useTheme } from "@/components/theme-provider.jsx";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -46,6 +52,7 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addItem, toggleCart } = useCart();
+  const { theme, setTheme } = useTheme();
   const [customer, setCustomer] = useState(null);
   const [orders, setOrders] = useState([]);
   const [addresses, setAddresses] = useState([]);
@@ -385,123 +392,329 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-32 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-16">
+      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-32 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-16">
         <PageTransition>
-          <div className="mx-auto max-w-5xl px-4">
+          <div className="mx-auto max-w-5xl px-3 sm:px-4">
             <div className="grid lg:grid-cols-[300px_1fr] gap-8">
               
-              {/* Sidebar Profile */}
+              {/* Sidebar Profile / Mobile Hub */}
               <motion.div 
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
                 className={cn(
-                  "bg-card border border-border/60 rounded-3xl p-6 h-fit shadow-warm-lg",
-                  activeTab !== "MENU" ? "hidden lg:block" : "block"
+                  activeTab !== "MENU" ? "hidden lg:block" : "block",
+                  "space-y-4 lg:bg-card/50 lg:border lg:border-border/60 lg:rounded-3xl lg:p-6 lg:h-fit lg:shadow-warm-lg"
                 )}
               >
-                <div className="lg:hidden mb-6 flex items-center justify-between">
-                  <Button 
-                    variant="ghost" 
-                    className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground"
-                    onClick={() => navigate("/")}
-                  >
-                    <ArrowLeft className="size-5 mr-2" />
-                    Back to Home
-                  </Button>
-                  {isAdmin && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => navigate("/admin/dashboard")}
-                      className="rounded-full border-primary/40 bg-primary/10 text-primary font-semibold text-xs h-8 px-3"
+                {/* 1. VIP Profile Hero Header Card */}
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card/95 to-secondary/60 border border-border/70 p-6 text-center shadow-warm">
+                  {/* Decorative subtle ambient glows */}
+                  <div className="absolute -top-12 -right-12 size-36 rounded-full bg-primary/15 blur-2xl pointer-events-none" />
+                  <div className="absolute -bottom-12 -left-12 size-36 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+
+                  {/* Avatar with luxury golden ring & edit camera badge */}
+                  <div className="relative mx-auto size-24 sm:size-28 mb-3.5 group">
+                    <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background/80 shadow-md">
+                      <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                        {customer.avatar ? (
+                          <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                        ) : (
+                          <User className="size-12 text-primary" />
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("SETTINGS")}
+                      className="absolute bottom-0 right-0 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                      title="Change Photo"
                     >
-                      <LayoutDashboard className="size-3.5 mr-1" />
-                      Admin Panel
-                    </Button>
-                  )}
-                </div>
-                <div className="flex flex-col items-center text-center mb-6">
-                  <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center mb-4 overflow-hidden shadow-inner">
-                    {customer.avatar ? (
-                      <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <User className="size-10 text-primary" />
+                      <Camera className="size-4" />
+                    </button>
+                  </div>
+
+                  {/* User Name & Phone */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                      <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                        {customer.name || "Flame Foodie"}
+                      </h2>
+                      <span className="inline-flex items-center text-amber-500" title="Flame VIP Member">
+                        <Sparkles className="size-4.5 fill-amber-500" />
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground text-xs sm:text-sm font-medium">
+                      {customer.phone || customer.email}
+                    </p>
+                  </div>
+
+                  {/* Member Badge & Admin Panel Pill */}
+                  <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/25 shadow-2xs">
+                      <Flame className="size-3.5 fill-primary" />
+                      VIP Foodie Member
+                    </span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => navigate("/admin/dashboard")}
+                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer shadow-2xs"
+                      >
+                        <ShieldCheck className="size-3.5" />
+                        Admin Panel →
+                      </button>
                     )}
                   </div>
-                  <h2 className="font-serif text-2xl font-bold text-foreground">
-                    {customer.name || "Foodie"}
-                  </h2>
-                  <p className="text-muted-foreground text-sm">{customer.phone || customer.email}</p>
-                  {isAdmin && (
-                    <span className="mt-2 inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-semibold bg-primary/15 text-primary border border-primary/30">
-                      <ShieldCheck className="size-3.5" />
-                      Administrator
-                    </span>
-                  )}
+
+                  {/* 4 Interactive Quick Stat Tiles */}
+                  <div className="mt-5 grid grid-cols-4 gap-2 pt-4 border-t border-border/50">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ORDERS")}
+                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
+                    >
+                      <span className="font-serif text-lg font-bold text-foreground group-hover/stat:text-primary transition-colors">
+                        {orders.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Orders</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("COUPONS")}
+                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
+                    >
+                      <span className="font-serif text-lg font-bold text-emerald-600 dark:text-emerald-400 group-hover/stat:text-emerald-500 transition-colors">
+                        {coupons.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Coupons</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("FAVORITES")}
+                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
+                    >
+                      <span className="font-serif text-lg font-bold text-rose-500 group-hover/stat:text-rose-600 transition-colors">
+                        {favorites.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Favorites</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("ADDRESSES")}
+                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
+                    >
+                      <span className="font-serif text-lg font-bold text-sky-500 group-hover/stat:text-sky-600 transition-colors">
+                        {addresses.length}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Saved</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2">
-                  {isAdmin && (
-                    <Button 
-                      variant="outline" 
-                      className="w-full justify-between bg-primary/10 border-primary/30 text-primary hover:bg-primary hover:text-primary-foreground font-semibold rounded-2xl h-11 transition-all mb-3 shadow-sm"
-                      onClick={() => navigate("/admin/dashboard")}
+                {/* 2. Curated iOS/Grab Styled Menu Groups */}
+                <div className="space-y-4">
+                  {/* GROUP 1: Activity & Orders */}
+                  <div className="rounded-3xl bg-card border border-border/70 p-2 shadow-warm space-y-1">
+                    <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Activities & Orders
+                    </p>
+
+                    <button 
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
+                        activeTab === "ORDERS" 
+                          ? "text-primary bg-primary/10 font-semibold" 
+                          : "hover:bg-secondary/60 text-foreground"
+                      )}
+                      onClick={() => setActiveTab("ORDERS")}
                     >
-                      <div className="flex items-center">
-                        <LayoutDashboard className="mr-2.5 size-4" />
-                        Admin Dashboard
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          <ShoppingBag className="size-5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-foreground text-sm block">Order History</span>
+                          <span className="text-xs text-muted-foreground">Track and re-order meals</span>
+                        </div>
                       </div>
-                      <ArrowRight className="size-4" />
-                    </Button>
-                  )}
-                  <Button 
-                    variant="ghost" 
-                    className={cn("w-full justify-start", activeTab === "SETTINGS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                    onClick={() => setActiveTab("SETTINGS")}
-                  >
-                    <Settings className="mr-3 size-5" />
-                    Profile Settings
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className={cn("w-full justify-start", activeTab === "ORDERS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                    onClick={() => setActiveTab("ORDERS")}
-                  >
-                    <ShoppingBag className="mr-3 size-5" />
-                    Order History
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className={cn("w-full justify-start", activeTab === "ADDRESSES" ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                    onClick={() => setActiveTab("ADDRESSES")}
-                  >
-                    <MapPin className="mr-3 size-5" />
-                    Saved Addresses
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className={cn("w-full justify-start", activeTab === "FAVORITES" ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                    onClick={() => setActiveTab("FAVORITES")}
-                  >
-                    <Heart className="mr-3 size-5" />
-                    Favorites
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className={cn("w-full justify-start", activeTab === "COUPONS" ? "text-primary bg-primary/10" : "text-muted-foreground")}
-                    onClick={() => setActiveTab("COUPONS")}
-                  >
-                    <Ticket className="mr-3 size-5" />
-                    Coupons
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10 mt-8"
-                    onClick={handleLogout}
-                  >
-                    <LogOut className="mr-3 size-5" />
-                    Sign Out
-                  </Button>
+                      <div className="flex items-center gap-2">
+                        {orders.length > 0 && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                            {orders.length}
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                      </div>
+                    </button>
+
+                    <button 
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
+                        activeTab === "COUPONS" 
+                          ? "text-primary bg-primary/10 font-semibold" 
+                          : "hover:bg-secondary/60 text-foreground"
+                      )}
+                      onClick={() => setActiveTab("COUPONS")}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          <Ticket className="size-5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-foreground text-sm block">My Coupons & Rewards</span>
+                          <span className="text-xs text-muted-foreground">Save on your pizza orders</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {coupons.length > 0 && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {coupons.length} Available
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                      </div>
+                    </button>
+
+                    <button 
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
+                        activeTab === "FAVORITES" 
+                          ? "text-primary bg-primary/10 font-semibold" 
+                          : "hover:bg-secondary/60 text-foreground"
+                      )}
+                      onClick={() => setActiveTab("FAVORITES")}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs">
+                          <Heart className="size-5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-foreground text-sm block">Favorite Pizzas</span>
+                          <span className="text-xs text-muted-foreground">Your most loved dishes</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {favorites.length > 0 && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500">
+                            {favorites.length}
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* GROUP 2: Account & Settings */}
+                  <div className="rounded-3xl bg-card border border-border/70 p-2 shadow-warm space-y-1">
+                    <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Account & Details
+                    </p>
+
+                    <button 
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
+                        activeTab === "SETTINGS" 
+                          ? "text-primary bg-primary/10 font-semibold" 
+                          : "hover:bg-secondary/60 text-foreground"
+                      )}
+                      onClick={() => setActiveTab("SETTINGS")}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          <Settings className="size-5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-foreground text-sm block">Profile Settings</span>
+                          <span className="text-xs text-muted-foreground">Name, phone, avatar & password</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground/60" />
+                    </button>
+
+                    <button 
+                      type="button"
+                      className={cn(
+                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
+                        activeTab === "ADDRESSES" 
+                          ? "text-primary bg-primary/10 font-semibold" 
+                          : "hover:bg-secondary/60 text-foreground"
+                      )}
+                      onClick={() => setActiveTab("ADDRESSES")}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          <MapPin className="size-5" />
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-foreground text-sm block">Saved Addresses</span>
+                          <span className="text-xs text-muted-foreground">Delivery drop-off locations</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {addresses.length > 0 && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {addresses.length} saved
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* GROUP 3: Preferences & Actions */}
+                  <div className="rounded-3xl bg-card border border-border/70 p-2 shadow-warm space-y-1">
+                    <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Preferences
+                    </p>
+
+                    {/* Dark/Light Theme Toggle Switch Row */}
+                    <div className="w-full flex items-center justify-between p-3 rounded-2xl text-sm">
+                      <div className="flex items-center gap-3">
+                        <div className="size-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
+                        </div>
+                        <div className="text-left">
+                          <span className="font-semibold text-foreground text-sm block">Appearance</span>
+                          <span className="text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                        className="h-8 px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                      >
+                        {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+                        <span>{theme === "dark" ? "Dark" : "Light"}</span>
+                      </button>
+                    </div>
+
+                    <div className="pt-1">
+                      <button 
+                        type="button"
+                        className="w-full flex items-center justify-between p-3 rounded-2xl text-sm font-semibold text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+                        onClick={handleLogout}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="size-10 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs">
+                            <LogOut className="size-5" />
+                          </div>
+                          <div className="text-left">
+                            <span className="font-semibold text-destructive text-sm block">Sign Out</span>
+                            <span className="text-xs text-destructive/70">Log out from this device</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-destructive/40" />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </motion.div>
 

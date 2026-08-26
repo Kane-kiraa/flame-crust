@@ -1,8 +1,29 @@
 import { getDashboard, getProducts } from "./api";
 
+let cachedFoodItems = [];
+try {
+  const stored = localStorage.getItem("flame_foods_cache");
+  if (stored) cachedFoodItems = JSON.parse(stored);
+} catch (e) {}
+
+let cachedCategories = [];
+try {
+  const stored = localStorage.getItem("flame_categories_cache");
+  if (stored) cachedCategories = JSON.parse(stored);
+} catch (e) {}
+
+export function getCachedFoodItems() {
+  return cachedFoodItems;
+}
+
+export function getCachedCategories() {
+  return cachedCategories;
+}
+
 async function fetchDashboard(signal) {
   return getDashboard({ signal });
 }
+
 export function getImageUrl(img) {
   if (!img) return "/images/library/pizza.jpg";
   
@@ -30,16 +51,60 @@ function normalizeProduct(product) {
     image: getImageUrl(product.image)
   };
 }
-async function fetchFoodItems(signal) {
-  const products = await getProducts(undefined, { signal });
-  return products.map(normalizeProduct);
+
+let inFlightFoodsPromise = null;
+let inFlightCategoriesPromise = null;
+
+async function fetchFoodItems() {
+  if (inFlightFoodsPromise) return inFlightFoodsPromise;
+
+  inFlightFoodsPromise = (async () => {
+    try {
+      const products = await getProducts();
+      const normalized = products.map(normalizeProduct);
+      if (normalized.length > 0) {
+        cachedFoodItems = normalized;
+        try {
+          localStorage.setItem("flame_foods_cache", JSON.stringify(normalized));
+        } catch (e) {}
+      }
+      return normalized;
+    } catch (err) {
+      if (cachedFoodItems.length > 0) return cachedFoodItems;
+      throw err;
+    } finally {
+      inFlightFoodsPromise = null;
+    }
+  })();
+
+  return inFlightFoodsPromise;
 }
 
-async function fetchCategories(signal) {
-  const { API_URL } = await import('./api');
-  const res = await fetch(`${API_URL}/products/categories`, { signal });
-  if (!res.ok) throw new Error("Failed to load categories");
-  return res.json();
+async function fetchCategories() {
+  if (inFlightCategoriesPromise) return inFlightCategoriesPromise;
+
+  inFlightCategoriesPromise = (async () => {
+    try {
+      const { API_URL } = await import('./api');
+      const res = await fetch(`${API_URL}/products/categories`);
+      if (!res.ok) throw new Error("Failed to load categories");
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) {
+        cachedCategories = data;
+        try {
+          localStorage.setItem("flame_categories_cache", JSON.stringify(data));
+        } catch (e) {}
+      }
+      return data;
+    } catch (err) {
+      if (cachedCategories.length > 0) return cachedCategories;
+      throw err;
+    } finally {
+      inFlightCategoriesPromise = null;
+    }
+  })();
+
+  return inFlightCategoriesPromise;
 }
 
 export {

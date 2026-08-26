@@ -154,7 +154,6 @@ function OrderConfirmationPage() {
           </div>
         </PageTransition>
       </main>
-      <Footer />
     </div>
   );
 }

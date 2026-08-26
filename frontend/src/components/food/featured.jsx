@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowRight, Star, TrendingUp, Plus, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { fetchFoodItems } from "@/lib/food-api";
+import { fetchFoodItems, getCachedFoodItems } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -12,15 +12,23 @@ import { cn } from "@/lib/utils";
 export function Featured() {
   const addItem = useCart((s) => s.addItem);
   const lines = useCart((s) => s.lines);
-  const [featured, setFeatured] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [featured, setFeatured] = useState(() => {
+    const cached = getCachedFoodItems();
+    return cached.filter((item) => item.popular).slice(0, 3);
+  });
+  const [loading, setLoading] = useState(() => {
+    const cached = getCachedFoodItems();
+    return cached.filter((item) => item.popular).length === 0;
+  });
 
   useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    fetchFoodItems(controller.signal)
+    let isMounted = true;
+    if (getCachedFoodItems().length === 0) {
+      setLoading(true);
+    }
+    fetchFoodItems()
       .then((items) => {
-        if (Array.isArray(items) && items.length > 0) {
+        if (isMounted && Array.isArray(items) && items.length > 0) {
           const popularItems = items.filter((item) => item.popular).slice(0, 3);
           if (popularItems.length > 0) {
             setFeatured(popularItems);
@@ -28,8 +36,12 @@ export function Featured() {
         }
       })
       .catch(() => { })
-      .finally(() => setLoading(false));
-    return () => controller.abort();
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (!loading && featured.length === 0) {

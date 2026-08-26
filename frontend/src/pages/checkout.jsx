@@ -1,7 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import {
   ArrowLeft,
@@ -15,6 +15,17 @@ import {
   Loader2,
   LocateFixed,
   MapPin,
+  Ticket,
+  ChevronDown,
+  ChevronUp,
+  ShoppingBag,
+  User,
+  Phone,
+  Building,
+  FileText,
+  CheckCircle2,
+  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
 import { AvailableCoupons } from "@/components/food/available-coupons";
 import { Button } from "@/components/ui/button";
@@ -24,79 +35,152 @@ import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
 import { CartDrawer } from "@/components/food/cart-drawer";
-import { MapPicker } from "@/components/food/map-picker";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
-import { AnimatePresence } from "framer-motion";
+import { MapPicker } from "@/components/food/map-picker";
 import { useCart } from "@/lib/cart-store";
 import { create, list } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { QRCodeCanvas } from "qrcode.react";
+import { BakongKHQR, IndividualInfo } from "bakong-khqr";
 
 const DELIVERY_FEE = 3.99;
 const FREE_DELIVERY_THRESHOLD = 25;
 
 const paymentMethods = [
-  { id: "CARD", label: "Card", icon: CreditCard },
-  { id: "KHQR", label: "KHQR", icon: QrCode },
-  { id: "ABA_PAY", label: "ABA Pay", icon: Wallet },
-  { id: "CASH", label: "Cash", icon: Landmark },
+  { 
+    id: "KHQR", 
+    label: "KHQR", 
+    sublabel: "All Cambodian Banks",
+    badge: "Popular",
+    icon: QrCode 
+  },
+  { 
+    id: "ABA_PAY", 
+    label: "ABA Pay", 
+    sublabel: "ABA Mobile App",
+    icon: Wallet 
+  },
+  { 
+    id: "CARD", 
+    label: "Credit/Debit", 
+    sublabel: "Visa, Mastercard",
+    icon: CreditCard 
+  },
+  { 
+    id: "CASH", 
+    label: "Cash", 
+    sublabel: "Pay on delivery",
+    icon: Landmark 
+  },
 ];
 
 function CheckoutPage() {
   const navigate = useNavigate();
-  const location = useLocation();
   const { lines, clear, coupon, applyCoupon, removeCoupon } = useCart();
-  const [paymentMethod, setPaymentMethod] = useState("CARD");
+  const [paymentMethod, setPaymentMethod] = useState("KHQR");
   const [submitting, setSubmitting] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState([]);
+  const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [showMobileSummary, setShowMobileSummary] = useState(false);
+  const [showDeliveryDetails, setShowDeliveryDetails] = useState(false);
+  const [showAddressPickerModal, setShowAddressPickerModal] = useState(false);
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [isSuccessRedirecting, setIsSuccessRedirecting] = useState(false);
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
+  const [allCoupons, setAllCoupons] = useState([]);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const auth = localStorage.getItem("customerAuth");
-      if (auth) {
-        const c = JSON.parse(auth);
-        setCustomer(c);
-        try {
-          const allAddresses = await list("addresses");
-          const myAddresses = allAddresses.filter(a => String(a.customer_id) === String(c.id));
-          setSavedAddresses(myAddresses);
-          
-          // Auto-fill form if they have a default address
-          const defaultAddr = myAddresses.find(a => a.is_default) || myAddresses[0];
-          if (defaultAddr) {
-            handleSelectAddress(defaultAddr, c);
-          } else {
-            setValue("fullName", c.name);
-            setValue("phone", c.phone);
-          }
-        } catch (e) {}
-      }
-    };
-    fetchProfile();
-  }, []);
-
-  const handleSelectAddress = (addr, c = customer) => {
-    if (c) {
-      setValue("fullName", c.name);
-      setValue("phone", c.phone);
+  const fetchCoupons = async () => {
+    try {
+      setLoadingCoupons(true);
+      const data = await list("coupons");
+      setAllCoupons(data.filter(c => c.active));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingCoupons(false);
     }
-    // Parse address line and city
-    setValue("address1", addr.address_line);
-    setValue("city", addr.city);
-    setValue("notes", addr.notes || "");
   };
 
   const {
     register,
     handleSubmit,
     setValue,
+    getValues,
+    watch,
     formState: { errors },
-  } = useForm();
+  } = useForm({
+    shouldUnregister: false,
+    defaultValues: {
+      fullName: "",
+      phone: "",
+      address1: "",
+      address2: "",
+      city: "Phnom Penh",
+      notes: ""
+    }
+  });
+
+  const watchedFullName = watch("fullName");
+  const watchedPhone = watch("phone");
+  const watchedAddress1 = watch("address1");
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const auth = localStorage.getItem("customerAuth");
+      if (auth) {
+        try {
+          const c = JSON.parse(auth);
+          setCustomer(c);
+          const allAddresses = await list("addresses");
+          const myAddresses = allAddresses.filter(a => String(a.customer_id) === String(c.id));
+          
+          // Deduplicate addresses with same address_line
+          const uniqueAddresses = [];
+          const seen = new Set();
+          for (const a of myAddresses) {
+            const line = (a.address_line || "").trim().toLowerCase();
+            if (line && !seen.has(line)) {
+              seen.add(line);
+              uniqueAddresses.push(a);
+            }
+          }
+          setSavedAddresses(uniqueAddresses);
+          
+          const defaultAddr = uniqueAddresses.find(a => a.is_default) || uniqueAddresses[0];
+          if (defaultAddr) {
+            handleSelectAddress(defaultAddr, c);
+          } else {
+            setValue("fullName", c.name || "");
+            setValue("phone", c.phone || "");
+            setShowDeliveryDetails(true);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+    fetchProfile();
+  }, []);
+
+  const handleSelectAddress = (addr, c = customer) => {
+    setSelectedAddressId(addr.id);
+    if (c) {
+      setValue("fullName", c.name || "");
+      setValue("phone", c.phone || "");
+    }
+    setValue("address1", addr.address_line || "");
+    setValue("city", addr.city || "Phnom Penh");
+    setValue("notes", addr.notes || "");
+  };
 
   const handleAutoLocation = () => {
     if (!navigator.geolocation) {
@@ -105,31 +189,36 @@ function CheckoutPage() {
     }
     
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      try {
-        const { latitude, longitude } = position.coords;
-        const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
-        const data = await res.json();
-        
-        if (data && data.address) {
-          const addr = data.address;
-          const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
-            c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
           );
+          const data = await res.json();
           
-          setValue("address1", data.display_name);
-          setValue("city", cityMatch || "Phnom Penh");
-          toast.success("Location found!");
+          if (data && data.address) {
+            const addr = data.address;
+            const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
+              c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
+            );
+            
+            setValue("address1", data.display_name || "");
+            setValue("city", cityMatch || "Phnom Penh");
+            toast.success("Location auto-detected successfully!");
+          }
+        } catch (err) {
+          toast.error("Failed to get location address");
+        } finally {
+          setIsLocating(false);
         }
-      } catch (err) {
-        toast.error("Failed to get location address");
-      } finally {
+      },
+      () => {
+        toast.error("Please allow location permissions");
         setIsLocating(false);
       }
-    }, () => {
-      toast.error("Please allow location permissions");
-      setIsLocating(false);
-    });
+    );
   };
 
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
@@ -148,14 +237,105 @@ function CheckoutPage() {
     : (subtotal === 0 ? 0 : DELIVERY_FEE);
   const total = subtotal + deliveryFee;
 
+  const [qrCodeString, setQrCodeString] = useState("");
+  const [isPaymentVerified, setIsPaymentVerified] = useState(false);
+  const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+
+  useEffect(() => {
+    if (total > 0 && (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY")) {
+      try {
+        const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
+        const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
+        const qrInfo = new IndividualInfo(
+          accountId,
+          merchantName,
+          "Phnom Penh",
+          {
+            currency: "840",
+            amount: Number(total.toFixed(2)),
+            storeLabel: "FlameCrust",
+            terminalLabel: "T1"
+          }
+        );
+        const khqr = new BakongKHQR();
+        const res = khqr.generateIndividual(qrInfo);
+        if (res && res.data && res.data.qr) {
+          setQrCodeString(res.data.qr);
+        } else {
+          setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD`);
+        }
+      } catch (e) {
+        setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD`);
+      }
+    }
+  }, [total, paymentMethod]);
+
+  const verifyPaymentWithBakong = async (showToast = false) => {
+    if (!qrCodeString) return false;
+    setIsCheckingPayment(true);
+    try {
+      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/$/, "");
+      const res = await fetch(`${apiUrl}/payments/verify-khqr`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          qr_code_string: qrCodeString,
+          qrCodeString: qrCodeString
+        })
+      });
+      const data = await res.json();
+      if (data.status === "SUCCESS") {
+        setIsPaymentVerified(true);
+        if (showToast) toast.success("Payment verified! ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ");
+        return true;
+      } else {
+        if (showToast) {
+          toast.error("មិនទាន់ឃើញមានការផ្ទេរប្រាក់ចូលទេ។ សូមស្កេនបាញ់លុយជាមុនសិន ឬរើស Cash!");
+        }
+      }
+    } catch (e) {
+      console.warn("Bakong verification error:", e);
+    } finally {
+      setIsCheckingPayment(false);
+    }
+    return false;
+  };
+
+  // Reset verification state when amount or method changes
+  useEffect(() => {
+    setIsPaymentVerified(false);
+    isAutoSubmittingRef.current = false;
+  }, [total, paymentMethod]);
+
+  const isAutoSubmittingRef = useRef(false);
+
+  // 100% Automatic Polling for KHQR / ABA_PAY
+  useEffect(() => {
+    if (isPaymentVerified || (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") || !qrCodeString) return;
+
+    const pollTimer = setInterval(async () => {
+      if (isAutoSubmittingRef.current) return;
+      const isSuccess = await verifyPaymentWithBakong(false);
+      if (isSuccess && !isAutoSubmittingRef.current) {
+        isAutoSubmittingRef.current = true;
+        toast.success("ទទួលបានការបាញ់លុយជោគជ័យ! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
+        setTimeout(() => {
+          handleSubmit(onSubmit)();
+        }, 700);
+      }
+    }, 2000);
+
+    return () => clearInterval(pollTimer);
+  }, [qrCodeString, paymentMethod, isPaymentVerified]);
+
   const handleApplyCoupon = async (e) => {
-    e.preventDefault();
-    if (!couponCode) return;
+    if (e) e.preventDefault();
+    if (!couponCode.trim()) return;
     setIsApplyingCoupon(true);
     setCouponError("");
     try {
       const coupons = await list("coupons");
-      const found = coupons.find((c) => c.code.toUpperCase() === couponCode.toUpperCase());
+      const found = coupons.find((c) => c.code.toUpperCase() === couponCode.trim().toUpperCase());
       if (!found) {
         setCouponError("Invalid promo code");
       } else if (!found.active) {
@@ -165,6 +345,7 @@ function CheckoutPage() {
       } else {
         applyCoupon(found);
         setCouponCode("");
+        toast.success(`Promo code "${found.code}" applied!`);
       }
     } catch (err) {
       setCouponError("Failed to apply code");
@@ -173,45 +354,122 @@ function CheckoutPage() {
     }
   };
 
+  const onInvalid = (formErrors) => {
+    console.warn("Validation errors:", formErrors);
+    setShowDeliveryDetails(true);
+    const firstKey = Object.keys(formErrors)[0];
+    const firstErr = formErrors[firstKey];
+    toast.error(firstErr?.message || "Please check required delivery fields");
+  };
+
   const onSubmit = async (data) => {
     if (lines.length === 0) {
       toast.error("Your cart is empty");
       return;
     }
+
+    const formData = { ...getValues(), ...data };
+    const fullName = (formData.fullName || customer?.name || "").trim();
+    const phone = (formData.phone || customer?.phone || "").trim();
+    const address1 = (formData.address1 || "").trim();
+    const city = (formData.city || "Phnom Penh").trim();
+    const address2 = (formData.address2 || "").trim();
+    const notes = (formData.notes || "").trim();
+
+    if (!fullName) {
+      setShowDeliveryDetails(true);
+      toast.error("Please enter recipient name");
+      return;
+    }
+    if (!phone) {
+      setShowDeliveryDetails(true);
+      toast.error("Please enter recipient phone number");
+      return;
+    }
+    if (!address1) {
+      setShowDeliveryDetails(true);
+      toast.error("Please enter or select a delivery address");
+      return;
+    }
+
+    // Strict Bank Verification for KHQR and ABA_PAY:
+    if ((paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") && !isPaymentVerified) {
+      const verifiedNow = await verifyPaymentWithBakong(false);
+      if (!verifiedNow) {
+        toast.error("មិនទាន់ឃើញមានលុយចូលកុងនៅឡើយទេ។ ប្រព័ន្ធកំពុងស្វែងរកការបាញ់លុយស្វ័យប្រវត្តិ...");
+        return;
+      }
+    }
+
+    await executeOrderCreation(isPaymentVerified);
+  };
+
+  const executeOrderCreation = async (verifiedPayment = false) => {
     setSubmitting(true);
     try {
-      const customers = await list("customers");
-      let customer = customers.find((item) => item.phone === data.phone);
-      if (!customer) {
-        customer = await create("customers", {
-          name: data.fullName,
-          phone: data.phone,
-          email: data.email || null,
-          status: "ACTIVE",
-        });
+      const formData = getValues();
+      const fullName = (formData.fullName || customer?.name || "").trim();
+      const phone = (formData.phone || customer?.phone || "").trim();
+      const address1 = (formData.address1 || "").trim();
+      const city = (formData.city || "Phnom Penh").trim();
+      const address2 = (formData.address2 || "").trim();
+      const notes = (formData.notes || "").trim();
+
+      let customerId = customer?.id;
+      if (!customerId) {
+        try {
+          const customers = await list("customers");
+          let currentCust = customers.find((item) => item.phone === phone);
+          if (!currentCust) {
+            currentCust = await create("customers", {
+              name: fullName,
+              phone: phone,
+              email: formData.email || null,
+              status: "ACTIVE",
+            });
+          }
+          customerId = currentCust?.id;
+        } catch (e) {
+          console.warn("Customer handling error:", e);
+        }
       }
-      const address = await create("addresses", {
-        customer_id: customer.id,
-        label: data.addressLabel || "Home",
-        address_line: `${data.address1}${data.address2 ? `, ${data.address2}` : ""}`,
-        city: data.city,
-        notes: data.notes || null,
-        is_default: true,
-      });
+
+      let addressId = selectedAddressId;
+      if (!addressId) {
+        try {
+          const address = await create("addresses", {
+            customer_id: customerId || null,
+            label: "Delivery",
+            address_line: `${address1}${address2 ? `, ${address2}` : ""}`,
+            city: city || "Phnom Penh",
+            notes: notes || null,
+            is_default: true,
+          });
+          addressId = address?.id;
+        } catch (e) {
+          console.warn("Address create error:", e);
+        }
+      }
+
+      const isDigitalPaid = verifiedPayment || isPaymentVerified || (paymentMethod === "CARD");
+      const orderStatus = isDigitalPaid ? "CONFIRMED" : "PENDING";
+      const paymentStatus = isDigitalPaid ? "PAID" : "PENDING";
+
       const order = await create("orders", {
         order_number: `FC-${Date.now()}`,
-        customer_id: customer.id,
-        address_id: address.id,
-        status: "PENDING",
+        customer_id: customerId || null,
+        address_id: addressId || null,
+        status: orderStatus,
         order_type: "DELIVERY",
-        subtotal,
-        discount_amount: discount,
-        delivery_fee: deliveryFee,
+        subtotal: Number(subtotal.toFixed(2)),
+        discount_amount: Number(discount.toFixed(2)),
+        delivery_fee: Number(deliveryFee.toFixed(2)),
         driver_commission: 0,
-        total,
-        notes: data.notes || null,
+        total: Number(total.toFixed(2)),
+        notes: notes || null,
       });
       const orderId = order.id;
+
       await Promise.all(
         lines.map((line) =>
           create("order_items", {
@@ -219,55 +477,84 @@ function CheckoutPage() {
             product_id: Number(line.originalId || line.id),
             product_name: line.name,
             quantity: line.qty,
-            unit_price: line.price,
-            line_total: line.price * line.qty,
+            unit_price: Number(line.price.toFixed(2)),
+            line_total: Number((line.price * line.qty).toFixed(2)),
             status: "PENDING",
             options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null,
           })
         )
       );
+
       await create("payments", {
         order_id: orderId,
         method: paymentMethod,
-        amount: total,
-        status: "PENDING",
+        amount: Number(total.toFixed(2)),
+        status: paymentStatus,
       });
 
-      clear();
-      removeCoupon();
+      setIsSuccessRedirecting(true);
+      const targetTotal = Number(total.toFixed(2));
+      const targetMethod = paymentMethod;
+      const targetItemCount = itemCount;
+      const targetAddress = `${address1}${address2 ? `, ${address2}` : ""}, ${city}`;
 
-      if (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY" || paymentMethod === "CARD") {
-        navigate(`/payment/${orderId}`, { state: { total, paymentMethod } });
-      } else {
-        navigate("/order-confirmation", {
-          state: {
-            orderId,
-            total,
-            itemCount,
-            paymentMethod,
-            address: `${data.address1}${data.address2 ? `, ${data.address2}` : ""}, ${data.city}`,
-          },
-        });
-      }
+      setTimeout(() => {
+        clear();
+        removeCoupon();
+      }, 200);
+
+      navigate("/order-confirmation", {
+        replace: true,
+        state: {
+          orderId,
+          total: targetTotal,
+          itemCount: targetItemCount,
+          paymentMethod: targetMethod,
+          address: targetAddress,
+        },
+      });
     } catch (err) {
+      console.error("Order submission error:", err);
       toast.error(err.message || "Failed to place order. Please try again.");
       setSubmitting(false);
+      setIsSuccessRedirecting(false);
     }
   };
 
-  if (lines.length === 0) {
+  if (isSuccessRedirecting) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
         <Navbar />
-        <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))]">
-          <div className="mx-auto max-w-2xl px-4 py-16 text-center">
-            <h2 className="font-serif text-2xl font-bold">Your cart is empty</h2>
-            <p className="mt-2 text-muted-foreground">Add items before checking out.</p>
+        <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] flex items-center justify-center p-4">
+          <div className="flex flex-col items-center text-center gap-3">
+            <div className="size-16 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center animate-bounce">
+              <CheckCircle2 className="size-10" />
+            </div>
+            <h2 className="font-serif text-xl font-bold text-foreground">Order Placed Successfully!</h2>
+            <p className="text-xs text-muted-foreground">Redirecting to order confirmation...</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (lines.length === 0 && !submitting && !isSuccessRedirecting) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] flex items-center justify-center">
+          <div className="mx-auto max-w-md px-6 py-16 text-center">
+            <div className="size-20 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-4">
+              <ShoppingBag className="size-10" />
+            </div>
+            <h2 className="font-serif text-2xl font-bold text-foreground">Your cart is empty</h2>
+            <p className="mt-2 text-sm text-muted-foreground">Add some delicious artisan pizza before checking out.</p>
             <Button
               onClick={() => navigate("/menu")}
-              className="mt-6 rounded-full bg-primary text-primary-foreground"
+              className="mt-6 rounded-full bg-primary text-primary-foreground px-8 shadow-lg shadow-primary/25 hover:shadow-primary/40"
             >
-              Browse menu
+              Browse Menu
             </Button>
           </div>
         </main>
@@ -277,299 +564,968 @@ function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-white">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
+
+      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-24 pb-32 lg:pb-16">
         <PageTransition>
-          <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => navigate("/cart")}
-              className="mb-6 rounded-full text-foreground/70 hover:text-foreground"
-            >
-              <ArrowLeft className="size-4 mr-1" />
-              Back to cart
-            </Button>
+          <div className="mx-auto max-w-6xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
+            {/* Top Navigation & Step Indicator (Desktop only - mobile already has top navbar title) */}
+            <div className="hidden sm:flex flex-col gap-3 mb-5 sm:mb-8">
+              <div className="flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => navigate("/cart")}
+                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-muted-foreground hover:text-foreground transition-colors py-1 px-2.5 -ml-2.5 rounded-full hover:bg-secondary/60"
+                >
+                  <ArrowLeft className="size-4" />
+                  <span>Back to Cart</span>
+                </button>
 
-            <h1 className="font-serif text-3xl sm:text-4xl font-bold text-foreground">Checkout</h1>
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-muted-foreground">
+                  <span className="text-muted-foreground">Cart</span>
+                  <span>→</span>
+                  <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">Checkout</span>
+                  <span>→</span>
+                  <span className="text-muted-foreground/60">Payment</span>
+                </div>
+              </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="mt-8 grid lg:grid-cols-[1fr_380px] gap-10">
-              <div className="space-y-8">
-                <div className="rounded-3xl border border-white/5 bg-card/60 backdrop-blur-xl shadow-lg p-6 sm:p-8">
-                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 mb-5">
-                    <h2 className="font-serif text-xl font-bold text-foreground">Delivery address</h2>
+              <div className="flex items-baseline justify-between border-b border-border/40 pb-3">
+                <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-foreground">
+                  Checkout
+                </h1>
+                <span className="text-xs sm:text-sm text-muted-foreground font-medium">
+                  {itemCount} {itemCount === 1 ? "item" : "items"}
+                </span>
+              </div>
+            </div>
+
+            {/* Mobile Collapsible Order Summary Bar */}
+            <div className="lg:hidden mb-3">
+              <div className="rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-xs overflow-hidden">
+                <button
+                  type="button"
+                  onClick={() => setShowMobileSummary(!showMobileSummary)}
+                  className="w-full flex items-center justify-between p-3 text-left transition-colors hover:bg-secondary/30"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <ShoppingBag className="size-3.5" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                        Order Summary
+                        <span className="text-[10px] bg-secondary px-1.5 py-0.2 rounded-full text-muted-foreground font-normal">
+                          {itemCount} items
+                        </span>
+                      </span>
+                      <p className="text-[11px] text-muted-foreground truncate">
+                        {lines.map((l) => `${l.qty}x ${l.name}`).join(", ")}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-sm font-bold text-primary">${total.toFixed(2)}</span>
+                    {showMobileSummary ? (
+                      <ChevronUp className="size-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="size-4 text-muted-foreground" />
+                    )}
+                  </div>
+                </button>
+
+                <AnimatePresence>
+                  {showMobileSummary && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="border-t border-border/50 p-3.5 space-y-3 bg-secondary/15"
+                    >
+                      <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
+                        {lines.map((line) => (
+                          <div key={line.id} className="flex items-center gap-3">
+                            <img
+                              src={line.image}
+                              alt={line.name}
+                              className="size-11 rounded-lg object-cover bg-secondary shrink-0 border border-border/40"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium text-foreground truncate">{line.name}</p>
+                              <p className="text-[10px] text-muted-foreground">Qty: {line.qty} × ${line.price.toFixed(2)}</p>
+                            </div>
+                            <span className="text-xs font-semibold text-foreground shrink-0">
+                              ${(line.price * line.qty).toFixed(2)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="border-t border-border/60 pt-2.5 space-y-1.5 text-xs">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Subtotal</span>
+                          <span className="font-medium text-foreground">${grossSubtotal.toFixed(2)}</span>
+                        </div>
+                        {coupon && (
+                          <div className="flex justify-between text-green-600 dark:text-green-400 font-medium">
+                            <span className="flex items-center gap-1">
+                              <Ticket className="size-3" /> Discount ({coupon.code})
+                            </span>
+                            <span>-${discount.toFixed(2)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Delivery Fee</span>
+                          <span className={cn("font-medium", deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-foreground")}>
+                            {deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`}
+                          </span>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* Main Form & Desktop Grid */}
+            <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="grid lg:grid-cols-[1fr_390px] gap-4 sm:gap-6 lg:gap-8">
+              <div className="space-y-3.5 sm:space-y-6">
+                {/* 1. Contact & Delivery Section */}
+                <div className="rounded-2xl sm:rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-3.5 sm:p-6 lg:p-7 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
                     <div className="flex items-center gap-2">
-                      <Button type="button" variant="outline" size="sm" onClick={handleAutoLocation} disabled={isLocating} className="rounded-full text-xs h-8">
-                        <LocateFixed className={cn("size-3 mr-1.5", isLocating && "animate-spin")} />
+                      <div className="size-7 sm:size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <MapPin className="size-4" />
+                      </div>
+                      <h2 className="font-serif text-sm sm:text-lg font-bold text-foreground leading-tight">
+                        Delivery Details
+                      </h2>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowMapModal(true)}
+                        className="rounded-full text-[11px] sm:text-xs h-7 px-2.5 border-primary/30 text-primary hover:bg-primary/10"
+                      >
+                        <MapPin className="size-3.5 mr-1 text-primary" />
+                        Pin on Map
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleAutoLocation}
+                        disabled={isLocating}
+                        className="rounded-full text-[11px] sm:text-xs h-7 px-2.5 text-primary hover:bg-primary/10"
+                      >
+                        <LocateFixed className={cn("size-3.5 mr-1", isLocating && "animate-spin")} />
                         {isLocating ? "Locating..." : "Auto Location"}
                       </Button>
                     </div>
                   </div>
-                  
-                  {savedAddresses.length > 0 && (
-                    <div className="mb-6 space-y-3">
-                      <Label className="text-muted-foreground">Saved Addresses</Label>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        {savedAddresses.map(addr => (
-                          <div 
-                            key={addr.id} 
-                            onClick={() => handleSelectAddress(addr)}
-                            className="cursor-pointer bg-secondary/50 hover:bg-primary/10 border border-transparent hover:border-primary/30 rounded-xl p-3 transition-colors relative"
+
+                  {/* Compact Single Selected Address View */}
+                  {watchedAddress1 ? (
+                    <div className="flex items-start justify-between gap-3 pt-0.5">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs sm:text-sm text-foreground">
+                            {savedAddresses.find(a => a.id === selectedAddressId)?.label || "Delivery Address"}
+                          </span>
+                          {savedAddresses.find(a => a.id === selectedAddressId)?.is_default && (
+                            <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.2 rounded font-bold uppercase">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 leading-relaxed">
+                          {watchedAddress1}
+                        </p>
+                        {(watchedFullName || watchedPhone) && (
+                          <p className="text-[11px] text-foreground/80 font-medium mt-1">
+                            {watchedFullName} {watchedPhone && `• ${watchedPhone}`}
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {savedAddresses.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowAddressPickerModal(true)}
+                            className="rounded-full text-xs h-7.5 px-2.5 font-semibold border-primary/30 text-primary hover:bg-primary/10"
                           >
-                            {addr.is_default && <span className="absolute top-2 right-2 text-[9px] bg-primary/20 text-primary px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
-                            <p className="font-bold text-sm text-foreground">{addr.label || "Address"}</p>
-                            <p className="text-xs text-muted-foreground mt-1 truncate">{addr.address_line}</p>
-                            <p className="text-xs text-muted-foreground truncate">{addr.city}</p>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex items-center gap-4 py-2">
-                        <div className="h-px bg-border flex-1"></div>
-                        <span className="text-xs text-muted-foreground uppercase font-bold">Or enter new</span>
-                        <div className="h-px bg-border flex-1"></div>
+                            Change
+                          </Button>
+                        )}
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowDeliveryDetails(!showDeliveryDetails)}
+                          className="rounded-full text-xs h-7.5 px-2 text-muted-foreground hover:text-foreground font-medium"
+                        >
+                          {showDeliveryDetails ? "Hide" : "Edit"}
+                          <ChevronDown className={cn("size-3.5 ml-1 transition-transform", showDeliveryDetails && "rotate-180")} />
+                        </Button>
                       </div>
                     </div>
-                  )}
+                  ) : null}
 
-                  <div className="space-y-4">
-                    <div className="grid sm:grid-cols-2 gap-4">
+                  {/* Delivery Form Details (Always mounted in DOM to retain input state) */}
+                  <div className={cn("space-y-3.5 pt-1", (!showDeliveryDetails && watchedAddress1) ? "hidden" : "block")}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                       <div className="space-y-1.5">
-                        <Label htmlFor="fullName">Full name <span className="text-destructive">*</span></Label>
-                        <Input id="fullName" {...register("fullName", { required: "Name is required" })} placeholder="John Doe" className={cn("rounded-xl border-border/60", errors.fullName && "border-destructive")} />
-                        {errors.fullName && <p className="text-xs text-destructive">{errors.fullName.message}</p>}
+                        <Label htmlFor="fullName" className="text-xs font-semibold flex items-center gap-1">
+                          <User className="size-3 text-muted-foreground" /> Full Name <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="fullName"
+                          {...register("fullName", { required: "Name is required" })}
+                          placeholder="e.g. John Doe"
+                          className={cn("h-10 rounded-xl border-border/60 text-sm", errors.fullName && "border-destructive focus-visible:ring-destructive")}
+                        />
+                        {errors.fullName && <p className="text-[11px] text-destructive">{errors.fullName.message}</p>}
                       </div>
+
                       <div className="space-y-1.5">
-                        <Label htmlFor="phone">Phone <span className="text-destructive">*</span></Label>
-                        <Input id="phone" type="tel" {...register("phone", { required: "Phone is required" })} placeholder="+855 12 345 678" className={cn("rounded-xl border-border/60", errors.phone && "border-destructive")} />
-                        {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
+                        <Label htmlFor="phone" className="text-xs font-semibold flex items-center gap-1">
+                          <Phone className="size-3 text-muted-foreground" /> Phone Number <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="phone"
+                          type="tel"
+                          {...register("phone", { required: "Phone number is required" })}
+                          placeholder="e.g. 012 345 678"
+                          className={cn("h-10 rounded-xl border-border/60 text-sm", errors.phone && "border-destructive focus-visible:ring-destructive")}
+                        />
+                        {errors.phone && <p className="text-[11px] text-destructive">{errors.phone.message}</p>}
                       </div>
                     </div>
+
                     <div className="space-y-1.5">
-                      <Label htmlFor="address1">Address line 1 <span className="text-destructive">*</span></Label>
-                      <Input id="address1" {...register("address1", { required: "Address is required" })} placeholder="Street address" className={cn("rounded-xl border-border/60", errors.address1 && "border-destructive")} />
-                      {errors.address1 && <p className="text-xs text-destructive">{errors.address1.message}</p>}
+                      <Label htmlFor="address1" className="text-xs font-semibold flex items-center gap-1">
+                        <MapPin className="size-3 text-muted-foreground" /> Delivery Street Address <span className="text-destructive">*</span>
+                      </Label>
+                      <Input
+                        id="address1"
+                        {...register("address1", { required: "Address is required" })}
+                        placeholder="House / Street / Sangkat / Khan"
+                        className={cn("h-10 rounded-xl border-border/60 text-sm", errors.address1 && "border-destructive focus-visible:ring-destructive")}
+                      />
+                      {errors.address1 && <p className="text-[11px] text-destructive">{errors.address1.message}</p>}
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="address2" className="text-xs font-semibold text-muted-foreground">
+                          Apt / Building / Unit <span className="text-[10px] font-normal">(Optional)</span>
+                        </Label>
+                        <Input
+                          id="address2"
+                          {...register("address2")}
+                          placeholder="e.g. Floor 3, Room 302"
+                          className="h-10 rounded-xl border-border/60 text-sm"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="city" className="text-xs font-semibold">
+                          City / Province <span className="text-destructive">*</span>
+                        </Label>
+                        <Input
+                          id="city"
+                          {...register("city", { required: "City is required" })}
+                          defaultValue="Phnom Penh"
+                          placeholder="e.g. Phnom Penh"
+                          className={cn("h-10 rounded-xl border-border/60 text-sm", errors.city && "border-destructive focus-visible:ring-destructive")}
+                        />
+                        {errors.city && <p className="text-[11px] text-destructive">{errors.city.message}</p>}
+                      </div>
+                    </div>
+
                     <div className="space-y-1.5">
-                      <Label htmlFor="address2">Address line 2</Label>
-                      <Input id="address2" {...register("address2")} placeholder="Apt, suite, unit (optional)" className="rounded-xl border-border/60" />
+                      <Label htmlFor="notes" className="text-xs font-semibold text-muted-foreground flex items-center gap-1">
+                        <FileText className="size-3" /> Driver Delivery Notes <span className="text-[10px] font-normal">(Optional)</span>
+                      </Label>
+                      <Textarea
+                        id="notes"
+                        {...register("notes")}
+                        placeholder="e.g. Gate passcode, call upon arrival, leave at reception..."
+                        className="rounded-xl border-border/60 text-sm min-h-[70px] resize-none"
+                      />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="city">City <span className="text-destructive">*</span></Label>
-                      <Input id="city" {...register("city", { required: "City is required" })} placeholder="Phnom Penh" className={cn("rounded-xl border-border/60", errors.city && "border-destructive")} />
-                      {errors.city && <p className="text-xs text-destructive">{errors.city.message}</p>}
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="notes">Delivery notes</Label>
-                      <Textarea id="notes" {...register("notes")} placeholder="Gate code, landmarks, etc." className="rounded-xl border-border/60 min-h-20" />
-                    </div>
+
+                    {watchedAddress1 && (
+                      <div className="flex justify-end pt-1">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowDeliveryDetails(false)}
+                          className="rounded-full text-xs h-8 px-4 font-medium"
+                        >
+                          Done / Collapse Form
+                        </Button>
+                      </div>
+                    )}
                   </div>
-
                 </div>
 
-                <div className="rounded-3xl border border-white/5 bg-card/60 backdrop-blur-xl shadow-lg p-6 sm:p-8">
-                  <h2 className="font-serif text-xl font-bold text-foreground mb-6">Payment method</h2>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
-                    {paymentMethods.map(({ id, label, icon: Icon }) => (
-                      <button
-                        key={id}
-                        type="button"
-                        onClick={() => setPaymentMethod(id)}
-                        className={cn("flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-sm font-semibold transition-colors", paymentMethod === id ? "border-primary bg-primary/10 text-primary" : "border-border/70 text-muted-foreground hover:border-primary/50")}
-                      >
-                        <Icon className="size-6" />
-                        {label}
-                      </button>
-                    ))}
+                {/* 2. Payment Method Section */}
+                <div className="rounded-2xl sm:rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-3.5 sm:p-6 lg:p-7 space-y-3">
+                  <div className="flex items-center gap-2 border-b border-border/40 pb-2.5">
+                    <div className="size-7 sm:size-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                      <CreditCard className="size-4" />
+                    </div>
+                    <div>
+                      <h2 className="font-serif text-sm sm:text-lg font-bold text-foreground leading-tight">
+                        Payment Method
+                      </h2>
+                    </div>
                   </div>
 
-                  {paymentMethod === "CARD" && (
-                    <div className="space-y-3 rounded-2xl border border-border/60 bg-background p-4">
-                      <div className="space-y-1.5">
-                        <Label htmlFor="cardName">Cardholder name</Label>
-                        <Input
-                          id="cardName"
-                          {...register("cardName", { required: paymentMethod === "CARD" })}
-                          placeholder="John Doe"
-                          className="rounded-xl border-border/60"
-                        />
-                      </div>
-                      <div className="space-y-1.5">
-                        <Label htmlFor="cardNumber">Card number</Label>
-                        <Input
-                          id="cardNumber"
-                          inputMode="numeric"
-                          {...register("cardNumber", { required: paymentMethod === "CARD" })}
-                          placeholder="4242 4242 4242 4242"
-                          maxLength={19}
-                          className="rounded-xl border-border/60"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label htmlFor="expiry">Expiry</Label>
-                          <Input
-                            id="expiry"
-                            {...register("expiry", { required: paymentMethod === "CARD" })}
-                            placeholder="MM / YY"
-                            maxLength={7}
-                            className="rounded-xl border-border/60"
-                          />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label htmlFor="cvv">CVV</Label>
-                          <Input
-                            id="cvv"
-                            inputMode="numeric"
-                            {...register("cvv", { required: paymentMethod === "CARD" })}
-                            placeholder="123"
-                            maxLength={4}
-                            className="rounded-xl border-border/60"
-                          />
-                        </div>
-                      </div>
-                      <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                        <Lock className="size-3" /> Your payment details are protected.
-                      </p>
-                    </div>
-                  )}
+                  {/* Payment Methods Grid */}
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3">
+                    {paymentMethods.map(({ id, label, sublabel, badge, icon: Icon }) => {
+                      const isSelected = paymentMethod === id;
+                      return (
+                        <button
+                          key={id}
+                          type="button"
+                          onClick={() => setPaymentMethod(id)}
+                          className={cn(
+                            "relative flex flex-col items-start p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all duration-200 cursor-pointer",
+                            isSelected
+                              ? "border-primary bg-primary/10 shadow-xs ring-2 ring-primary/30 text-primary"
+                              : "border-border/70 bg-secondary/20 hover:border-border hover:bg-secondary/50 text-foreground"
+                          )}
+                        >
+                          {badge && (
+                            <span className="absolute top-1.5 right-1.5 text-[8px] sm:text-[9px] font-bold bg-primary text-white px-1.5 py-0.2 rounded-full uppercase">
+                              {badge}
+                            </span>
+                          )}
+                          <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
+                            <div className={cn("size-6 sm:size-7 rounded-lg flex items-center justify-center shrink-0", isSelected ? "bg-primary text-white" : "bg-secondary text-muted-foreground")}>
+                              <Icon className="size-3.5 sm:size-4" />
+                            </div>
+                            <span className="font-bold text-xs sm:text-sm leading-tight text-foreground">{label}</span>
+                          </div>
+                          <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate w-full">{sublabel}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-                  {paymentMethod === "ABA_PAY" && (
-                    <div className="rounded-2xl border border-border/60 bg-background p-5 text-center">
-                      <Wallet className="mx-auto size-8 text-primary" />
-                      <p className="mt-2 font-semibold text-foreground">Pay with ABA Pay</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        You'll be redirected to scan the QR code.
+                  {/* Payment Details Container */}
+                  <div className="pt-2">
+                    {paymentMethod === "CARD" && (
+                      <div className="space-y-3 rounded-2xl border border-border/60 bg-secondary/20 p-3.5 sm:p-4 animate-in fade-in-50 duration-200">
+                        <div className="space-y-1">
+                          <Label htmlFor="cardName" className="text-xs font-semibold">Cardholder Name</Label>
+                          <Input
+                            id="cardName"
+                            {...register("cardName", { required: paymentMethod === "CARD" })}
+                            placeholder="e.g. Sok Dara"
+                            className="h-9 rounded-xl border-border/60 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label htmlFor="cardNumber" className="text-xs font-semibold">Card Number</Label>
+                          <Input
+                            id="cardNumber"
+                            inputMode="numeric"
+                            {...register("cardNumber", { required: paymentMethod === "CARD" })}
+                            placeholder="4242 4242 4242 4242"
+                            maxLength={19}
+                            className="h-9 rounded-xl border-border/60 text-sm"
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div className="space-y-1">
+                            <Label htmlFor="expiry" className="text-xs font-semibold">Expiry</Label>
+                            <Input
+                              id="expiry"
+                              {...register("expiry", { required: paymentMethod === "CARD" })}
+                              placeholder="MM / YY"
+                              maxLength={7}
+                              className="h-9 rounded-xl border-border/60 text-sm"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label htmlFor="cvv" className="text-xs font-semibold">CVV</Label>
+                            <Input
+                              id="cvv"
+                              inputMode="numeric"
+                              {...register("cvv", { required: paymentMethod === "CARD" })}
+                              placeholder="123"
+                              maxLength={4}
+                          className="h-9 rounded-xl border-border/60 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1 pt-1">
+                        <ShieldCheck className="size-3.5 text-green-500" /> End-to-end 256-bit encrypted checkout.
                       </p>
                     </div>
                   )}
 
                   {paymentMethod === "KHQR" && (
-                    <div className="rounded-2xl border border-border/60 bg-background p-5 text-center">
-                      <QrCode className="mx-auto size-12 text-primary" />
-                      <p className="mt-2 font-semibold text-foreground">Scan with any KHQR app</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        You'll be redirected to scan the QR code.
-                      </p>
+                    <div className="rounded-2xl border border-primary/25 bg-gradient-to-b from-primary/10 to-primary/5 p-4 sm:p-5 text-center animate-in fade-in-50 duration-200 flex flex-col items-center">
+                      {isPaymentVerified ? (
+                        <div className="py-4 sm:py-6 flex flex-col items-center text-center space-y-2.5">
+                          <div className="size-14 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center shadow-md shadow-green-500/20">
+                            <CheckCircle2 className="size-8" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm sm:text-base text-green-600 dark:text-green-400">
+                              ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ!
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                              Payment Verified (${total.toFixed(2)} USD) • សូមចុច Place Order ដើម្បីបញ្ចប់
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="size-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
+                              <QrCode className="size-4" />
+                            </div>
+                            <span className="font-bold text-xs sm:text-sm text-foreground">
+                              Scan & Pay with KHQR / Bakong
+                            </span>
+                          </div>
+
+                          {/* Live KHQR Code Canvas */}
+                          <div className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center mb-3 relative group overflow-hidden">
+                            {qrCodeString ? (
+                              <QRCodeCanvas
+                                value={qrCodeString}
+                                size={160}
+                                level="H"
+                                includeMargin={true}
+                              />
+                            ) : (
+                              <div className="size-40 flex items-center justify-center bg-secondary/50 rounded-xl">
+                                <Loader2 className="size-6 animate-spin text-primary" />
+                              </div>
+                            )}
+
+                            {/* Subtle scan bar animation */}
+                            {qrCodeString && (
+                              <motion.div
+                                className="absolute top-3.5 left-3.5 h-0.5 bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)] rounded-full z-10 pointer-events-none"
+                                style={{ width: "160px" }}
+                                animate={{ y: [0, 160, 0] }}
+                                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                              />
+                            )}
+                          </div>
+
+                          <div className="space-y-1 mb-2.5">
+                            <p className="font-serif font-bold text-base sm:text-lg text-primary">
+                              ${total.toFixed(2)} USD
+                            </p>
+                            <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                              Scan with any Cambodian banking app (Bakong, ABA Mobile, ACLEDA, Canadia, Wing) to pay.
+                            </p>
+                          </div>
+
+                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">
+                            <Loader2 className="size-3.5 animate-spin text-primary" />
+                            <span>ប្រព័ន្ធកំពុងស្វែងរកការបាញ់លុយស្វ័យប្រវត្តិ...</span>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {paymentMethod === "ABA_PAY" && (
+                    <div className="rounded-2xl border border-blue-500/25 bg-blue-500/5 p-4 sm:p-5 text-center animate-in fade-in-50 duration-200 flex flex-col items-center">
+                      {isPaymentVerified ? (
+                        <div className="py-4 sm:py-6 flex flex-col items-center text-center space-y-2.5">
+                          <div className="size-14 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center shadow-md shadow-green-500/20">
+                            <CheckCircle2 className="size-8 animate-in zoom-in" />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm sm:text-base text-green-600 dark:text-green-400">
+                              ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ!
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
+                              ABA Pay Verified (${total.toFixed(2)} USD) • កំពុងបញ្ចប់ការកុម្ម៉ង់ស្វ័យប្រវត្តិ...
+                            </p>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div className="size-7 rounded-lg bg-blue-500/15 text-blue-500 flex items-center justify-center">
+                              <Wallet className="size-4" />
+                            </div>
+                            <span className="font-bold text-xs sm:text-sm text-foreground">
+                              Pay via ABA Mobile (KHQR)
+                            </span>
+                          </div>
+
+                          {/* Live KHQR Code Canvas */}
+                          <div className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center mb-3 relative">
+                            {qrCodeString ? (
+                              <QRCodeCanvas
+                                value={qrCodeString}
+                                size={160}
+                                level="H"
+                                includeMargin={true}
+                              />
+                            ) : (
+                              <div className="size-40 flex items-center justify-center bg-secondary/50 rounded-xl">
+                                <Loader2 className="size-6 animate-spin text-blue-500" />
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="space-y-1 mb-2.5">
+                            <p className="font-serif font-bold text-base sm:text-lg text-foreground">
+                              ${total.toFixed(2)} USD
+                            </p>
+                            <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                              Open ABA Mobile app, tap <b>Scan QR</b> and scan this code to complete payment.
+                            </p>
+                          </div>
+
+                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-500 animate-pulse">
+                            <Loader2 className="size-3.5 animate-spin text-blue-500" />
+                            <span>កំពុងរង់ចាំការបាញ់លុយស្វ័យប្រវត្តិ...</span>
+                          </div>
+                        </>
+                      )}
                     </div>
                   )}
 
                   {paymentMethod === "CASH" && (
-                    <div className="rounded-2xl border border-border/60 bg-background p-5 text-center">
-                      <Landmark className="mx-auto size-8 text-primary" />
-                      <p className="mt-2 font-semibold text-foreground">Cash on delivery</p>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Please prepare the exact amount when your order arrives.
+                    <div className="rounded-2xl border border-border/60 bg-secondary/20 p-4 text-center animate-in fade-in-50 duration-200">
+                      <div className="size-10 rounded-full bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
+                        <Landmark className="size-5" />
+                      </div>
+                      <p className="font-bold text-xs sm:text-sm text-foreground">Cash on Delivery</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Please prepare exact change of <span className="font-bold text-foreground">${total.toFixed(2)}</span> when your driver arrives.
                       </p>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="lg:sticky lg:top-32 lg:self-start">
-                <div className="rounded-3xl border border-white/5 bg-card/80 backdrop-blur-2xl shadow-xl p-6 sm:p-8 space-y-6">
-                  <h2 className="font-serif text-xl font-bold text-foreground">Order summary</h2>
-                  <div className="space-y-3 max-h-64 overflow-y-auto">
+                {/* 3. Promo Code Section */}
+                <div className="rounded-2xl sm:rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-3.5 sm:p-6 space-y-3">
+                  <div className="flex items-center justify-between border-b border-border/40 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <div className="size-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <Ticket className="size-3.5" />
+                      </div>
+                      <h3 className="text-xs sm:text-sm font-bold text-foreground">Promo Code & Coupons</h3>
+                    </div>
+
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        fetchCoupons();
+                        setShowCouponModal(true);
+                      }}
+                      className="rounded-full text-xs h-7 px-3 border-primary/30 text-primary hover:bg-primary/10 font-semibold"
+                    >
+                      <Ticket className="size-3.5 mr-1" />
+                      Browse Coupons
+                    </Button>
+                  </div>
+
+                  {coupon ? (
+                    <div className="flex items-center justify-between p-3 rounded-2xl bg-green-500/10 border border-green-500/30 gap-2">
+                      <div className="flex items-center gap-2 text-green-700 dark:text-green-400 min-w-0 flex-1">
+                        <CheckCircle2 className="size-4 shrink-0" />
+                        <span className="font-bold text-xs sm:text-sm truncate">
+                          {coupon.code} applied (
+                          {coupon.discount_type === "FREE_DELIVERY"
+                            ? "Free Delivery"
+                            : coupon.discount_type === "PERCENTAGE"
+                              ? `${coupon.discount_value}% OFF`
+                              : `-$${discount.toFixed(2)}`}
+                          )
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            fetchCoupons();
+                            setShowCouponModal(true);
+                          }}
+                          className="rounded-full text-xs h-7 px-2.5 text-primary hover:bg-primary/10 font-semibold"
+                        >
+                          Change
+                        </Button>
+                        <button
+                          type="button"
+                          onClick={() => removeCoupon()}
+                          className="p-1.5 hover:bg-green-500/20 rounded-full text-green-700 dark:text-green-300 transition-colors"
+                          title="Remove coupon"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      <div className="flex gap-2">
+                        <Input
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value)}
+                          placeholder="Enter voucher code..."
+                          className="h-9 rounded-xl border-border/60 text-xs sm:text-sm uppercase"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleApplyCoupon}
+                          disabled={!couponCode.trim() || isApplyingCoupon}
+                          className="h-9 rounded-xl px-4 text-xs font-semibold shrink-0"
+                        >
+                          {isApplyingCoupon ? <Loader2 className="size-3.5 animate-spin" /> : "Apply"}
+                        </Button>
+                      </div>
+                      {couponError && <p className="text-[11px] text-destructive">{couponError}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Desktop Sticky Order Summary Column */}
+              <div className="hidden lg:block lg:sticky lg:top-28 lg:self-start">
+                <div className="rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-sm p-6 space-y-5">
+                  <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                    <h3 className="font-serif text-lg font-bold text-foreground">Order Summary</h3>
+                    <span className="text-xs bg-secondary px-2.5 py-0.5 rounded-full font-semibold text-muted-foreground">
+                      {itemCount} items
+                    </span>
+                  </div>
+
+                  {/* Items List */}
+                  <div className="space-y-3 max-h-60 overflow-y-auto pr-1">
                     {lines.map((line) => (
-                      <div key={line.id} className="flex gap-3">
-                        <div className="size-14 rounded-xl overflow-hidden flex-shrink-0 bg-secondary">
-                          <img src={line.image} alt={line.name} className="w-full h-full object-cover" />
-                        </div>
+                      <div key={line.id} className="flex items-center gap-3">
+                        <img
+                          src={line.image}
+                          alt={line.name}
+                          className="size-12 rounded-xl object-cover bg-secondary shrink-0 border border-border/40"
+                        />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{line.name}</p>
-                          <p className="text-xs text-muted-foreground">Qty: {line.qty}</p>
+                          <p className="text-xs font-semibold text-foreground truncate">{line.name}</p>
+                          <p className="text-[11px] text-muted-foreground">Qty: {line.qty} × ${line.price.toFixed(2)}</p>
                         </div>
-                        <span className="text-sm font-semibold text-foreground flex-shrink-0">${(line.price * line.qty).toFixed(2)}</span>
+                        <span className="text-xs font-bold text-foreground shrink-0">
+                          ${(line.price * line.qty).toFixed(2)}
+                        </span>
                       </div>
                     ))}
                   </div>
 
-                  <div className="pt-4 border-t border-border/60">
-                    <h3 className="text-sm font-semibold text-foreground mb-3">Promo Code</h3>
-                    {coupon ? (
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-green-500/10 border border-green-500/20">
-                        <div className="flex items-center gap-2 text-green-600">
-                          <Ticket className="size-4" />
-                          <span className="font-semibold text-sm">{coupon.code} applied</span>
-                        </div>
-                        <button onClick={() => removeCoupon()} className="p-1 hover:bg-green-500/20 rounded-full text-green-700">
-                          <X className="size-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <form onSubmit={handleApplyCoupon} className="flex gap-2">
-                        <Input value={couponCode} onChange={(e) => setCouponCode(e.target.value)} placeholder="Enter code..." className="rounded-xl border-border/60" />
-                        <Button type="submit" disabled={!couponCode || isApplyingCoupon} className="rounded-xl">
-                          {isApplyingCoupon ? <Loader2 className="size-4 animate-spin" /> : "Apply"}
-                        </Button>
-                      </form>
-                    )}
-                    {couponError && <p className="text-xs text-destructive mt-2">{couponError}</p>}
-                    {!coupon && (
-                      <AvailableCoupons 
-                        subtotal={grossSubtotal} 
-                        onSelectCoupon={(selectedCoupon) => {
-                          applyCoupon(selectedCoupon);
-                          setCouponCode("");
-                          setCouponError("");
-                          toast.success(`Coupon "${selectedCoupon.code}" applied!`);
-                        }} 
-                      />
-                    )}
-                  </div>
-
-                  <div className="border-t border-border/60 pt-4 space-y-2 text-sm">
-                    <div className="flex justify-between text-foreground/80">
+                  {/* Cost breakdown */}
+                  <div className="border-t border-border/60 pt-4 space-y-2 text-xs">
+                    <div className="flex justify-between text-muted-foreground">
                       <span>Subtotal</span>
-                      <span className="font-medium text-foreground">${grossSubtotal.toFixed(2)}</span>
+                      <span className="font-semibold text-foreground">${grossSubtotal.toFixed(2)}</span>
                     </div>
                     {coupon && (
-                      <div className="flex justify-between text-green-600">
-                        <span>Discount</span>
-                        <span className="font-medium">-${discount.toFixed(2)}</span>
+                      <div className="flex justify-between text-green-600 dark:text-green-400 font-semibold">
+                        <span>Discount ({coupon.code})</span>
+                        <span>-${discount.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between text-foreground/80">
-                      <span>Delivery fee</span>
-                      <span className={cn("font-medium", deliveryFee === 0 ? "text-green-600" : "text-foreground")}>
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>Delivery Fee</span>
+                      <span className={cn("font-semibold", deliveryFee === 0 ? "text-green-600 dark:text-green-400" : "text-foreground")}>
                         {deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`}
                       </span>
                     </div>
                   </div>
 
+                  {/* Total */}
                   <div className="flex justify-between items-baseline pt-3 border-t border-border/60">
-                    <span className="font-serif text-lg font-bold text-foreground">Total</span>
+                    <div>
+                      <span className="font-serif text-base font-bold text-foreground">Total</span>
+                      <p className="text-[10px] text-muted-foreground">Taxes & fees included</p>
+                    </div>
                     <span className="font-serif text-2xl font-bold text-primary">${total.toFixed(2)}</span>
+                  </div>
+
+                  {/* Submit Button */}
+                  <Button
+                    type="submit"
+                    disabled={submitting}
+                    className={cn(
+                      "w-full h-12 rounded-full font-bold text-sm transition-all duration-200 shadow-md",
+                      isPaymentVerified
+                        ? "bg-green-600 hover:bg-green-700 text-white shadow-green-600/25"
+                        : "bg-gradient-to-r from-primary to-orange-500 text-white shadow-primary/25 hover:shadow-primary/40 hover:scale-[1.01]"
+                    )}
+                  >
+                    {submitting ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="size-4 animate-spin" />
+                        Placing Order...
+                      </span>
+                    ) : isPaymentVerified ? (
+                      <span className="flex items-center gap-1.5">
+                        <CheckCircle2 className="size-4" />
+                        Complete Order (Paid ✓)
+                        <ArrowRight className="size-4 ml-1" />
+                      </span>
+                    ) : paymentMethod === "CASH" ? (
+                      <>
+                        Place Order (Pay on Delivery)
+                        <ArrowRight className="size-4 ml-1.5" />
+                      </>
+                    ) : (
+                      <>
+                        Verify & Place Order
+                        <ArrowRight className="size-4 ml-1.5" />
+                      </>
+                    )}
+                  </Button>
+
+                  <p className="text-center text-[10px] text-muted-foreground flex items-center justify-center gap-1">
+                    <ShieldCheck className="size-3.5 text-primary" /> 100% Safe & Secure Checkout
+                  </p>
+                </div>
+              </div>
+
+              {/* Mobile Fixed Sticky Bottom Action Bar */}
+              <div className="lg:hidden fixed bottom-0 inset-x-0 bg-background/95 backdrop-blur-xl border-t border-border/80 p-3.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] z-50 shadow-2xl">
+                <div className="max-w-md mx-auto flex items-center justify-between gap-3">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
+                      Total ({itemCount} {itemCount === 1 ? "item" : "items"})
+                    </span>
+                    <span className="font-serif text-xl font-bold text-primary leading-none">
+                      ${total.toFixed(2)}
+                    </span>
                   </div>
 
                   <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full h-14 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white hover:shadow-xl hover:shadow-primary/30 hover:scale-[1.02] transition-all duration-300 text-lg font-bold"
+                    className={cn(
+                      "flex-1 max-w-[220px] h-12 rounded-full font-bold text-sm shadow-md active:scale-95 transition-all",
+                      isPaymentVerified
+                        ? "bg-green-600 text-white hover:bg-green-700 shadow-green-600/25"
+                        : "bg-gradient-to-r from-primary to-orange-500 text-white shadow-primary/25 hover:shadow-primary/40"
+                    )}
                   >
                     {submitting ? (
-                      <span className="flex items-center gap-2">
-                        <span className="size-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="size-4 animate-spin" />
                         Processing...
                       </span>
+                    ) : isPaymentVerified ? (
+                      <span className="flex items-center gap-1">
+                        <CheckCircle2 className="size-4" />
+                        Order (Paid ✓)
+                        <ArrowRight className="size-4 ml-1" />
+                      </span>
+                    ) : paymentMethod === "CASH" ? (
+                      <span className="flex items-center gap-1">
+                        Place Order
+                        <ArrowRight className="size-4 ml-1" />
+                      </span>
                     ) : (
-                      <>
-                        Place order
-                        <ArrowRight className="size-5 ml-1" />
-                      </>
+                      <span className="flex items-center gap-1">
+                        Verify & Order
+                        <ArrowRight className="size-4 ml-1" />
+                      </span>
                     )}
                   </Button>
-                  <p className="text-center text-[11px] text-muted-foreground">
-                    🔒 Secure checkout · Estimated delivery 25–35 min
-                  </p>
                 </div>
               </div>
             </form>
           </div>
         </PageTransition>
       </main>
-      <Footer />
+
+      {/* Saved Addresses Selection Modal */}
+      <Dialog open={showAddressPickerModal} onOpenChange={setShowAddressPickerModal}>
+        <DialogContent className="max-w-md w-[92vw] rounded-3xl p-5 border-border/60">
+          <DialogHeader className="pb-3 border-b border-border/60">
+            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
+              <Building className="size-5 text-primary" /> Select Delivery Address
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2.5 py-2 max-h-[55vh] overflow-y-auto no-scrollbar">
+            {savedAddresses.map((addr) => {
+              const isSelected = selectedAddressId === addr.id;
+              return (
+                <div
+                  key={addr.id}
+                  onClick={() => {
+                    handleSelectAddress(addr);
+                    setShowAddressPickerModal(false);
+                  }}
+                  className={cn(
+                    "cursor-pointer rounded-2xl p-3.5 border transition-all text-left relative flex items-start gap-3",
+                    isSelected
+                      ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                      : "border-border/60 bg-secondary/30 hover:border-border hover:bg-secondary/60"
+                  )}
+                >
+                  <div className={cn("size-5 rounded-full border flex items-center justify-center shrink-0 mt-0.5", isSelected ? "border-primary bg-primary text-white" : "border-muted-foreground/40")}>
+                    {isSelected && <CheckCircle2 className="size-3.5 text-white" />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-xs sm:text-sm text-foreground truncate">{addr.label || "Delivery Address"}</span>
+                      {addr.is_default && (
+                        <span className="text-[9px] bg-primary/15 text-primary px-1.5 py-0.2 rounded font-bold uppercase">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{addr.address_line}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div className="pt-2 border-t border-border/60 flex justify-end">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                setShowAddressPickerModal(false);
+                setShowDeliveryDetails(true);
+              }}
+              className="rounded-full text-xs text-primary font-semibold hover:bg-primary/10"
+            >
+              + Enter Custom Address
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Map Picker Modal */}
+      <Dialog open={showMapModal} onOpenChange={setShowMapModal}>
+        <DialogContent className="max-w-lg w-[94vw] rounded-3xl p-5 border-border/60">
+          <DialogHeader className="pb-2 border-b border-border/60">
+            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
+              <MapPin className="size-5 text-primary" /> Pin Delivery Location
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <MapPicker
+              onConfirm={(loc) => {
+                if (loc.address) setValue("address1", loc.address);
+                if (loc.city) setValue("city", loc.city);
+                setShowMapModal(false);
+                toast.success("Location pinned from map!");
+              }}
+              onClose={() => setShowMapModal(false)}
+            />
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Available Coupons Selection Modal */}
+      <Dialog open={showCouponModal} onOpenChange={setShowCouponModal}>
+        <DialogContent className="max-w-md w-[92vw] rounded-3xl p-5 border-border/60">
+          <DialogHeader className="pb-3 border-b border-border/60">
+            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
+              <Ticket className="size-5 text-primary" /> Select Available Coupon
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col gap-2.5 py-2 max-h-[55vh] overflow-y-auto no-scrollbar">
+            {loadingCoupons ? (
+              <div className="py-8 flex justify-center">
+                <Loader2 className="size-6 animate-spin text-primary" />
+              </div>
+            ) : allCoupons.length > 0 ? (
+              allCoupons.map((c) => {
+                const isSelected = coupon?.id === c.id;
+                const minOrder = Number(c.min_order_amount || 0);
+                const isMinOrderNotMet = grossSubtotal > 0 && minOrder > 0 && grossSubtotal < minOrder;
+
+                return (
+                  <div
+                    key={c.id}
+                    className={cn(
+                      "rounded-2xl p-3.5 border transition-all flex items-center justify-between gap-3",
+                      isSelected
+                        ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                        : isMinOrderNotMet
+                          ? "border-border/40 bg-muted/20 opacity-70"
+                          : "border-border/60 bg-secondary/30 hover:border-primary/50 hover:bg-secondary/60 cursor-pointer"
+                    )}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-sm text-foreground">{c.code}</span>
+                        <span className="text-[10px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold uppercase">
+                          {c.discount_type === "FREE_DELIVERY"
+                            ? "Free Delivery"
+                            : c.discount_type === "PERCENTAGE"
+                              ? `${c.discount_value}% OFF`
+                              : `$${c.discount_value} OFF`}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {c.description || (c.discount_type === "FREE_DELIVERY" ? "Free delivery on your order" : `Get discount on your pizza order`)}
+                      </p>
+                      {minOrder > 0 && (
+                        <p className={cn("text-[10px] mt-0.5", isMinOrderNotMet ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground")}>
+                          Min order: ${minOrder.toFixed(2)} {isMinOrderNotMet && `(Need $${(minOrder - grossSubtotal).toFixed(2)} more)`}
+                        </p>
+                      )}
+                    </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      disabled={isMinOrderNotMet || isSelected}
+                      onClick={() => {
+                        applyCoupon(c);
+                        setShowCouponModal(false);
+                        toast.success(`Coupon "${c.code}" applied!`);
+                      }}
+                      className={cn(
+                        "rounded-full text-xs h-8 px-3 font-semibold shrink-0",
+                        isSelected
+                          ? "bg-green-600 text-white hover:bg-green-600"
+                          : "bg-primary text-white hover:bg-primary/90"
+                      )}
+                    >
+                      {isSelected ? "Applied ✓" : "Apply"}
+                    </Button>
+                  </div>
+                );
+              })
+            ) : (
+              <p className="text-center py-6 text-sm text-muted-foreground">
+                No active coupons available right now.
+              </p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

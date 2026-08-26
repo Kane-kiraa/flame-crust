@@ -40,8 +40,8 @@ export function MobileBottomNav() {
     };
   }, []);
 
-  // Hide on admin, driver, and kitchen routes, or login page
-  const hidePaths = ["/admin", "/driver", "/kitchen", "/login"];
+  // Hide on admin, driver, kitchen, login, and checkout/payment flow routes
+  const hidePaths = ["/admin", "/driver", "/kitchen", "/login", "/checkout", "/payment", "/order-confirmation", "/track"];
   if (hidePaths.some((p) => location.pathname.startsWith(p))) {
     return null;
   }
@@ -148,7 +148,7 @@ export function MobileBottomNav() {
                 />
               )}
             </motion.div>
-            <span className="text-[11px] leading-none tracking-tight">Carts</span>
+            <span className="text-[11px] leading-none tracking-tight">Cart</span>
           </Link>
 
           {/* 5. Account / Profile */}

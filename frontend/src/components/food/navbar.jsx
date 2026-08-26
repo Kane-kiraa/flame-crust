@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike } from "lucide-react";
+import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCart } from "@/lib/cart-store";
@@ -12,11 +12,23 @@ import { SearchModal } from "./search-modal";
 import { fetchCategories } from "@/lib/food-api";
 
 
+let cachedActiveOrders = [];
+try {
+  const stored = localStorage.getItem("flame_active_orders_cache");
+  if (stored) cachedActiveOrders = JSON.parse(stored);
+} catch (e) {}
+
+let cachedCategories = [];
+try {
+  const stored = localStorage.getItem("flame_categories_cache");
+  if (stored) cachedCategories = JSON.parse(stored);
+} catch (e) {}
+
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(cachedCategories);
   const [customer, setCustomer] = useState(() => {
     try {
       const auth = localStorage.getItem("customerAuth");
@@ -41,23 +53,33 @@ function Navbar() {
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
   const openCart = useCart((s) => s.openCart);
 
-  const [activeOrders, setActiveOrders] = useState([]);
+  const [activeOrders, setActiveOrders] = useState(cachedActiveOrders);
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
 
   useEffect(() => {
     const checkActiveOrders = async () => {
       try {
         const stored = localStorage.getItem("customerAuth");
-        if (!stored) { setActiveOrders([]); return; }
+        if (!stored) {
+          cachedActiveOrders = [];
+          localStorage.removeItem("flame_active_orders_cache");
+          setActiveOrders([]);
+          return;
+        }
         const c = JSON.parse(stored);
         const { list } = await import("@/lib/api");
         const orders = await list("orders");
         const activeList = orders
           .filter(o => String(o.customer_id) === String(c.id) && o.status !== "DELIVERED" && o.status !== "CANCELLED")
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+        
+        cachedActiveOrders = activeList;
+        try {
+          localStorage.setItem("flame_active_orders_cache", JSON.stringify(activeList));
+        } catch (e) {}
         setActiveOrders(activeList);
       } catch (e) {
-        setActiveOrders([]);
+        // preserve cached if network error
       }
     };
 
@@ -166,6 +188,10 @@ function Navbar() {
     fetchCategories()
       .then((data) => {
         if (active && Array.isArray(data) && data.length > 0) {
+          cachedCategories = data;
+          try {
+            localStorage.setItem("flame_categories_cache", JSON.stringify(data));
+          } catch (e) {}
           setCategories(data);
         }
       })
@@ -173,7 +199,7 @@ function Navbar() {
     return () => {
       active = false;
     };
-  }, [location.pathname]);
+  }, []);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -225,12 +251,26 @@ function Navbar() {
         "fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b border-transparent pt-[env(safe-area-inset-top)]",
         mobileOpen
           ? "bg-background/90 backdrop-blur-2xl border-border/60 shadow-2xl"
-          : "bg-transparent backdrop-blur-none"
+          : scrolled || location.pathname === "/cart"
+            ? "bg-background/90 backdrop-blur-xl border-border/40 shadow-xs"
+            : "bg-transparent backdrop-blur-none"
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">
-          <div className="flex items-center justify-start shrink-0 gap-2">
+          <div className="flex items-center justify-start shrink-0 gap-1.5 sm:gap-2">
+            {location.pathname === "/checkout" ? (
+              <button
+                type="button"
+                onClick={() => navigate("/cart")}
+                className="size-8 sm:size-9 rounded-full bg-secondary/80 hover:bg-secondary flex items-center justify-center text-foreground transition-all cursor-pointer mr-0.5"
+                title="Back to Cart"
+                aria-label="Back to Cart"
+              >
+                <ArrowLeft className="size-4 sm:size-4.5" />
+              </button>
+            ) : null}
+
             <Link to="/" className="flex items-center group" onClick={() => setMobileOpen(false)}>
               <img
                 src="/images/library/logo.jpg"
@@ -239,47 +279,45 @@ function Navbar() {
               />
             </Link>
 
-            {/* Active Orders Compact Icon Badge with Motion Animation */}
+            {/* Active Orders Compact Icon Badge (Clean & Static) */}
             {activeOrders.length > 0 && (
-              <motion.button
+              <button
                 type="button"
-                whileHover={{ scale: 1.06 }}
-                whileTap={{ scale: 0.92 }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: "spring", stiffness: 400, damping: 25 }}
                 onClick={() => {
                   if (activeOrders.length === 1) navigate(`/track/${activeOrders[0].id}`);
                   else setOrdersModalOpen(true);
                 }}
-                className="flex items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/40 ring-2 ring-primary/20 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-all shrink-0 cursor-pointer shadow-xs relative group"
+                className={cn(
+                  "items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/40 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-colors shrink-0 cursor-pointer shadow-xs relative group",
+                  location.pathname === "/cart" || location.pathname === "/profile" || location.pathname === "/checkout" ? "hidden sm:flex" : "flex"
+                )}
                 title={activeOrders.length === 1 ? `Order #${activeOrders[0].order_number}` : `${activeOrders.length} Active Orders`}
               >
-                <span className="relative flex size-2 shrink-0">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full size-2 bg-green-500"></span>
-                </span>
-                <motion.div 
-                  animate={{ rotate: [0, 8, -8, 0] }} 
-                  transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                >
-                  <Package className="size-4 group-hover:scale-110 transition-transform" />
-                </motion.div>
+                <span className="size-2 rounded-full bg-green-500 shrink-0" />
+                <Package className="size-4 shrink-0" />
                 <span className="hidden sm:inline font-bold">
                   {activeOrders.length === 1 ? `#${activeOrders[0].order_number}` : `${activeOrders.length} Orders`}
                 </span>
                 {activeOrders.length > 1 && (
-                  <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className="sm:hidden absolute -top-1 -right-1 text-[9px] bg-primary text-primary-foreground font-bold size-4 rounded-full flex items-center justify-center border border-background shadow-xs"
-                  >
+                  <span className="sm:hidden absolute -top-1 -right-1 text-[9px] bg-primary text-primary-foreground font-bold size-4 rounded-full flex items-center justify-center border border-background shadow-xs">
                     {activeOrders.length}
-                  </motion.span>
+                  </span>
                 )}
-              </motion.button>
+              </button>
             )}
           </div>
+
+          {/* Mobile Page Titles in Top Navbar (Hidden when menu open or search focused) */}
+          {(location.pathname === "/cart" || location.pathname === "/profile" || location.pathname === "/checkout") && !searchFocused && !mobileOpen && (
+            <div 
+              key={location.pathname}
+              className="sm:hidden flex-1 flex items-center justify-center text-center pointer-events-none px-2"
+            >
+              <span className="font-serif font-bold text-base sm:text-lg text-foreground tracking-tight truncate">
+                {location.pathname === "/cart" ? "Your Cart" : location.pathname === "/profile" ? "Account" : "Checkout"}
+              </span>
+            </div>
+          )}
 
           {/* Centered Top Navbar Search Input (Shown only when triggered/searchFocused) */}
           <AnimatePresence>
@@ -504,37 +542,51 @@ function Navbar() {
               transition={{ duration: 0.15, ease: "easeOut" }}
               className="lg:hidden overflow-hidden border-t border-border/60"
             >
-              <div className="flex flex-col py-3 px-2 gap-1 max-h-[75vh] overflow-y-auto no-scrollbar">
+              <div className="flex flex-col py-3 px-2 gap-1.5 max-h-[75vh] overflow-y-auto no-scrollbar">
                 {/* Mobile User Card */}
-                {customer && (
+                {customer ? (
                   <div 
                     onClick={() => { setMobileOpen(false); navigate("/profile"); }}
-                    className="p-3 mb-2 rounded-2xl bg-secondary/50 border border-border/60 flex items-center justify-between cursor-pointer hover:bg-secondary transition-colors"
+                    className="p-3 mb-1 rounded-2xl bg-secondary/60 hover:bg-secondary border border-border/50 flex items-center justify-between cursor-pointer transition-all active:scale-[0.99]"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="size-11 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/40 shrink-0">
+                      <div className="size-11 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/30 shrink-0">
                         {customer.avatar ? (
                           <img src={customer.avatar} alt="Profile" className="size-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <User className="size-5 text-primary" />
                         )}
                       </div>
-                      <div>
-                        <p className="font-bold text-sm text-foreground">{customer.name || "Customer"}</p>
-                        <p className="text-xs text-muted-foreground">{customer.phone || customer.email}</p>
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-foreground truncate">{customer.name || "Customer"}</p>
+                        <p className="text-xs text-muted-foreground truncate">{customer.phone || customer.email}</p>
                       </div>
                     </div>
-                    <Button variant="ghost" size="sm" className="rounded-full text-xs text-primary font-semibold">
+                    <span className="text-xs text-primary font-semibold px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 shrink-0">
                       Settings
+                    </span>
+                  </div>
+                ) : location.pathname !== "/login" ? (
+                  <div className="p-3 mb-1 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-sm text-foreground">Welcome to Flame & Crust</p>
+                      <p className="text-xs text-muted-foreground">Sign in to manage orders</p>
+                    </div>
+                    <Button 
+                      size="sm"
+                      className="rounded-full bg-primary text-primary-foreground font-semibold text-xs px-4"
+                      onClick={() => { setMobileOpen(false); navigate("/login"); }}
+                    >
+                      Sign In
                     </Button>
                   </div>
-                )}
+                ) : null}
 
                 {isAdmin && (
                   <Link
                     to="/admin/dashboard"
                     onClick={() => setMobileOpen(false)}
-                    className="px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-between mb-1"
+                    className="px-4 py-2.5 text-sm font-semibold rounded-xl transition-colors bg-primary/10 text-primary hover:bg-primary/20 flex items-center justify-between"
                   >
                     <div className="flex items-center gap-2.5">
                       <LayoutDashboard className="size-4 text-primary" />
@@ -546,55 +598,39 @@ function Navbar() {
                   </Link>
                 )}
 
-                {navLinks.map((l) => (
-                  <Link
-                    key={l.label}
-                    to={l.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={cn(
-                      "px-4 py-2.5 text-sm font-medium rounded-xl transition-colors",
-                      isLinkActive(l)
-                        ? "text-primary bg-primary/10 font-semibold"
-                        : "text-foreground/80 hover:text-primary hover:bg-secondary/60"
-                    )}
-                  >
-                    {l.label}
-                  </Link>
-                ))}
+                <div className="space-y-0.5">
+                  {navLinks.map((l) => (
+                    <Link
+                      key={l.label}
+                      to={l.href}
+                      onClick={() => setMobileOpen(false)}
+                      className={cn(
+                        "px-4 py-2.5 text-sm font-medium rounded-xl transition-colors flex items-center justify-between",
+                        isLinkActive(l)
+                          ? "text-primary bg-primary/10 font-semibold"
+                          : "text-foreground/80 hover:text-primary hover:bg-secondary/60"
+                      )}
+                    >
+                      <span>{l.label}</span>
+                      {isLinkActive(l) && <div className="size-1.5 rounded-full bg-primary" />}
+                    </Link>
+                  ))}
+                </div>
                 
-                <div className="h-px bg-border/60 my-1 mx-4" />
+                <div className="h-px bg-border/60 my-1 mx-2" />
                 
                 {/* Theme Switcher in Mobile Drawer */}
                 <button
                   type="button"
                   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                  className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-foreground/80 hover:text-primary hover:bg-secondary/60 flex items-center justify-between"
+                  className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-foreground/80 hover:text-primary hover:bg-secondary/60 flex items-center justify-between cursor-pointer"
                 >
                   <span className="flex items-center gap-2">
                     {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4 text-indigo-400" />}
-                    <span>{theme === "dark" ? "Light Mode" : "Dark Mode"}</span>
+                    <span>{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
                   </span>
                   <span className="text-xs text-muted-foreground capitalize">{theme} mode</span>
                 </button>
-
-                {customer ? (
-                  <Link
-                    to="/profile"
-                    onClick={() => setMobileOpen(false)}
-                    className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-foreground/80 hover:text-primary hover:bg-secondary/60 flex items-center gap-2"
-                  >
-                    <User className="size-4" />
-                    Profile & Settings
-                  </Link>
-                ) : location.pathname !== "/login" ? (
-                  <Link
-                    to="/login"
-                    onClick={() => setMobileOpen(false)}
-                    className="px-4 py-2.5 text-sm font-medium rounded-xl transition-colors text-foreground/80 hover:text-primary hover:bg-secondary/60 flex items-center gap-2"
-                  >
-                    Sign In
-                  </Link>
-                ) : null}
               </div>
             </motion.nav>
           )}
