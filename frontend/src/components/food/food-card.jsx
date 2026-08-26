@@ -47,9 +47,6 @@ function FoodCard({ item, index = 0 }) {
     }));
 
     addItem(item);
-    toast.success(`${item.name} added to cart`, {
-      description: inCart ? `Now ${inCart.qty + 1} in your order` : "Tap the cart icon to checkout"
-    });
   };
 
   return (

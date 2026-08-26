@@ -255,6 +255,7 @@ function Navbar() {
             ? "bg-background border-border/40 shadow-xs"
             : "bg-background sm:bg-transparent"
       )}
+      style={{ backdropFilter: "none", WebkitBackdropFilter: "none" }}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">

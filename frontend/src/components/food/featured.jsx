@@ -63,11 +63,7 @@ export function Featured() {
       })
     );
 
-    const inCart = lines.find((l) => l.id === item.id);
     addItem(item);
-    toast.success(`${item.name} added to cart`, {
-      description: inCart ? `Now ${inCart.qty + 1} in your order` : "Tap the cart icon to checkout"
-    });
   };
 
   return (

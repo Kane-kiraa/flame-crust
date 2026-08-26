@@ -152,9 +152,6 @@ function ProductDetailPage() {
     };
 
     addItem(productWithVariants, qty);
-    toast.success(`${product.name} added to cart`, {
-      description: qty > 1 ? `${qty} items in your order` : "Tap the cart icon to checkout",
-    });
     setQty(1);
   };
 
