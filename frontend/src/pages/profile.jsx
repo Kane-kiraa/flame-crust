@@ -31,7 +31,13 @@ import {
   Moon,
   Sparkles,
   Flame,
-  Award
+  Award,
+  Loader2,
+  Pencil,
+  Star,
+  Building2,
+  Navigation2,
+  ExternalLink
 } from "lucide-react";
 import ImageUpload from "@/components/ImageUpload";
 import { Button } from "@/components/ui/button";
@@ -41,7 +47,7 @@ import { CartDrawer } from "@/components/food/cart-drawer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
-import { list, create, update, get } from "@/lib/api";
+import { list, create, update, get, remove } from "@/lib/api";
 import { fetchDashboard, getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -68,6 +74,7 @@ export default function ProfilePage() {
   const [coupons, setCoupons] = useState([]);
   const [settingsForm, setSettingsForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", oldPassword: "" });
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
   
   // OTP Reset fields in profile
@@ -81,8 +88,10 @@ export default function ProfilePage() {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // New address state
+  // Address states
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingAddress, setEditingAddress] = useState(null);
+  const [selectedAddressDetails, setSelectedAddressDetails] = useState(null);
   const [allOrderItems, setAllOrderItems] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [newAddress, setNewAddress] = useState({ label: "", address_line: "", city: "" });
@@ -108,12 +117,20 @@ export default function ProfilePage() {
             c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
           );
           
-          setNewAddress(prev => ({
-            ...prev,
-            city: cityMatch || prev.city || "Phnom Penh",
-            address_line: data.display_name
-          }));
-          toast.success("Location found!");
+          if (editingAddress) {
+            setEditingAddress(prev => ({
+              ...prev,
+              city: cityMatch || prev?.city || "Phnom Penh",
+              address_line: data.display_name
+            }));
+          } else {
+            setNewAddress(prev => ({
+              ...prev,
+              city: cityMatch || prev?.city || "Phnom Penh",
+              address_line: data.display_name
+            }));
+          }
+          toast.success("Location found via GPS!");
         }
       } catch (err) {
         toast.error("Failed to get location address");
@@ -247,6 +264,22 @@ export default function ProfilePage() {
     }
   };
 
+  const handleAvatarFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingAvatar(true);
+    try {
+      const { uploadImageToCloudinary } = await import("@/lib/cloudinary");
+      const uploadedUrl = await uploadImageToCloudinary(file);
+      setSettingsForm((prev) => ({ ...prev, avatar: uploadedUrl }));
+      toast.success("Profile picture updated!");
+    } catch (err) {
+      toast.error("Failed to upload image. Please try again.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setIsUpdatingSettings(true);
@@ -332,8 +365,47 @@ export default function ProfilePage() {
       setShowAddForm(false);
       setNewAddress({ label: "", address_line: "", city: "" });
       fetchProfileData(customer);
+      toast.success("New address saved!");
     } catch (err) {
-      console.error(err);
+      toast.error("Failed to add address");
+    }
+  };
+
+  const handleUpdateAddress = async (e) => {
+    e.preventDefault();
+    if (!editingAddress) return;
+    try {
+      await update("addresses", editingAddress.id, editingAddress);
+      setAddresses(prev => prev.map(a => a.id === editingAddress.id ? editingAddress : a));
+      setEditingAddress(null);
+      toast.success("Address updated successfully!");
+    } catch (err) {
+      toast.error("Failed to update address");
+    }
+  };
+
+  const handleDeleteAddress = async (addressId) => {
+    try {
+      await remove("addresses", addressId);
+      setAddresses(prev => prev.filter(a => a.id !== addressId));
+      if (selectedAddressDetails?.id === addressId) setSelectedAddressDetails(null);
+      toast.success("Address removed!");
+    } catch (err) {
+      toast.error("Failed to delete address");
+    }
+  };
+
+  const handleSetDefaultAddress = async (addressId) => {
+    try {
+      await Promise.all(
+        addresses.map(a => 
+          update("addresses", a.id, { ...a, is_default: a.id === addressId })
+        )
+      );
+      setAddresses(prev => prev.map(a => ({ ...a, is_default: a.id === addressId })));
+      toast.success("Default delivery address updated!");
+    } catch (err) {
+      toast.error("Failed to set default address");
     }
   };
 
@@ -727,82 +799,103 @@ export default function ProfilePage() {
                   activeTab === "MENU" ? "hidden lg:block" : "block"
                 )}
               >
-                <div className="lg:hidden mb-2">
-                  <Button 
-                    variant="ghost" 
+                <div className="lg:hidden mb-4">
+                  <button 
+                    type="button"
                     onClick={() => { navigate("/profile"); setActiveTab("MENU"); }} 
-                    className="pl-0 hover:bg-transparent text-muted-foreground hover:text-foreground"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/80 hover:bg-secondary border border-border/60 text-sm font-semibold text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs"
                   >
-                    <ArrowLeft className="size-5 mr-2" />
-                    Back to Menu
-                  </Button>
+                    <ArrowLeft className="size-4" />
+                    Back to Profile
+                  </button>
                 </div>
 
                 {displayTab === "SETTINGS" && (
                   <>
-                    <h3 className="font-serif text-3xl font-bold text-foreground mb-6">Profile Settings</h3>
+                    <div className="mb-6">
+                      <h3 className="font-serif text-3xl font-bold text-foreground">Profile Settings</h3>
+                      <p className="text-sm text-muted-foreground mt-1">Manage your account credentials, avatar, and personal details</p>
+                    </div>
+
                     <div className="space-y-6">
                       {/* Card 1: Profile Information */}
-                      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
+                      <div className="bg-card border border-border/70 rounded-3xl p-6 sm:p-8 shadow-warm">
                         <form onSubmit={handleUpdateProfile} className="space-y-6">
-                          {/* Profile Avatar Upload */}
-                          <div className="flex flex-col sm:flex-row items-center gap-6 pb-6 border-b border-border/60">
-                            <div className="relative shrink-0">
-                              <div className="size-24 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/30 shadow-md">
-                                {settingsForm.avatar ? (
-                                  <img src={settingsForm.avatar} alt="Profile Avatar" className="w-full h-full object-cover" />
-                                ) : (
-                                  <User className="size-10 text-primary" />
-                                )}
+                          {/* Sleek Single Circular Avatar Upload */}
+                          <div className="flex flex-col items-center justify-center text-center pb-6 border-b border-border/60">
+                            <div className="relative size-28 sm:size-32 group mb-3">
+                              <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background shadow-lg overflow-hidden">
+                                <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
+                                  {settingsForm.avatar ? (
+                                    <img src={settingsForm.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                  ) : (
+                                    <User className="size-14 text-primary" />
+                                  )}
+                                  {isUploadingAvatar && (
+                                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                                      <Loader2 className="size-6 animate-spin text-primary" />
+                                      <span className="text-[10px] mt-1 font-semibold">Uploading...</span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                            <div className="flex-1 space-y-2 text-center sm:text-left w-full">
-                              <label className="text-sm font-semibold text-foreground flex items-center gap-2 justify-center sm:justify-start">
-                                <Camera className="size-4 text-primary" /> Profile Picture (Avatar)
-                              </label>
-                              <div className="max-w-md">
-                                <ImageUpload 
-                                  value={settingsForm.avatar} 
-                                  onUploadSuccess={(url) => setSettingsForm(prev => ({ ...prev, avatar: url }))} 
+                              <label className="absolute bottom-0 right-0 size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                                <Camera className="size-4.5" />
+                                <input 
+                                  type="file" 
+                                  accept="image/*" 
+                                  className="hidden" 
+                                  onChange={handleAvatarFileChange} 
+                                  disabled={isUploadingAvatar}
                                 />
-                              </div>
+                              </label>
                             </div>
+                            <label className="text-xs font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                              <Camera className="size-3.5" /> Tap to change profile photo
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="hidden" 
+                                onChange={handleAvatarFileChange} 
+                                disabled={isUploadingAvatar}
+                              />
+                            </label>
                           </div>
 
                           <div className="grid sm:grid-cols-2 gap-6">
                             <div className="space-y-2">
-                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                <User className="size-4" /> Full Name
+                              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <User className="size-4 text-primary" /> Full Name
                               </label>
                               <Input 
                                 required 
                                 value={settingsForm.name} 
                                 onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
-                                className="rounded-xl border-border/60 bg-background/50 h-12" 
+                                className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
                               />
                             </div>
                             <div className="space-y-2">
-                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                <Phone className="size-4" /> Phone Number
+                              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <Phone className="size-4 text-primary" /> Phone Number
                               </label>
                               <Input 
                                 required 
                                 value={settingsForm.phone} 
                                 onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
-                                className="rounded-xl border-border/60 bg-background/50 h-12" 
+                                className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
                               />
                             </div>
                             <div className="space-y-2 sm:col-span-2">
-                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                <Mail className="size-4" /> Email Address (Cannot be changed)
+                              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                                <Mail className="size-4 text-primary" /> Email Address <span className="text-xs text-muted-foreground font-normal">(Locked)</span>
                               </label>
                               <Input 
-                                type="email"
+                                type="email" 
                                 value={settingsForm.email} 
                                 readOnly
                                 disabled
                                 autoComplete="off"
-                                className="rounded-xl border-border/60 bg-secondary/80 h-12 cursor-not-allowed opacity-80" 
+                                className="rounded-xl border-border/60 bg-secondary/80 h-12 cursor-not-allowed opacity-80 text-sm" 
                               />
                             </div>
                           </div>
@@ -811,7 +904,7 @@ export default function ProfilePage() {
                             <Button 
                               type="submit" 
                               size="lg" 
-                              className="rounded-full px-8"
+                              className="rounded-full px-8 font-semibold shadow-warm hover:shadow-warm-lg"
                               disabled={isUpdatingSettings}
                             >
                               {isUpdatingSettings ? "Saving..." : "Save Profile Info"}
@@ -1083,29 +1176,51 @@ export default function ProfilePage() {
 
                 {displayTab === "ADDRESSES" && (
                   <>
-                    <div className="flex justify-between items-center mb-6">
-                      <h3 className="font-serif text-3xl font-bold text-foreground">Saved Addresses</h3>
-                      <Button onClick={() => setShowAddForm(!showAddForm)} className="rounded-full">
-                        <Plus className="size-4 mr-1" /> Add New
+                    <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+                      <div>
+                        <h3 className="font-serif text-3xl font-bold text-foreground">Saved Addresses</h3>
+                        <p className="text-sm text-muted-foreground mt-1">Manage your delivery locations & fast checkout pins</p>
+                      </div>
+                      <Button 
+                        onClick={() => setShowAddForm(!showAddForm)} 
+                        className="rounded-full px-5 font-semibold shadow-warm hover:shadow-warm-lg"
+                      >
+                        <Plus className="size-4 mr-1.5" /> Add New
                       </Button>
                     </div>
 
                     {showAddForm && (
-                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/60 rounded-3xl p-6 mb-6 grid gap-4">
+                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-3xl p-6 mb-6 shadow-warm space-y-4 animate-fade-in">
+                        <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                          <h4 className="font-semibold text-foreground text-base">New Address Location</h4>
+                          <button 
+                            type="button" 
+                            onClick={() => setShowAddForm(false)} 
+                            className="text-xs text-muted-foreground hover:text-foreground"
+                          >
+                            Close
+                          </button>
+                        </div>
                         <div className="grid sm:grid-cols-2 gap-4">
                           <div>
-                            <label className="text-xs font-semibold text-muted-foreground mb-1 block">Address Label</label>
-                            <Input required value={newAddress.label} onChange={e => setNewAddress(prev => ({...prev, label: e.target.value}))} placeholder="e.g. Home, Office, Condo" className="rounded-xl border-border/60" />
+                            <label className="text-xs font-semibold text-foreground mb-1 block">Address Label</label>
+                            <Input 
+                              required 
+                              value={newAddress.label} 
+                              onChange={e => setNewAddress(prev => ({...prev, label: e.target.value}))} 
+                              placeholder="e.g. Home, Office, Condo" 
+                              className="rounded-xl border-border/70 bg-background/50 h-11" 
+                            />
                           </div>
                           <div>
-                            <label className="text-xs font-semibold text-muted-foreground mb-1 block">City / Province</label>
+                            <label className="text-xs font-semibold text-foreground mb-1 block">City / Province</label>
                             <select 
                               required 
                               value={newAddress.city} 
                               onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))} 
-                              className="w-full h-10 px-3 py-2 rounded-xl border border-border/60 bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                              className="w-full h-11 px-3 rounded-xl border border-border/70 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
                             >
-                              <option value="" disabled>Select a location</option>
+                              <option value="" disabled>Select a city</option>
                               <option value="Phnom Penh">Phnom Penh</option>
                               <option value="Kandal">Kandal</option>
                               <option value="Siem Reap">Siem Reap</option>
@@ -1117,7 +1232,7 @@ export default function ProfilePage() {
                         </div>
                         <div>
                           <div className="flex items-center justify-between mb-1">
-                            <label className="text-xs font-semibold text-muted-foreground">Specific Details (Street, House No, etc.)</label>
+                            <label className="text-xs font-semibold text-foreground">Specific Street Address</label>
                             <div className="flex gap-2">
                               <Button 
                                 type="button" 
@@ -1127,7 +1242,7 @@ export default function ProfilePage() {
                                 onClick={() => setShowMap(true)}
                               >
                                 <MapPin className="size-3 mr-1" />
-                                Map
+                                Map Pin
                               </Button>
                               <Button 
                                 type="button" 
@@ -1138,15 +1253,21 @@ export default function ProfilePage() {
                                 disabled={isLocating}
                               >
                                 <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
-                                {isLocating ? "Locating..." : "Use Current Location"}
+                                {isLocating ? "Locating..." : "Use GPS"}
                               </Button>
                             </div>
                           </div>
-                          <Input required value={newAddress.address_line} onChange={e => setNewAddress(prev => ({...prev, address_line: e.target.value}))} placeholder="e.g. St 271, House 123, Toul Kork" className="rounded-xl border-border/60" />
+                          <Input 
+                            required 
+                            value={newAddress.address_line} 
+                            onChange={e => setNewAddress(prev => ({...prev, address_line: e.target.value}))} 
+                            placeholder="e.g. St 271, House 123, Toul Kork" 
+                            className="rounded-xl border-border/70 bg-background/50 h-11" 
+                          />
                         </div>
-                        <div className="flex justify-end gap-2 mt-2">
-                          <Button type="button" variant="ghost" onClick={() => setShowAddForm(false)}>Cancel</Button>
-                          <Button type="submit">Save Address</Button>
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button type="button" variant="outline" className="rounded-full px-5" onClick={() => setShowAddForm(false)}>Cancel</Button>
+                          <Button type="submit" className="rounded-full px-6 font-semibold shadow-warm">Save Address</Button>
                         </div>
                       </form>
                     )}
@@ -1156,25 +1277,255 @@ export default function ProfilePage() {
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : addresses.length === 0 ? (
-                      <div className="bg-card border border-border/60 rounded-3xl p-12 text-center text-muted-foreground">
+                      <div className="bg-card border border-border/70 rounded-3xl p-12 text-center text-muted-foreground shadow-warm">
                         <MapPin className="size-16 mx-auto mb-4 opacity-20" />
-                        <p>No saved addresses.</p>
+                        <p className="font-semibold text-foreground">No saved addresses yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Add your home or office address for 1-tap checkout!</p>
                       </div>
                     ) : (
                       <div className="grid sm:grid-cols-2 gap-4">
-                        {addresses.map(addr => (
-                          <div key={addr.id} className="bg-card border border-border/60 rounded-3xl p-6 relative group">
-                            {addr.is_default && <span className="absolute top-4 right-4 text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold uppercase">Default</span>}
-                            <div className="size-10 rounded-full bg-secondary flex items-center justify-center mb-3">
-                              <MapPin className="size-5 text-muted-foreground" />
+                        {addresses.map(addr => {
+                          const isHome = (addr.label || "").toLowerCase().includes("home") || (addr.label || "").toLowerCase().includes("ផ្ទះ");
+                          const isWork = (addr.label || "").toLowerCase().includes("work") || (addr.label || "").toLowerCase().includes("office") || (addr.label || "").toLowerCase().includes("ការងារ");
+
+                          return (
+                            <div 
+                              key={addr.id} 
+                              className={cn(
+                                "bg-card border rounded-3xl p-5 relative group flex flex-col justify-between transition-all hover:shadow-warm",
+                                addr.is_default ? "border-primary/40 shadow-xs" : "border-border/70"
+                              )}
+                            >
+                              {/* Top Bar: Icon + Label + Default Badge */}
+                              <div>
+                                <div className="flex items-start justify-between gap-3 mb-2.5">
+                                  <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                      "size-10 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs",
+                                      addr.is_default ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
+                                    )}>
+                                      {isHome ? <MapPin className="size-5" /> : isWork ? <Building2 className="size-5" /> : <MapPin className="size-5" />}
+                                    </div>
+                                    <div>
+                                      <h4 className="font-bold text-foreground text-base leading-tight">
+                                        {addr.label || "Delivery"}
+                                      </h4>
+                                      <span className="text-xs text-muted-foreground font-medium">
+                                        {addr.city || "Phnom Penh"}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  {addr.is_default ? (
+                                    <span className="inline-flex items-center gap-1 text-[10px] bg-primary/15 text-primary px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border border-primary/25">
+                                      <Star className="size-3 fill-primary" /> Default
+                                    </span>
+                                  ) : (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleSetDefaultAddress(addr.id)}
+                                      className="text-[11px] text-muted-foreground hover:text-primary font-semibold transition-colors cursor-pointer"
+                                      title="Set as Default Address"
+                                    >
+                                      Set Default
+                                    </button>
+                                  )}
+                                </div>
+
+                                {/* Short & Concise Address Line (Max 2 lines) */}
+                                <p className="text-xs text-foreground/80 font-medium line-clamp-2 mt-1.5 leading-relaxed bg-secondary/30 rounded-xl p-2.5 border border-border/30">
+                                  {addr.address_line}
+                                </p>
+                              </div>
+
+                              {/* Bottom Action Bar: View Detail, Edit, Delete */}
+                              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between gap-2">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => setSelectedAddressDetails(addr)}
+                                  className="h-8 px-3 rounded-full text-xs font-semibold text-foreground hover:bg-secondary flex items-center gap-1.5 cursor-pointer"
+                                >
+                                  <Eye className="size-3.5 text-primary" />
+                                  <span>Details</span>
+                                </Button>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setEditingAddress(addr)}
+                                    className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                                    title="Edit Address"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => handleDeleteAddress(addr.id)}
+                                    className="size-8 p-0 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    title="Delete Address"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              </div>
                             </div>
-                            <h4 className="font-bold text-foreground text-lg mb-1">{addr.label}</h4>
-                            <p className="text-sm text-muted-foreground">{addr.address_line}</p>
-                            <p className="text-sm text-muted-foreground">{addr.city}</p>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
+
+                    {/* View Address Detail Modal */}
+                    <Dialog open={Boolean(selectedAddressDetails)} onOpenChange={(open) => !open && setSelectedAddressDetails(null)}>
+                      <DialogContent className="sm:max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-warm-lg">
+                        <DialogHeader>
+                          <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
+                            <MapPin className="size-5 text-primary" />
+                            {selectedAddressDetails?.label || "Address Details"}
+                          </DialogTitle>
+                        </DialogHeader>
+                        {selectedAddressDetails && (
+                          <div className="space-y-4 py-3">
+                            <div className="p-4 rounded-2xl bg-secondary/50 border border-border/60 space-y-2">
+                              <div>
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">City / Province</span>
+                                <span className="text-sm font-semibold text-foreground">{selectedAddressDetails.city || "Phnom Penh"}</span>
+                              </div>
+                              <div className="pt-2 border-t border-border/40">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Full Address Details</span>
+                                <p className="text-sm font-medium text-foreground leading-relaxed mt-0.5">{selectedAddressDetails.address_line}</p>
+                              </div>
+                              <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Status</span>
+                                {selectedAddressDetails.is_default ? (
+                                  <span className="inline-flex items-center gap-1 text-xs bg-primary/15 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase">
+                                    <Star className="size-3 fill-primary" /> Default
+                                  </span>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground font-medium">Standard</span>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="flex gap-2 justify-end pt-2">
+                              {!selectedAddressDetails.is_default && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  onClick={() => {
+                                    handleSetDefaultAddress(selectedAddressDetails.id);
+                                    setSelectedAddressDetails(null);
+                                  }}
+                                  className="rounded-full px-4 text-xs font-semibold"
+                                >
+                                  <Star className="size-3.5 mr-1" /> Set Default
+                                </Button>
+                              )}
+                              <Button
+                                type="button"
+                                onClick={() => {
+                                  setEditingAddress(selectedAddressDetails);
+                                  setSelectedAddressDetails(null);
+                                }}
+                                className="rounded-full px-5 font-semibold shadow-warm"
+                              >
+                                <Pencil className="size-3.5 mr-1" /> Edit
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* Edit Address Modal */}
+                    <Dialog open={Boolean(editingAddress)} onOpenChange={(open) => !open && setEditingAddress(null)}>
+                      <DialogContent className="sm:max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-warm-lg">
+                        <DialogHeader>
+                          <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
+                            <Pencil className="size-5 text-primary" />
+                            Edit Address
+                          </DialogTitle>
+                        </DialogHeader>
+                        {editingAddress && (
+                          <form onSubmit={handleUpdateAddress} className="space-y-4 py-3">
+                            <div className="space-y-3">
+                              <div>
+                                <label className="text-xs font-semibold text-foreground mb-1 block">Address Label</label>
+                                <Input 
+                                  required 
+                                  value={editingAddress.label || ""} 
+                                  onChange={e => setEditingAddress(prev => ({ ...prev, label: e.target.value }))} 
+                                  className="rounded-xl border-border/70 bg-background/50 h-11"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-xs font-semibold text-foreground mb-1 block">City / Province</label>
+                                <select 
+                                  required 
+                                  value={editingAddress.city || ""} 
+                                  onChange={e => setEditingAddress(prev => ({ ...prev, city: e.target.value }))} 
+                                  className="w-full h-11 px-3 rounded-xl border border-border/70 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                >
+                                  <option value="Phnom Penh">Phnom Penh</option>
+                                  <option value="Kandal">Kandal</option>
+                                  <option value="Siem Reap">Siem Reap</option>
+                                  <option value="Sihanoukville">Sihanoukville</option>
+                                  <option value="Battambang">Battambang</option>
+                                  <option value="Kampong Cham">Kampong Cham</option>
+                                </select>
+                              </div>
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="text-xs font-semibold text-foreground">Specific Street Address</label>
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      type="button" 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
+                                      onClick={() => setShowMap(true)}
+                                    >
+                                      <MapPin className="size-3 mr-1" />
+                                      Map Pin
+                                    </Button>
+                                    <Button 
+                                      type="button" 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
+                                      onClick={handleAutoLocation}
+                                      disabled={isLocating}
+                                    >
+                                      <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
+                                      {isLocating ? "Locating..." : "Use GPS"}
+                                    </Button>
+                                  </div>
+                                </div>
+                                <Input 
+                                  required 
+                                  value={editingAddress.address_line || ""} 
+                                  onChange={e => setEditingAddress(prev => ({ ...prev, address_line: e.target.value }))} 
+                                  className="rounded-xl border-border/70 bg-background/50 h-11"
+                                />
+                              </div>
+                            </div>
+                            <div className="flex justify-end gap-2 pt-3">
+                              <Button type="button" variant="outline" className="rounded-full px-4" onClick={() => setEditingAddress(null)}>
+                                Cancel
+                              </Button>
+                              <Button type="submit" className="rounded-full px-6 font-semibold shadow-warm">
+                                Save Changes
+                              </Button>
+                            </div>
+                          </form>
+                        )}
+                      </DialogContent>
+                    </Dialog>
                   </>
                 )}
                 {displayTab === "FAVORITES" && (
@@ -1375,7 +1726,11 @@ export default function ProfilePage() {
               <h3 className="font-serif text-xl font-bold text-foreground mb-4">Pick Location</h3>
               <MapPicker
                 onConfirm={(loc) => {
-                  setNewAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city }));
+                  if (editingAddress) {
+                    setEditingAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city || prev?.city }));
+                  } else {
+                    setNewAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city || prev?.city }));
+                  }
                   setShowMap(false);
                   toast.success("Location picked successfully!");
                 }}
