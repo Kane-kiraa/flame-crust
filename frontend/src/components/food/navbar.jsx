@@ -251,9 +251,7 @@ function Navbar() {
         "fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b border-transparent pt-[env(safe-area-inset-top)]",
         mobileOpen
           ? "bg-background border-border/60 shadow-lg"
-          : scrolled || location.pathname === "/cart"
-            ? "bg-background border-border/40 shadow-xs"
-            : "bg-background sm:bg-transparent"
+          : "bg-transparent border-transparent shadow-none"
       )}
       style={{ backdropFilter: "none", WebkitBackdropFilter: "none" }}
     >
