@@ -8,6 +8,11 @@ export function FlyToCart() {
 
   useEffect(() => {
     const handleFly = (e) => {
+      // Disable fly animation on phone/mobile screens
+      if (typeof window !== "undefined" && window.innerWidth < 768) {
+        return;
+      }
+
       const { image, startRect } = e.detail || {};
       if (!startRect) return;
 

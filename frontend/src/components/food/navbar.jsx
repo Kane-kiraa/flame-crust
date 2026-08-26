@@ -250,10 +250,10 @@ function Navbar() {
       className={cn(
         "fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b border-transparent pt-[env(safe-area-inset-top)]",
         mobileOpen
-          ? "bg-background/90 backdrop-blur-2xl border-border/60 shadow-2xl"
+          ? "bg-background border-border/60 shadow-lg"
           : scrolled || location.pathname === "/cart"
-            ? "bg-background/90 backdrop-blur-xl border-border/40 shadow-xs"
-            : "bg-transparent backdrop-blur-none"
+            ? "bg-background border-border/40 shadow-xs"
+            : "bg-background sm:bg-transparent"
       )}
     >
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

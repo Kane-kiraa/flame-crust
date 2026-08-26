@@ -53,7 +53,7 @@ function Footer({ hideNewsletter = false }) {
   };
 
   return (
-    <footer className="relative bg-background text-foreground overflow-hidden mt-auto pt-10 lg:pt-14 border-t border-border/60">
+    <footer className="relative bg-background text-foreground overflow-hidden mt-auto pt-10 lg:pt-14 pb-20 lg:pb-0 border-t border-border/60">
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         {!hideNewsletter && (
           <motion.div
