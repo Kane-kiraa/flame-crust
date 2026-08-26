@@ -3,7 +3,7 @@ import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { get, create, update } from "@/lib/api";
+import { get, create, update, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
@@ -107,8 +107,7 @@ export default function PaymentGatewayPage() {
     if (!orderId) return;
     setIsVerifying(true);
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-      const response = await fetch(`${apiUrl}/payments/verify-khqr`, {
+      const response = await fetch(`${API_URL}/payments/verify-khqr`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

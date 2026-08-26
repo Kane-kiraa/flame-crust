@@ -39,7 +39,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
 import { useCart } from "@/lib/cart-store";
-import { create, list } from "@/lib/api";
+import { create, list, API_URL } from "@/lib/api";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { QRCodeCanvas } from "qrcode.react";
@@ -274,8 +274,7 @@ function CheckoutPage() {
     if (!qrCodeString) return false;
     setIsCheckingPayment(true);
     try {
-      const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/$/, "");
-      const res = await fetch(`${apiUrl}/payments/verify-khqr`, {
+      const res = await fetch(`${API_URL}/payments/verify-khqr`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

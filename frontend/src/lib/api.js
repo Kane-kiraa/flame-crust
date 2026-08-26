@@ -1,15 +1,48 @@
+function normalizeApiUrl(url) {
+  if (!url) return '';
+  let clean = url.trim().replace(/\/$/, "");
+  if (clean && !clean.endsWith('/api') && clean.startsWith('http')) {
+    clean = `${clean}/api`;
+  }
+  return clean;
+}
+
 const API_URL = (() => {
+  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+
   if (typeof window !== 'undefined') {
-    const host = window.location.hostname;
-    // If accessing via IP (e.g., 172.20.10.2) or non-localhost domain, route to port 8080 on that host
-    if (host !== 'localhost' && host !== '127.0.0.1') {
-      if (host.includes('trycloudflare.com')) {
-        return (import.meta.env.VITE_API_URL || 'https://backup-tommy-jesse-engine.trycloudflare.com/api').replace(/\/$/, "");
+    const { hostname, protocol, origin } = window.location;
+
+    // 1. Manual override from localStorage if provided
+    try {
+      const customApi = localStorage.getItem("custom_api_url");
+      if (customApi) return normalizeApiUrl(customApi);
+    } catch (e) {}
+
+    // 2. If VITE_API_URL is an explicit HTTPS URL, use it directly (auto-adding /api if omitted)
+    if (envUrl && envUrl.startsWith('https://')) {
+      return normalizeApiUrl(envUrl);
+    }
+
+    // 3. When running under HTTPS (Cloudflare Pages, Cloudflare Tunnel, SSL Domain)
+    if (protocol === 'https:') {
+      if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+        return normalizeApiUrl(envUrl);
       }
-      return `${window.location.protocol}//${host}:8080/api`;
+      // Cloudflare / Same-origin reverse proxy: route through /api
+      return `${origin}/api`;
+    }
+
+    // 4. When running on HTTP via local network IP (e.g. http://192.168.1.15:5173)
+    if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+      if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
+        return normalizeApiUrl(envUrl);
+      }
+      return `http://${hostname}:8080/api`;
     }
   }
-  return (import.meta.env.VITE_API_URL || 'http://localhost:8080/api').replace(/\/$/, "");
+
+  return normalizeApiUrl(envUrl) || 'http://localhost:8080/api';
 })();
 
 async function request(path, options = {}) {
