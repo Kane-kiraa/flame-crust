@@ -248,9 +248,9 @@ function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-40 transition-all duration-300 border-b border-transparent pt-[env(safe-area-inset-top)]",
-        mobileOpen
-          ? "bg-background border-border/60 shadow-lg"
+        "fixed top-0 inset-x-0 z-40 transition-colors duration-200 border-b pt-[env(safe-area-inset-top)]",
+        mobileOpen || scrolled
+          ? "bg-background border-border/40 shadow-xs"
           : "bg-transparent border-transparent shadow-none"
       )}
       style={{ backdropFilter: "none", WebkitBackdropFilter: "none" }}

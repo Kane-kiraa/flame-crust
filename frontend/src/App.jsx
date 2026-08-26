@@ -61,7 +61,7 @@ export default function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <ScrollToTop />
-      <Toaster position="top-center" richColors closeButton offset="16px" />
+      <Toaster position="top-center" richColors closeButton offset="76px" />
       <ActiveOrderWidget />
       <FlyToCart />
       <MobileBottomNav />

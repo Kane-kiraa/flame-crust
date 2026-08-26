@@ -26,6 +26,11 @@ import {
   CheckCircle2,
   Sparkles,
   ShieldCheck,
+  Download,
+  Copy,
+  Check,
+  ExternalLink,
+  Smartphone,
 } from "lucide-react";
 import { AvailableCoupons } from "@/components/food/available-coupons";
 import { Button } from "@/components/ui/button";
@@ -300,6 +305,48 @@ function CheckoutPage() {
     return false;
   };
 
+  const [copiedAccount, setCopiedAccount] = useState(false);
+
+  const handleCopyAccount = () => {
+    const acc = "khemara_chantha1@bkrt";
+    navigator.clipboard?.writeText(acc);
+    setCopiedAccount(true);
+    toast.success("បានចម្លងលេខគណនី Bakong: " + acc);
+    setTimeout(() => setCopiedAccount(false), 2000);
+  };
+
+  const handleDownloadQR = () => {
+    const canvas = document.querySelector("#khqr-canvas-element canvas") || document.querySelector("canvas");
+    if (canvas) {
+      const url = canvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `FlameCrust-KHQR-${total.toFixed(2)}USD.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      toast.success("បានទាញយករូប QR Code! អ្នកអាចចូលក្នុង App ធនាគារ ហើយជ្រើសរើសស្កេនរូបភាពពី Gallery");
+    } else {
+      toast.error("មិនទាន់អាចទាញយក QR Code បានទេ");
+    }
+  };
+
+  const handleOpenBankApp = (bank) => {
+    if (bank === "bakong") {
+      const bakongUrl = qrCodeString && qrCodeString.startsWith("https://")
+        ? qrCodeString
+        : `https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD`;
+      window.location.href = bakongUrl;
+    } else if (bank === "aba") {
+      window.location.href = "ababank://";
+      setTimeout(() => {
+        window.open("https://link.payway.com.kh", "_blank");
+      }, 1200);
+    } else if (bank === "acleda") {
+      window.location.href = "unitymobile://";
+    }
+  };
+
   // Reset verification state when amount or method changes
   useEffect(() => {
     setIsPaymentVerified(false);
@@ -567,7 +614,7 @@ function CheckoutPage() {
       <Navbar />
       <CartDrawer />
 
-      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-24 pb-32 lg:pb-16">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-24 pb-44 lg:pb-16">
         <PageTransition>
           <div className="mx-auto max-w-6xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
             {/* Top Navigation & Step Indicator (Desktop only - mobile already has top navbar title) */}
@@ -1006,7 +1053,7 @@ function CheckoutPage() {
                           </div>
 
                           {/* Live KHQR Code Canvas */}
-                          <div className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center mb-3 relative group overflow-hidden">
+                          <div id="khqr-canvas-element" className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center mb-3 relative group overflow-hidden">
                             {qrCodeString ? (
                               <QRCodeCanvas
                                 value={qrCodeString}
@@ -1031,13 +1078,69 @@ function CheckoutPage() {
                             )}
                           </div>
 
-                          <div className="space-y-1 mb-2.5">
-                            <p className="font-serif font-bold text-base sm:text-lg text-primary">
+                          <div className="space-y-1 mb-3">
+                            <p className="font-serif font-bold text-lg sm:text-xl text-primary">
                               ${total.toFixed(2)} USD
                             </p>
                             <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                              Scan with any Cambodian banking app (Bakong, ABA Mobile, ACLEDA, Canadia, Wing) to pay.
+                              Scan with any Cambodian banking app to pay.
                             </p>
+                          </div>
+
+                          {/* Quick Bank App Openers */}
+                          <div className="w-full max-w-xs space-y-2 mb-3">
+                            <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider text-center">
+                              ⚡ ចុចដើម្បីបើក App ធនាគារទូទាត់
+                            </p>
+                            <div className="grid grid-cols-3 gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBankApp("bakong")}
+                                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-600 dark:text-red-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
+                              >
+                                <span className="text-sm mb-0.5">🔴</span>
+                                <span className="text-[11px]">Bakong</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBankApp("aba")}
+                                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-600 dark:text-blue-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
+                              >
+                                <span className="text-sm mb-0.5">🔵</span>
+                                <span className="text-[11px]">ABA Mobile</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleOpenBankApp("acleda")}
+                                className="flex flex-col items-center justify-center p-2.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-semibold text-xs transition-all active:scale-95 cursor-pointer shadow-xs"
+                              >
+                                <span className="text-sm mb-0.5">🟡</span>
+                                <span className="text-[11px]">ACLEDA</span>
+                              </button>
+                            </div>
+
+                            {/* Download QR & Copy Account helpers */}
+                            <div className="flex items-center justify-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={handleDownloadQR}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground text-[11px] font-medium transition-all active:scale-95 cursor-pointer border border-border/60"
+                              >
+                                <Download className="size-3 text-primary" />
+                                <span>Save QR Image</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={handleCopyAccount}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground text-[11px] font-medium transition-all active:scale-95 cursor-pointer border border-border/60"
+                              >
+                                {copiedAccount ? <Check className="size-3 text-green-500" /> : <Copy className="size-3 text-muted-foreground" />}
+                                <span>{copiedAccount ? "Copied" : "Copy Account"}</span>
+                              </button>
+                            </div>
                           </div>
 
                           <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">
@@ -1311,7 +1414,7 @@ function CheckoutPage() {
               </div>
 
               {/* Mobile Fixed Sticky Bottom Action Bar */}
-              <div className="lg:hidden fixed bottom-0 inset-x-0 bg-background/95 backdrop-blur-xl border-t border-border/80 p-3.5 pb-[max(0.85rem,env(safe-area-inset-bottom))] z-50 shadow-2xl">
+              <div className="lg:hidden fixed bottom-0 inset-x-0 bg-background border-t border-border/80 p-3.5 pb-[max(1.15rem,env(safe-area-inset-bottom))] z-50 shadow-2xl">
                 <div className="max-w-md mx-auto flex items-center justify-between gap-3">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
