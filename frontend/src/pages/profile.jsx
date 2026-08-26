@@ -272,8 +272,25 @@ export default function ProfilePage() {
       const { uploadImageToCloudinary } = await import("@/lib/cloudinary");
       const uploadedUrl = await uploadImageToCloudinary(file);
       setSettingsForm((prev) => ({ ...prev, avatar: uploadedUrl }));
+      
+      // Auto-save to customer profile immediately
+      if (customer) {
+        try {
+          if (customer.id) {
+            await update("customers", customer.id, { avatar: uploadedUrl });
+          }
+        } catch (e) {
+          console.warn("Could not sync avatar to backend:", e);
+        }
+        const updatedCustomer = { ...customer, avatar: uploadedUrl };
+        delete updatedCustomer.password;
+        localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+        setCustomer(updatedCustomer);
+        window.dispatchEvent(new Event("authChanged"));
+      }
       toast.success("Profile picture updated!");
     } catch (err) {
+      console.error(err);
       toast.error("Failed to upload image. Please try again.");
     } finally {
       setIsUploadingAvatar(false);

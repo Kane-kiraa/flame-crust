@@ -81,7 +81,7 @@ function CartPage() {
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
       <CartDrawer />
-      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-24 pb-36 sm:pb-16">
+      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-24 pb-52 sm:pb-16">
         <PageTransition>
           <div className="mx-auto max-w-3xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
             {/* Top Title (Desktop) */}
@@ -313,9 +313,9 @@ function CartPage() {
         </PageTransition>
       </main>
 
-      {/* Sticky Bottom Bar for Mobile (Easy thumb tap, fits above bottom navbar) */}
+      {/* Sticky Bottom Bar for Mobile (Positioned cleanly above mobile bottom nav) */}
       {lines.length > 0 && (
-        <div className="sm:hidden fixed bottom-16 left-0 right-0 z-30 bg-card/95 backdrop-blur-xl border-t border-border/80 p-3 shadow-lg px-4 flex items-center justify-between gap-3">
+        <div className="sm:hidden fixed bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 bg-card border-t border-border/80 p-3 shadow-lg px-4 flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total ({itemCount} items)</p>
             <p className="font-serif text-xl font-bold text-primary leading-tight">${total.toFixed(2)}</p>

@@ -40,8 +40,8 @@ export function MobileBottomNav() {
     };
   }, []);
 
-  // Hide on admin, driver, kitchen, login, and checkout/payment flow routes
-  const hidePaths = ["/admin", "/driver", "/kitchen", "/login", "/checkout", "/payment", "/order-confirmation", "/track"];
+  // Hide on admin, driver, kitchen, login, product detail, and checkout/payment flow routes
+  const hidePaths = ["/admin", "/driver", "/kitchen", "/login", "/checkout", "/payment", "/order-confirmation", "/track", "/product"];
   if (hidePaths.some((p) => location.pathname.startsWith(p))) {
     return null;
   }
@@ -59,7 +59,7 @@ export function MobileBottomNav() {
   return (
     <>
       <nav 
-        className="fixed bottom-0 inset-x-0 z-[70] lg:hidden bg-background/95 backdrop-blur-xl border-t border-border/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 px-2 shadow-2xl transition-all"
+        className="fixed bottom-0 inset-x-0 z-[70] lg:hidden bg-background border-t border-border/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 px-2 shadow-2xl transition-all"
         aria-label="Mobile Bottom Navigation"
       >
         <div className="grid grid-cols-5 items-center justify-items-center max-w-md mx-auto">

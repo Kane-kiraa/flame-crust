@@ -416,7 +416,7 @@ function ProductDetailPage() {
 
       {/* Mobile Sticky Bottom Action Bar */}
       {!loading && product && (
-        <div className="block sm:hidden fixed bottom-0 inset-x-0 z-40 bg-background/95 backdrop-blur-xl border-t border-border/60 p-3 shadow-warm-lg">
+        <div className="block sm:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border/80 p-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] shadow-2xl">
           <div className="flex items-center gap-2.5">
             <div className="flex flex-col min-w-[110px] max-w-[140px] shrink-0">
               <span className="font-serif text-xl sm:text-2xl font-bold text-primary tabular-nums whitespace-nowrap truncate">
