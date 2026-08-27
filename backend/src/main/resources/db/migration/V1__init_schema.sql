@@ -224,6 +224,9 @@ CREATE TABLE IF NOT EXISTS order_status_history (
     CONSTRAINT fk_order_status_history_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
 );
 
+DROP TRIGGER IF EXISTS trg_orders_status_insert;
+DROP TRIGGER IF EXISTS trg_orders_status_update;
+
 DELIMITER //
 CREATE TRIGGER trg_orders_status_insert
 AFTER INSERT ON orders
