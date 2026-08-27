@@ -120,19 +120,6 @@ export default function LoginPage() {
   };
 
   const checkProfileAndRedirect = (customer, token) => {
-    const isNameMissing = !customer.name || customer.name === "User" || customer.name === customer.email?.split("@")[0];
-    const isPhoneMissing = !customer.phone || customer.phone.trim() === "";
-
-    if (isNameMissing || isPhoneMissing) {
-      setPendingCustomer(customer);
-      setPendingToken(token);
-      setName(customer.name && customer.name !== "User" && customer.name !== customer.email?.split("@")[0] ? customer.name : "");
-      setPhone(customer.phone || "");
-      setAvatar(customer.avatar || "");
-      setStep("PROFILE_REQUIRED");
-      return;
-    }
-
     finishLoginAndRedirect(customer, token);
   };
 
