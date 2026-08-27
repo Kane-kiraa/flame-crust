@@ -209,7 +209,7 @@ CREATE TABLE IF NOT EXISTS orders (
         REFERENCES addresses (customer_id, id),
     CONSTRAINT fk_orders_coupon FOREIGN KEY (coupon_id) REFERENCES coupons (id),
     CONSTRAINT fk_orders_driver FOREIGN KEY (driver_id) REFERENCES drivers (id),
-    CONSTRAINT chk_orders_status CHECK (status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED')),
+    CONSTRAINT chk_orders_status CHECK (status IN ('PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'REJECTED')),
     CONSTRAINT chk_orders_amounts CHECK (subtotal >= 0 AND delivery_fee >= 0 AND total = subtotal + delivery_fee)
 );
 
@@ -223,27 +223,6 @@ CREATE TABLE IF NOT EXISTS order_status_history (
     INDEX idx_order_status_history_order (order_id),
     CONSTRAINT fk_order_status_history_order FOREIGN KEY (order_id) REFERENCES orders (id) ON DELETE CASCADE
 );
-
-DROP TRIGGER IF EXISTS trg_orders_status_insert;
-DROP TRIGGER IF EXISTS trg_orders_status_update;
-
-DELIMITER //
-CREATE TRIGGER trg_orders_status_insert
-AFTER INSERT ON orders
-FOR EACH ROW
-BEGIN
-    INSERT INTO order_status_history (order_id, status) VALUES (NEW.id, NEW.status);
-END //
-
-CREATE TRIGGER trg_orders_status_update
-AFTER UPDATE ON orders
-FOR EACH ROW
-BEGIN
-    IF NEW.status != OLD.status THEN
-        INSERT INTO order_status_history (order_id, status) VALUES (NEW.id, NEW.status);
-    END IF;
-END //
-DELIMITER ;
 
 CREATE TABLE IF NOT EXISTS order_items (
     id BIGINT NOT NULL AUTO_INCREMENT,
