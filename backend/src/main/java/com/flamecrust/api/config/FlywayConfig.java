@@ -1,6 +1,5 @@
 package com.flamecrust.api.config;
 
-import org.flywaydb.core.Flyway;
 import org.springframework.boot.autoconfigure.flyway.FlywayMigrationStrategy;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,12 +11,20 @@ public class FlywayConfig {
     public FlywayMigrationStrategy flywayMigrationStrategy() {
         return flyway -> {
             try {
-                // Auto repair schema history (removes half-failed entries)
+                System.out.println("--> Running Flyway repair...");
                 flyway.repair();
+                System.out.println("--> Flyway repair completed.");
             } catch (Exception e) {
-                // Ignore repair errors if table is empty
+                System.out.println("--> Flyway repair skipped: " + e.getMessage());
             }
-            flyway.migrate();
+            try {
+                System.out.println("--> Running Flyway migrate...");
+                flyway.migrate();
+                System.out.println("--> Flyway migration completed successfully!");
+            } catch (Exception e) {
+                System.err.println("--> Flyway migration error: " + e.getMessage());
+                throw e;
+            }
         };
     }
 }
