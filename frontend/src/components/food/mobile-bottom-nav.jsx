@@ -58,7 +58,7 @@ export function MobileBottomNav() {
 
   return (
     <>
-      <nav 
+      <nav
         className="fixed bottom-0 inset-x-0 z-[70] lg:hidden bg-background border-t border-border/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 px-2 shadow-2xl transition-all"
         aria-label="Mobile Bottom Navigation"
       >
@@ -67,16 +67,15 @@ export function MobileBottomNav() {
           <Link
             to="/"
             onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
-              isHome ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
+            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isHome ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+              }`}
           >
             <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               <UtensilsCrossed className={`size-5 transition-transform ${isHome ? "scale-110" : ""}`} />
               {isHome && (
-                <motion.div 
-                  layoutId="activeTabIndicator" 
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
                 />
               )}
             </motion.div>
@@ -87,16 +86,15 @@ export function MobileBottomNav() {
           <Link
             to="/menu"
             onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
-              isMenu ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
+            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isMenu ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+              }`}
           >
             <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               <Store className={`size-5 transition-transform ${isMenu ? "scale-110" : ""}`} />
               {isMenu && (
-                <motion.div 
-                  layoutId="activeTabIndicator" 
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
                 />
               )}
             </motion.div>
@@ -123,9 +121,8 @@ export function MobileBottomNav() {
           <Link
             to="/cart"
             onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
-              isCart ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
+            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isCart ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+              }`}
           >
             <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               <ShoppingBag className={`size-5 transition-transform ${isCart ? "scale-110" : ""}`} />
@@ -142,9 +139,9 @@ export function MobileBottomNav() {
                 )}
               </AnimatePresence>
               {isCart && (
-                <motion.div 
-                  layoutId="activeTabIndicator" 
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
                 />
               )}
             </motion.div>
@@ -155,9 +152,8 @@ export function MobileBottomNav() {
           <Link
             to={customer ? "/profile" : "/login"}
             onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${
-              isProfile ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
+            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isProfile ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+              }`}
           >
             <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
               {customer?.avatar ? (
@@ -168,9 +164,9 @@ export function MobileBottomNav() {
                 <User className={`size-5 transition-transform ${isProfile ? "scale-110" : ""}`} />
               )}
               {isProfile && (
-                <motion.div 
-                  layoutId="activeTabIndicator" 
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary" 
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
                 />
               )}
             </motion.div>

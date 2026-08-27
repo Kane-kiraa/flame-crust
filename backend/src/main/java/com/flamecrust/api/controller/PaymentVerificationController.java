@@ -44,7 +44,7 @@ public class PaymentVerificationController {
 
         try {
             // 1. Generate MD5 of the QR Code string or use provided MD5
-            String md5Hash = hasMd5 ? request.getMd5().trim() : DigestUtils.md5DigestAsHex(request.getQrCodeString().getBytes());
+            String md5Hash = hasMd5 ? request.getMd5().trim() : DigestUtils.md5DigestAsHex(request.getQrCodeString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
             System.out.println("Checking Bakong MD5: " + md5Hash);
 
             // 2. Call Bakong Open API

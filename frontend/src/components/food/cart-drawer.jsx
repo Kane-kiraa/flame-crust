@@ -36,22 +36,8 @@ function CartDrawer() {
     setMounted(true);
   }, []);
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
-  const isCouponValid = coupon && (!coupon.min_order_amount || grossSubtotal >= Number(coupon.min_order_amount));
-  
-  const discount = isCouponValid
-    ? coupon.discount_type === "PERCENTAGE"
-      ? Math.min(grossSubtotal, grossSubtotal * Number(coupon.discount_value) / 100)
-      : coupon.discount_type === "FREE_DELIVERY"
-        ? 0
-        : Math.min(grossSubtotal, Number(coupon.discount_value))
-    : 0;
-
-  const subtotal = Math.max(0, grossSubtotal - discount);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const deliveryFee = (isCouponValid && coupon.discount_type === "FREE_DELIVERY") 
-    ? 0 
-    : (grossSubtotal === 0 ? 0 : DELIVERY_FEE);
-  const total = subtotal + deliveryFee;
+  const total = grossSubtotal;
   const handleCheckout = () => {
     try {
       const stored = localStorage.getItem("customerAuth");
@@ -313,55 +299,12 @@ function CartDrawer() {
             )) }) }),
             /* @__PURE__ */ jsxs("div", { className: "border-t border-border/50 px-5 sm:px-6 pt-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-5 bg-background/90 backdrop-blur-md space-y-4", children: [
               /* @__PURE__ */ jsxs("div", { className: "space-y-1.5 text-sm", children: [
-                /* Coupon section */
-                /* @__PURE__ */ jsxs("div", { className: "pb-2 mb-2 border-b border-border/60", children: [
-                  coupon ? /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between p-2 rounded bg-green-500/10 text-green-600 text-xs", children: [
-                    /* @__PURE__ */ jsxs("span", { className: "font-semibold flex items-center gap-1", children: [/* @__PURE__ */ jsx(Ticket, { className: "size-3" }), coupon.code] }),
-                    /* @__PURE__ */ jsx("button", { onClick: clearCoupon, className: "p-1 hover:bg-green-500/20 rounded-full", children: /* @__PURE__ */ jsx(X, { className: "size-3" }) })
-                  ] }) : /* @__PURE__ */ jsxs("form", { onSubmit: handleApplyCoupon, className: "flex gap-2", children: [
-                    /* @__PURE__ */ jsx("input", { type: "text", value: couponCode, onChange: (e) => setCouponCode(e.target.value), placeholder: "Promo code", className: "flex-1 h-8 px-2 rounded bg-background border border-border/60 text-xs uppercase" }),
-                    /* @__PURE__ */ jsx(Button, { type: "submit", disabled: !couponCode || isApplying, size: "sm", className: "h-8 px-3 rounded text-xs", children: isApplying ? /* @__PURE__ */ jsx(Loader2, { className: "size-3 animate-spin" }) : "Apply" })
-                  ] }),
-                  !coupon && /* @__PURE__ */ jsx(AvailableCoupons, { 
-                    subtotal: grossSubtotal, 
-                    onSelectCoupon: (selectedCoupon) => {
-                      applyCoupon(selectedCoupon);
-                      setCouponCode("");
-                      toast.success(`Coupon "${selectedCoupon.code}" applied!`);
-                    } 
-                  })
-                ] }),
-                /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
-                  /* @__PURE__ */ jsx("span", { children: "Subtotal" }),
-                  /* @__PURE__ */ jsxs("span", { className: "font-medium text-foreground", children: [
+                /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-baseline pt-2", children: [
+                  /* @__PURE__ */ jsx("span", { className: "font-serif text-lg font-bold text-foreground", children: "Total" }),
+                  /* @__PURE__ */ jsxs("span", { className: "font-serif text-2xl font-bold text-primary", children: [
                     "$",
-                    grossSubtotal.toFixed(2)
+                    total.toFixed(2)
                   ] })
-                ] }),
-                coupon && /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-green-600", children: [
-                  /* @__PURE__ */ jsx("span", { children: "Discount" }),
-                  /* @__PURE__ */ jsxs("span", { className: "font-medium", children: ["-$", discount.toFixed(2)] })
-                ] }),
-                /* @__PURE__ */ jsxs("div", { className: "flex justify-between text-foreground/80", children: [
-                  /* @__PURE__ */ jsx("span", { children: "Delivery fee" }),
-                  /* @__PURE__ */ jsx(
-                    "span",
-                    {
-                      className: cn(
-                        "font-medium",
-                        deliveryFee === 0 ? "text-green-600" : "text-foreground"
-                      ),
-                      children: deliveryFee === 0 ? "FREE" : `$${deliveryFee.toFixed(2)}`
-                    }
-                  )
-                ] }),
-
-              ] }),
-              /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-baseline pt-2 border-t border-border/60", children: [
-                /* @__PURE__ */ jsx("span", { className: "font-serif text-lg font-bold text-foreground", children: "Total" }),
-                /* @__PURE__ */ jsxs("span", { className: "font-serif text-2xl font-bold text-primary", children: [
-                  "$",
-                  total.toFixed(2)
                 ] })
               ] }),
               /* @__PURE__ */ jsxs(

@@ -14,6 +14,7 @@ import {
   Edit,
   User,
   MessageCircle,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -34,7 +35,9 @@ function ProductDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const addItem = useCart((s) => s.addItem);
+  const removeItem = useCart((s) => s.removeItem);
   const lines = useCart((s) => s.lines);
+  const isCartOpen = useCart((s) => s.isOpen);
   const inCart = lines.find((l) => l.id === id);
 
   const [product, setProduct] = useState(null);
@@ -57,28 +60,27 @@ function ProductDetailPage() {
         const prod = products.find(p => String(p.id) === String(id));
         if (!prod) throw new Error("Product not found");
 
-        let allOptions = [];
+        let allOptions = prod.options || [];
         let allVariants = [];
-        let allReviews = [];
+        allOptions.forEach(opt => {
+          if (opt.variants) {
+            allVariants = allVariants.concat(opt.variants);
+          }
+        });
 
+        let allReviews = [];
         try {
-          const res = await Promise.all([
-            list("product_options"),
-            list("product_variants"),
-            list("reviews")
-          ]);
-          allOptions = res[0] || [];
-          allVariants = res[1] || [];
-          allReviews = res[2] || [];
+          // Keep fetching reviews separately unless they are also mapped
+          const res = await list("reviews");
+          allReviews = res || [];
         } catch (e) {
-          // If we are not admin or these fail, we just ignore and show empty
-          console.warn("Could not fetch product options/variants/reviews", e);
+          console.warn("Could not fetch reviews", e);
         }
 
         setProduct(prod);
 
-        const prodOptions = allOptions.filter(o => String(o.product_id) === String(id));
-        const prodVariants = allVariants.filter(v => prodOptions.some(o => String(o.id) === String(v.option_id)) && v.active);
+        const prodOptions = allOptions;
+        const prodVariants = allVariants.filter(v => v.active !== false);
 
         const defaults = {};
         prodOptions.forEach(opt => {
@@ -106,6 +108,23 @@ function ProductDetailPage() {
 
   const avgRating = reviews.length > 0 ? (reviews.reduce((acc, curr) => acc + (curr.rating || 0), 0) / reviews.length).toFixed(1) : "New";
 
+  const selectedVariantDetails = {};
+  if (product && options.length > 0) {
+    Object.entries(selectedVariants).forEach(([optId, varId]) => {
+      const opt = options.find(o => String(o.id) === String(optId));
+      const v = variants.find(v => String(v.id) === String(varId));
+      if (v && opt) selectedVariantDetails[opt.name] = v.name;
+    });
+  }
+
+  const currentCartItemId = product && Object.keys(selectedVariantDetails).length > 0
+    ? `${product.id}-${Object.values(selectedVariants).join('-')}`
+    : product?.id;
+
+  const currentVariantInCart = lines.find(l => String(l.id) === String(currentCartItemId));
+  const variantQtyInCart = currentVariantInCart ? currentVariantInCart.qty : 0;
+  const variantNameString = Object.values(selectedVariantDetails).join(', ');
+
   const handleQtyChange = (e) => {
     const val = parseInt(e.target.value, 10);
     if (isNaN(val) || val < 1) {
@@ -127,32 +146,49 @@ function ProductDetailPage() {
     }
 
     let finalPrice = product.price;
-    const selectedVariantDetails = {};
+    const variantDetailsForCart = {};
 
     Object.entries(selectedVariants).forEach(([optId, varId]) => {
       const opt = options.find(o => String(o.id) === String(optId));
       const v = variants.find(v => String(v.id) === String(varId));
       if (v) {
         finalPrice += (v.price_adjustment || 0);
-        if (opt) selectedVariantDetails[opt.name] = v.name;
+        if (opt) variantDetailsForCart[opt.name] = v.name;
       }
     });
 
     const productWithVariants = {
       ...product,
       price: finalPrice,
-      id: Object.keys(selectedVariantDetails).length > 0 
+      id: Object.keys(variantDetailsForCart).length > 0 
         ? `${product.id}-${Object.values(selectedVariants).join('-')}`
         : product.id,
-      name: Object.keys(selectedVariantDetails).length > 0
-        ? `${product.name} (${Object.values(selectedVariantDetails).join(', ')})`
+      name: Object.keys(variantDetailsForCart).length > 0
+        ? `${product.name} (${Object.values(variantDetailsForCart).join(', ')})`
         : product.name,
       originalId: product.id,
-      selectedOptions: selectedVariantDetails
+      selectedOptions: variantDetailsForCart
     };
 
     addItem(productWithVariants, qty);
+    toast.success("Added to cart", {
+      description: `${qty}x ${productWithVariants.name}`,
+      position: "top-right",
+      className: "w-fit ml-auto mt-16",
+      duration: 3000,
+    });
     setQty(1);
+  };
+
+  const handleRemove = () => {
+    if (currentCartItemId) {
+      removeItem(currentCartItemId);
+      toast.success("Removed from cart", {
+        position: "top-right",
+        className: "w-fit ml-auto mt-16",
+        duration: 3000,
+      });
+    }
   };
 
   const retry = () => window.location.reload();
@@ -253,15 +289,15 @@ function ProductDetailPage() {
                       className="flex flex-col"
                     >
 
-                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                      <div className="flex flex-wrap items-center gap-2 mb-4">
                         {product.spicy && (
-                          <Badge className="bg-primary/15 text-primary border-0 rounded-full gap-1 px-3 py-1 text-xs font-semibold">
+                          <Badge className="bg-primary text-primary-foreground border-0 rounded-full gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wider font-bold shadow-sm">
                             <Flame className="size-3.5" /> Spicy
                           </Badge>
                         )}
                         {product.vegetarian && (
-                          <Badge className="bg-green-600/15 text-green-700 dark:text-green-400 border-0 rounded-full gap-1 px-3 py-1 text-xs font-semibold">
-                            <Leaf className="size-3.5" /> Vegetarian
+                          <Badge className="bg-emerald-600 text-white border-0 rounded-full gap-1.5 px-3 py-1 text-[11px] uppercase tracking-wider font-bold shadow-sm">
+                            <Leaf className="size-3.5" /> Veg
                           </Badge>
                         )}
                         <div className="flex items-center gap-1.5 bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 px-3 py-1 rounded-full text-xs font-semibold">
@@ -284,21 +320,47 @@ function ProductDetailPage() {
                             const optVars = variants.filter(v => String(v.option_id) === String(opt.id));
                             if (optVars.length === 0) return null;
                             return (
-                              <div key={opt.id} className="space-y-2.5">
-                                <h3 className="font-semibold text-foreground text-xs uppercase tracking-wider">{opt.name}</h3>
-                                <div className="grid grid-cols-2 gap-2.5">
+                              <div key={opt.id} className="space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-bold text-primary text-[11px] uppercase tracking-[0.2em]">{opt.name}</h3>
+                                  {variantQtyInCart > 0 && (
+                                    <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 px-2 py-1 rounded-md animate-in fade-in duration-300">
+                                      <div className="flex items-center gap-1.5 text-[10px] font-medium text-primary uppercase tracking-wider">
+                                        <ShoppingCart className="size-3" />
+                                        <span>{variantQtyInCart} in cart</span>
+                                      </div>
+                                      <div className="w-[1px] h-3 bg-primary/20 mx-0.5"></div>
+                                      <button
+                                        onClick={handleRemove}
+                                        className="text-[10px] font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 uppercase tracking-wider"
+                                      >
+                                        <Trash2 className="size-3" /> Clear
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
+                                <div className="flex flex-wrap gap-2.5">
                                   {optVars.map(v => {
                                     const isSelected = String(selectedVariants[opt.id]) === String(v.id);
+                                    const variantPrice = (product.price + (v.price_adjustment || 0)).toFixed(2);
                                     return (
                                       <button
                                         key={v.id}
                                         onClick={() => setSelectedVariants(prev => ({ ...prev, [opt.id]: v.id }))}
                                         className={cn(
-                                          "flex flex-col items-start p-3 rounded-xl border text-left transition-all",
-                                          isSelected ? "border-primary bg-primary/5 shadow-sm" : "border-border/60 bg-card"
+                                          "flex flex-col items-center justify-center px-5 py-2 rounded-2xl border transition-all duration-300 min-w-[90px]",
+                                          isSelected 
+                                            ? "border-primary bg-primary text-primary-foreground shadow-[0_4px_16px_rgba(227,52,47,0.35)] scale-105" 
+                                            : "border-border/60 bg-transparent text-muted-foreground hover:bg-secondary hover:text-foreground hover:border-border"
                                         )}
                                       >
-                                        <span className={cn("font-medium text-sm", isSelected ? "text-primary font-semibold" : "text-foreground")}>{v.name}</span>
+                                        <span className="text-xs sm:text-sm font-semibold">{v.name}</span>
+                                        <span className={cn(
+                                          "text-[10px] mt-0.5 font-medium tracking-wide",
+                                          isSelected ? "text-primary-foreground/90" : "text-muted-foreground/70"
+                                        )}>
+                                          ${variantPrice}
+                                        </span>
                                       </button>
                                     );
                                   })}
@@ -414,12 +476,12 @@ function ProductDetailPage() {
         </PageTransition>
       </main>
 
-      {/* Mobile Sticky Bottom Action Bar */}
-      {!loading && product && (
-        <div className="block sm:hidden fixed bottom-0 inset-x-0 z-50 bg-background border-t border-border/80 p-3 pb-[max(0.85rem,env(safe-area-inset-bottom))] shadow-2xl">
-          <div className="flex items-center gap-2.5">
-            <div className="flex flex-col min-w-[110px] max-w-[140px] shrink-0">
-              <span className="font-serif text-xl sm:text-2xl font-bold text-primary tabular-nums whitespace-nowrap truncate">
+      {/* Mobile Sticky Bottom Action Bar (Floating Glass Pill) */}
+      {!loading && product && !isCartOpen && (
+        <div className="block sm:hidden fixed bottom-6 inset-x-4 z-50 pointer-events-none">
+          <div className="flex items-center gap-2 bg-card/85 backdrop-blur-xl border border-border/50 p-2 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.25)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.5)] pointer-events-auto">
+            <div className="flex flex-col min-w-[90px] pl-3 shrink-0">
+              <span className="font-serif text-xl font-bold text-primary tabular-nums whitespace-nowrap truncate leading-none">
                 ${(() => {
                   let p = product.price;
                   Object.values(selectedVariants).forEach(varId => {
@@ -429,16 +491,16 @@ function ProductDetailPage() {
                   return (p * qty).toFixed(2);
                 })()}
               </span>
-              <span className="text-[10px] text-muted-foreground whitespace-nowrap truncate">
+              <span className="text-[10px] text-muted-foreground whitespace-nowrap truncate mt-0.5">
                 ({qty} {qty > 1 ? 'items' : 'item'})
               </span>
             </div>
 
-            <div className="flex items-center gap-0.5 rounded-full bg-secondary border border-border/60 p-1 shrink-0 ml-auto">
+            <div className="flex items-center gap-1 rounded-full bg-secondary/80 p-1 shrink-0 ml-auto">
               <button
                 type="button"
                 onClick={() => setQty(Math.max(1, qty - 1))}
-                className="size-8 rounded-full bg-background hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
+                className="size-8 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
                 aria-label="Decrease quantity"
               >
                 <Minus className="size-3.5" />
@@ -449,12 +511,12 @@ function ProductDetailPage() {
                 max="999"
                 value={qty}
                 onChange={handleQtyChange}
-                className="w-10 text-center font-semibold text-sm bg-transparent text-foreground outline-none border-0 focus:outline-none focus:ring-0 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className="w-8 text-center font-bold text-sm bg-transparent text-foreground outline-none border-0 focus:outline-none focus:ring-0 appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
               />
               <button
                 type="button"
                 onClick={() => setQty(qty + 1)}
-                className="size-8 rounded-full bg-background hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
+                className="size-8 rounded-full bg-background/50 hover:bg-primary hover:text-primary-foreground flex items-center justify-center transition-colors shrink-0"
                 aria-label="Increase quantity"
               >
                 <Plus className="size-3.5" />
@@ -464,9 +526,9 @@ function ProductDetailPage() {
             <Button
               onClick={handleAdd}
               size="lg"
-              className="h-11 px-4 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-warm shrink-0 text-xs sm:text-sm"
+              className="h-12 px-5 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold shadow-[0_4px_14px_rgba(227,52,47,0.3)] shrink-0 text-sm"
             >
-              <ShoppingCart className="size-4 mr-1" />
+              <ShoppingCart className="size-4 mr-1.5" />
               Add
             </Button>
           </div>

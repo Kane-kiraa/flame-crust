@@ -258,17 +258,7 @@ function Navbar() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14 sm:h-20 gap-2 sm:gap-4">
           <div className="flex items-center justify-start shrink-0 gap-1.5 sm:gap-2">
-            {location.pathname === "/checkout" ? (
-              <button
-                type="button"
-                onClick={() => navigate("/cart")}
-                className="size-8 sm:size-9 rounded-full bg-secondary/80 hover:bg-secondary flex items-center justify-center text-foreground transition-all cursor-pointer mr-0.5"
-                title="Back to Cart"
-                aria-label="Back to Cart"
-              >
-                <ArrowLeft className="size-4 sm:size-4.5" />
-              </button>
-            ) : null}
+
 
             <Link to="/" className="flex items-center group" onClick={() => setMobileOpen(false)}>
               <img
@@ -493,13 +483,19 @@ function Navbar() {
               </Button>
             ) : null}
 
-            <div id="cart-icon-wrapper" className="hidden sm:flex relative items-center justify-center size-10 sm:size-11 shrink-0">
+            <div id="cart-icon-wrapper" className={cn("relative items-center justify-center size-10 sm:size-11 shrink-0", location.pathname.startsWith("/product") ? "flex" : "hidden sm:flex")}>
               <motion.button
                 id="cart-icon"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.94 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                onClick={openCart}
+                onClick={() => {
+                  if (window.innerWidth < 640) {
+                    navigate("/cart");
+                  } else {
+                    openCart();
+                  }
+                }}
                 className="relative size-full aspect-square rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-warm flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="Open cart"
               >

@@ -24,4 +24,8 @@ public class ProductOption {
     @Column(name = "max_selections")
     private Integer maxSelections;
 
+    @jakarta.persistence.OneToMany(cascade = jakarta.persistence.CascadeType.ALL, fetch = jakarta.persistence.FetchType.EAGER)
+    @jakarta.persistence.JoinColumn(name = "option_id")
+    private java.util.List<ProductVariant> variants = new java.util.ArrayList<>();
+
 }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
-import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard } from "lucide-react";
+import { QrCode, CheckCircle2, ShieldCheck, Loader2, CreditCard, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { get, create, update, API_URL } from "@/lib/api";
 import { toast } from "sonner";
@@ -212,6 +212,13 @@ export default function PaymentGatewayPage() {
       >
         <div className="bg-primary p-6 text-center text-primary-foreground relative">
           <ShieldCheck className="size-8 absolute top-6 left-6 opacity-50" />
+          <button 
+            onClick={() => navigate(`/track/${orderId}`)} 
+            className="absolute top-6 right-6 opacity-70 hover:opacity-100 transition-opacity bg-primary-foreground/10 rounded-full p-1"
+            title="Pay Later / Cancel"
+          >
+            <X className="size-6" />
+          </button>
           <h1 className="font-serif text-2xl font-bold">Secure Checkout</h1>
           <p className="text-primary-foreground/80 mt-1">{paymentMethod.replace("_", " ")}</p>
         </div>

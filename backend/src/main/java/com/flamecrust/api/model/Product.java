@@ -30,6 +30,10 @@ public class Product {
     private boolean vegetarian;
     private boolean active = true;
 
+    @jakarta.persistence.OneToMany(cascade = jakarta.persistence.CascadeType.ALL, fetch = jakarta.persistence.FetchType.EAGER)
+    @jakarta.persistence.JoinColumn(name = "product_id")
+    private java.util.List<ProductOption> options = new java.util.ArrayList<>();
+
     protected Product() {}
 
     public Product(String name, String description, BigDecimal price, BigDecimal basePrice, Long categoryId, String category,
@@ -64,6 +68,7 @@ public class Product {
     public boolean isSpicy() { return spicy; }
     public boolean isVegetarian() { return vegetarian; }
     public boolean isActive() { return active; }
+    public java.util.List<ProductOption> getOptions() { return options; }
     
     // Setters
     public void setId(Long id) { this.id = id; }
@@ -81,4 +86,5 @@ public class Product {
     public void setSpicy(boolean spicy) { this.spicy = spicy; }
     public void setVegetarian(boolean vegetarian) { this.vegetarian = vegetarian; }
     public void setActive(boolean active) { this.active = active; }
+    public void setOptions(java.util.List<ProductOption> options) { this.options = options; }
 }

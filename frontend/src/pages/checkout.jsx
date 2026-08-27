@@ -31,6 +31,7 @@ import {
   Check,
   ExternalLink,
   Smartphone,
+  RefreshCw,
 } from "lucide-react";
 import { AvailableCoupons } from "@/components/food/available-coupons";
 import { Button } from "@/components/ui/button";
@@ -246,38 +247,47 @@ function CheckoutPage() {
   const [isPaymentVerified, setIsPaymentVerified] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
+  const generateNewQR = () => {
+    if (total <= 0) return;
+    try {
+      const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
+      const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
+      const billNumber = "FC" + Date.now().toString().slice(-6);
+      const qrInfo = new IndividualInfo(
+        accountId,
+        merchantName,
+        "Phnom Penh",
+        {
+          currency: "840",
+          amount: Number(total.toFixed(2)),
+          billNumber: billNumber,
+          storeLabel: "FlameCrust",
+          terminalLabel: "T1"
+        }
+      );
+      const khqr = new BakongKHQR();
+      const res = khqr.generateIndividual(qrInfo);
+      if (res && res.data && res.data.qr) {
+        setQrCodeString(res.data.qr);
+      } else {
+        setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD&bill=${billNumber}`);
+      }
+    } catch (e) {
+      setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD&bill=${Date.now()}`);
+    }
+  };
+
   useEffect(() => {
     if (total > 0 && (paymentMethod === "KHQR" || paymentMethod === "ABA_PAY")) {
-      try {
-        const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
-        const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
-        const qrInfo = new IndividualInfo(
-          accountId,
-          merchantName,
-          "Phnom Penh",
-          {
-            currency: "840",
-            amount: Number(total.toFixed(2)),
-            storeLabel: "FlameCrust",
-            terminalLabel: "T1"
-          }
-        );
-        const khqr = new BakongKHQR();
-        const res = khqr.generateIndividual(qrInfo);
-        if (res && res.data && res.data.qr) {
-          setQrCodeString(res.data.qr);
-        } else {
-          setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD`);
-        }
-      } catch (e) {
-        setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD`);
-      }
+      generateNewQR();
     }
   }, [total, paymentMethod]);
 
   const verifyPaymentWithBakong = async (showToast = false) => {
     if (!qrCodeString) return false;
+    
     setIsCheckingPayment(true);
+
     try {
       const res = await fetch(`${API_URL}/payments/verify-khqr`, {
         method: 'POST',
@@ -440,11 +450,8 @@ function CheckoutPage() {
 
     // Strict Bank Verification for KHQR and ABA_PAY:
     if ((paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") && !isPaymentVerified) {
-      const verifiedNow = await verifyPaymentWithBakong(false);
-      if (!verifiedNow) {
-        toast.error("មិនទាន់ឃើញមានលុយចូលកុងនៅឡើយទេ។ ប្រព័ន្ធកំពុងស្វែងរកការបាញ់លុយស្វ័យប្រវត្តិ...");
-        return;
-      }
+      setShowPaymentConfirmModal(true);
+      return;
     }
 
     await executeOrderCreation(isPaymentVerified);
@@ -617,8 +624,8 @@ function CheckoutPage() {
       <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-24 pb-44 lg:pb-16">
         <PageTransition>
           <div className="mx-auto max-w-6xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
-            {/* Top Navigation & Step Indicator (Desktop only - mobile already has top navbar title) */}
-            <div className="hidden sm:flex flex-col gap-3 mb-5 sm:mb-8">
+            {/* Top Navigation & Step Indicator */}
+            <div className="flex flex-col gap-3 mb-5 sm:mb-8">
               <div className="flex items-center justify-between">
                 <button
                   type="button"
@@ -1025,158 +1032,7 @@ function CheckoutPage() {
                     </div>
                   )}
 
-                  {paymentMethod === "KHQR" && (
-                    <div className="rounded-2xl border border-primary/25 bg-gradient-to-b from-primary/10 to-primary/5 p-4 sm:p-5 text-center animate-in fade-in-50 duration-200 flex flex-col items-center">
-                      {isPaymentVerified ? (
-                        <div className="py-4 sm:py-6 flex flex-col items-center text-center space-y-2.5">
-                          <div className="size-14 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center shadow-md shadow-green-500/20">
-                            <CheckCircle2 className="size-8" />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-sm sm:text-base text-green-600 dark:text-green-400">
-                              ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ!
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                              Payment Verified (${total.toFixed(2)} USD) • សូមចុច Place Order ដើម្បីបញ្ចប់
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="size-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center">
-                              <QrCode className="size-4" />
-                            </div>
-                            <span className="font-bold text-xs sm:text-sm text-foreground">
-                              Scan & Pay with KHQR / Bakong
-                            </span>
-                          </div>
 
-                          {/* Live KHQR Code Canvas */}
-                          <div id="khqr-canvas-element" className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center mb-3 relative group overflow-hidden">
-                            {qrCodeString ? (
-                              <QRCodeCanvas
-                                value={qrCodeString}
-                                size={160}
-                                level="H"
-                                includeMargin={true}
-                              />
-                            ) : (
-                              <div className="size-40 flex items-center justify-center bg-secondary/50 rounded-xl">
-                                <Loader2 className="size-6 animate-spin text-primary" />
-                              </div>
-                            )}
-
-                            {/* Subtle scan bar animation */}
-                            {qrCodeString && (
-                              <motion.div
-                                className="absolute top-3.5 left-3.5 h-0.5 bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)] rounded-full z-10 pointer-events-none"
-                                style={{ width: "160px" }}
-                                animate={{ y: [0, 160, 0] }}
-                                transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                              />
-                            )}
-                          </div>
-
-                          <div className="space-y-1 mb-3">
-                            <p className="font-serif font-bold text-lg sm:text-xl text-primary">
-                              ${total.toFixed(2)} USD
-                            </p>
-                            <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                              Scan with any Cambodian banking app to pay.
-                            </p>
-                          </div>
-
-                          {/* Save QR Image & Copy Account Actions */}
-                          <div className="flex items-center justify-center gap-2.5 mb-3">
-                            <button
-                              type="button"
-                              onClick={handleDownloadQR}
-                              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-semibold transition-all active:scale-95 cursor-pointer shadow-xs"
-                            >
-                              <Download className="size-3.5" />
-                              <span>Save QR Image</span>
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={handleCopyAccount}
-                              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-secondary hover:bg-secondary/80 text-foreground border border-border/60 text-xs font-medium transition-all active:scale-95 cursor-pointer shadow-xs"
-                            >
-                              {copiedAccount ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5 text-muted-foreground" />}
-                              <span>{copiedAccount ? "Copied" : "Copy Account"}</span>
-                            </button>
-                          </div>
-
-                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse">
-                            <Loader2 className="size-3.5 animate-spin text-primary" />
-                            <span>ប្រព័ន្ធកំពុងស្វែងរកការបាញ់លុយស្វ័យប្រវត្តិ...</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
-
-                  {paymentMethod === "ABA_PAY" && (
-                    <div className="rounded-2xl border border-blue-500/25 bg-blue-500/5 p-4 sm:p-5 text-center animate-in fade-in-50 duration-200 flex flex-col items-center">
-                      {isPaymentVerified ? (
-                        <div className="py-4 sm:py-6 flex flex-col items-center text-center space-y-2.5">
-                          <div className="size-14 rounded-full bg-green-500/15 text-green-500 flex items-center justify-center shadow-md shadow-green-500/20">
-                            <CheckCircle2 className="size-8 animate-in zoom-in" />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-sm sm:text-base text-green-600 dark:text-green-400">
-                              ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ!
-                            </h3>
-                            <p className="text-xs text-muted-foreground mt-0.5 font-medium">
-                              ABA Pay Verified (${total.toFixed(2)} USD) • កំពុងបញ្ចប់ការកុម្ម៉ង់ស្វ័យប្រវត្តិ...
-                            </p>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-2 mb-3">
-                            <div className="size-7 rounded-lg bg-blue-500/15 text-blue-500 flex items-center justify-center">
-                              <Wallet className="size-4" />
-                            </div>
-                            <span className="font-bold text-xs sm:text-sm text-foreground">
-                              Pay via ABA Mobile (KHQR)
-                            </span>
-                          </div>
-
-                          {/* Live KHQR Code Canvas */}
-                          <div className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center mb-3 relative">
-                            {qrCodeString ? (
-                              <QRCodeCanvas
-                                value={qrCodeString}
-                                size={160}
-                                level="H"
-                                includeMargin={true}
-                              />
-                            ) : (
-                              <div className="size-40 flex items-center justify-center bg-secondary/50 rounded-xl">
-                                <Loader2 className="size-6 animate-spin text-blue-500" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="space-y-1 mb-2.5">
-                            <p className="font-serif font-bold text-base sm:text-lg text-foreground">
-                              ${total.toFixed(2)} USD
-                            </p>
-                            <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                              Open ABA Mobile app, tap <b>Scan QR</b> and scan this code to complete payment.
-                            </p>
-                          </div>
-
-                          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-xs font-semibold text-blue-500 animate-pulse">
-                            <Loader2 className="size-3.5 animate-spin text-blue-500" />
-                            <span>កំពុងរង់ចាំការបាញ់លុយស្វ័យប្រវត្តិ...</span>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  )}
 
                   {paymentMethod === "CASH" && (
                     <div className="rounded-2xl border border-border/60 bg-secondary/20 p-4 text-center animate-in fade-in-50 duration-200">
@@ -1590,6 +1446,84 @@ function CheckoutPage() {
                 No active coupons available right now.
               </p>
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payment Confirmation Modal */}
+      <Dialog open={showPaymentConfirmModal} onOpenChange={setShowPaymentConfirmModal}>
+        <DialogContent className="max-w-sm w-[92vw] rounded-3xl p-5 border-border/60">
+          <DialogHeader className="pb-3 border-b border-border/60">
+            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
+              <QrCode className="size-5 text-primary" /> Scan & Pay
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center py-4 space-y-4">
+            <div id="khqr-canvas-element" className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center relative group overflow-hidden">
+              {qrCodeString ? (
+                <QRCodeCanvas
+                  value={qrCodeString}
+                  size={160}
+                  level="H"
+                  includeMargin={true}
+                />
+              ) : (
+                <div className="size-40 flex items-center justify-center bg-secondary/50 rounded-xl">
+                  <Loader2 className="size-6 animate-spin text-primary" />
+                </div>
+              )}
+              {qrCodeString && (
+                <motion.div
+                  className="absolute top-3.5 left-3.5 h-0.5 bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)] rounded-full z-10 pointer-events-none"
+                  style={{ width: "160px" }}
+                  animate={{ y: [0, 160, 0] }}
+                  transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
+                />
+              )}
+            </div>
+            <div className="space-y-1 text-center">
+              <p className="font-serif font-bold text-lg sm:text-xl text-primary">
+                ${total.toFixed(2)} USD
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {paymentMethod === "KHQR" ? "Scan with any Cambodian banking app to pay." : "Open ABA Mobile app to scan and pay."}
+              </p>
+            </div>
+            
+            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
+              <button
+                type="button"
+                onClick={handleDownloadQR}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-semibold transition-all"
+              >
+                <Download className="size-3.5" /> Save QR
+              </button>
+              <button
+                type="button"
+                onClick={handleCopyAccount}
+                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground border border-border/60 text-xs font-medium transition-all"
+              >
+                {copiedAccount ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5 text-muted-foreground" />}
+                {copiedAccount ? "Copied" : "Copy Account"}
+              </button>
+            </div>
+            
+            <div className="inline-flex items-center gap-2 px-3.5 py-2 mt-2 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
+              <Loader2 className="size-3.5 animate-spin text-primary" />
+              <span>កំពុងរង់ចាំការបាញ់លុយដោយស្វ័យប្រវត្តិ...</span>
+            </div>
+            
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full mt-2 rounded-full border-border/60 text-xs"
+              onClick={() => {
+                setShowPaymentConfirmModal(false);
+                setSubmitting(false);
+              }}
+            >
+              Cancel / Pay Later
+            </Button>
           </div>
         </DialogContent>
       </Dialog>
