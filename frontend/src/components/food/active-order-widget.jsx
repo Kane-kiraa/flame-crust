@@ -60,7 +60,7 @@ export function ActiveOrderWidget() {
         const customer = JSON.parse(stored);
         if (!customer || !customer.id) return;
 
-        const orders = await list("orders");
+        const orders = (await list("orders").catch(() => [])) || [];
         const activeList = orders
           .filter(
             (o) =>

@@ -67,8 +67,7 @@ function Navbar() {
           return;
         }
         const c = JSON.parse(stored);
-        const { list } = await import("@/lib/api");
-        const orders = await list("orders");
+        const orders = (await list("orders").catch(() => [])) || [];
         const activeList = orders
           .filter(o => String(o.customer_id) === String(c.id) && o.status !== "DELIVERED" && o.status !== "CANCELLED")
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));

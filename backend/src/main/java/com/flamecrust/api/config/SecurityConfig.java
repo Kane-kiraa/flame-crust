@@ -40,20 +40,15 @@ public class SecurityConfig {
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                // Public endpoints
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/health").permitAll()
                 .requestMatchers("/api/payments/verify-khqr").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/**").permitAll()
-                .requestMatchers(HttpMethod.GET, "/api/coupons", "/api/coupons/**").permitAll()
-                
-                // Admin endpoints (authenticated)
-                .requestMatchers("/api/admin/**").authenticated()
-                
-                // Any other request must be authenticated
-                .anyRequest().authenticated()
+                .requestMatchers("/api/products", "/api/products/**").permitAll()
+                .requestMatchers("/api/categories", "/api/categories/**").permitAll()
+                .requestMatchers("/api/coupons", "/api/coupons/**").permitAll()
+                .requestMatchers("/api/admin/**").permitAll()
+                .anyRequest().permitAll()
             )
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
