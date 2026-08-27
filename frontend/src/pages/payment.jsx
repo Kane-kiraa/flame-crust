@@ -145,7 +145,7 @@ export default function PaymentGatewayPage() {
     return false;
   };
 
-  // Poll Backend for KHQR Status every 3.5 seconds
+  // Poll Backend for KHQR Status every 10 seconds (10000ms)
   useEffect(() => {
     if (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") return;
 
@@ -154,7 +154,7 @@ export default function PaymentGatewayPage() {
       if (verified) {
         clearInterval(pollTimer);
       }
-    }, 3500);
+    }, 10000);
 
     return () => clearInterval(pollTimer);
   }, [qrCodeString, orderId, paymentMethod, totalAmount]);

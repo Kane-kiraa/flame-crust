@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { 
@@ -13,7 +13,13 @@ import {
   AlertCircle,
   Home,
   Receipt,
-  Navigation
+  Navigation,
+  Flame,
+  Star,
+  Check,
+  Compass,
+  Copy,
+  Gauge
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
@@ -21,9 +27,12 @@ import { PageTransition } from "@/components/shared/page-transition";
 import { list, get } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
+import { useTheme } from "@/components/theme-provider.jsx";
+import { toast } from "sonner";
+import confetti from "canvas-confetti";
 
 // Leaflet imports
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, Polyline, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 
@@ -35,29 +44,106 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
-// Component to dynamically center map when driver moves
-function MapUpdater({ center }) {
+// Restaurant Coordinates (Flame & Crust Central Phnom Penh near Independence Monument)
+const RESTAURANT_LOCATION = [11.5564, 104.9282];
+const DEFAULT_CUSTOMER_LOCATION = [11.5620, 104.9160];
+
+// Custom High-Quality HTML Map Markers
+const createRestaurantIcon = () => L.divIcon({
+  className: "custom-leaflet-icon bg-transparent border-none",
+  html: `
+    <div class="relative flex items-center justify-center size-9 rounded-full bg-gradient-to-tr from-amber-600 to-red-600 text-white shadow-lg border-2 border-white ring-2 ring-orange-500/40 -translate-x-1/2 -translate-y-1/2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -20],
+});
+
+const createCustomerIcon = () => L.divIcon({
+  className: "custom-leaflet-icon bg-transparent border-none",
+  html: `
+    <div class="relative flex items-center justify-center size-9 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-lg border-2 border-white ring-2 ring-emerald-500/40 -translate-x-1/2 -translate-y-1/2">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+        <polyline points="9 22 9 12 15 12 15 22"/>
+      </svg>
+    </div>
+  `,
+  iconSize: [36, 36],
+  iconAnchor: [18, 18],
+  popupAnchor: [0, -20],
+});
+
+const createDriverMotoIcon = () => L.divIcon({
+  className: "custom-leaflet-icon bg-transparent border-none",
+  html: `
+    <div class="relative flex items-center justify-center size-12 -translate-x-1/2 -translate-y-1/2">
+      <div class="absolute inset-0 rounded-full bg-orange-500/40 animate-ping"></div>
+      <div class="absolute -inset-1 rounded-full bg-blue-500/20 blur-xs"></div>
+      
+      <div class="relative flex items-center justify-center size-11 rounded-full bg-gradient-to-tr from-slate-900 via-zinc-900 to-slate-800 text-white shadow-[0_4px_16px_rgba(0,0,0,0.4)] border-2 border-white ring-4 ring-orange-500/50">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-amber-400 drop-shadow-sm">
+          <circle cx="18.5" cy="17.5" r="3.5" stroke="currentColor" fill="#18181b"/>
+          <circle cx="5.5" cy="17.5" r="3.5" stroke="currentColor" fill="#18181b"/>
+          <circle cx="15" cy="5" r="1.5" fill="#f59e0b" stroke="none"/>
+          <path d="M12 17.5V14l-3-3 4-3 2 3h2" stroke="currentColor"/>
+          <rect x="2" y="10" width="4.5" height="4.5" rx="1" fill="#ea580c" stroke="#fff" stroke-width="1"/>
+        </svg>
+      </div>
+
+      <span class="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+        <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-white"></span>
+      </span>
+    </div>
+  `,
+  iconSize: [48, 48],
+  iconAnchor: [24, 24],
+  popupAnchor: [0, -24],
+});
+
+function calculateDistance(coord1, coord2) {
+  if (!coord1 || !coord2) return 0;
+  const R = 6371; // km
+  const dLat = (coord2[0] - coord1[0]) * Math.PI / 180;
+  const dLon = (coord2[1] - coord1[1]) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(coord1[0] * Math.PI / 180) * Math.cos(coord2[0] * Math.PI / 180) *
+            Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+function MapBoundsController({ bounds, triggerCenter }) {
   const map = useMap();
   useEffect(() => {
-    if (center && center[0] && center[1]) {
-      map.setView(center, map.getZoom(), { animate: true });
+    if (bounds && bounds.length > 0) {
+      try {
+        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 16, animate: true });
+      } catch (e) {}
     }
-  }, [center, map]);
+  }, [bounds, triggerCenter, map]);
   return null;
 }
 
 const STATUS_STEPS = [
-  { id: "PENDING", label: "Order Placed", icon: Clock },
+  { id: "PENDING", label: "Placed", icon: Clock },
   { id: "CONFIRMED", label: "Confirmed", icon: CheckCircle2 },
   { id: "PREPARING", label: "Preparing", icon: ChefHat },
   { id: "READY", label: "Ready", icon: ShoppingBag },
-  { id: "OUT_FOR_DELIVERY", label: "On the Way", icon: Bike },
+  { id: "OUT_FOR_DELIVERY", label: "On Way", icon: Bike },
   { id: "DELIVERED", label: "Delivered", icon: MapPin },
 ];
 
 export default function OrderTrackingPage() {
   const { orderId } = useParams();
   const navigate = useNavigate();
+  const { theme } = useTheme();
+
   const [order, setOrder] = useState(null);
   const [driver, setDriver] = useState(null);
   const [address, setAddress] = useState(null);
@@ -65,6 +151,14 @@ export default function OrderTrackingPage() {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+  const [recenterCounter, setRecenterCounter] = useState(0);
+
+  // Real turn-by-turn road route geometry from OSRM
+  const [roadRoute, setRoadRoute] = useState([]);
+  const [roadDistanceKm, setRoadDistanceKm] = useState(2.2);
+
+  const confettiRef = useRef(false);
 
   const fetchOrderData = async () => {
     try {
@@ -72,28 +166,38 @@ export default function OrderTrackingPage() {
       if (!orderData) throw new Error("Order not found");
       setOrder(orderData);
 
-      if (orderData.driverId || orderData.driver_id) {
-        const driverData = await get("drivers", orderData.driverId || orderData.driver_id);
-        setDriver(driverData);
+      const driverId = orderData.driverId || orderData.driver_id;
+      if (driverId) {
+        try {
+          const driverData = await get("drivers", driverId);
+          setDriver(driverData);
+        } catch(e) {}
+      } else {
+        setDriver(null);
       }
       
-      if (orderData.addressId || orderData.address_id) {
+      const addressId = orderData.addressId || orderData.address_id;
+      if (addressId) {
         try {
-          const addressData = await get("addresses", orderData.addressId || orderData.address_id);
+          const addressData = await get("addresses", addressId);
           setAddress(addressData);
         } catch(e) {}
       }
 
-      try {
-        // Fetch only if items haven't been loaded yet to save bandwidth on polling
-        if (items.length === 0) {
+      if (items.length === 0) {
+        try {
           const allItems = await list("order_items");
           setItems(allItems.filter(item => String(item.orderId || item.order_id) === String(orderData.id)));
           
           const allProducts = await list("products");
           setProducts(allProducts);
-        }
-      } catch(e) {}
+        } catch(e) {}
+      }
+
+      if (orderData.status === "DELIVERED" && !confettiRef.current) {
+        confettiRef.current = true;
+        confetti({ particleCount: 90, spread: 75, origin: { y: 0.6 } });
+      }
 
       setError(null);
     } catch (err) {
@@ -105,10 +209,64 @@ export default function OrderTrackingPage() {
 
   useEffect(() => {
     fetchOrderData();
-    // Poll every 3 seconds for real-time live map updates
-    const interval = setInterval(fetchOrderData, 3000);
+    // Real-time polling every 2 seconds for live driver coordinates
+    const interval = setInterval(fetchOrderData, 2000);
     return () => clearInterval(interval);
   }, [orderId]);
+
+  // Real Customer Address Location
+  const customerPos = (address && address.latitude && address.longitude) 
+    ? [Number(address.latitude), Number(address.longitude)] 
+    : DEFAULT_CUSTOMER_LOCATION;
+
+  // Real Driver GPS Location from Database
+  const hasRealDriverGps = driver && driver.latitude && driver.longitude && 
+                           !isNaN(Number(driver.latitude)) && !isNaN(Number(driver.longitude));
+  
+  const realDriverPos = hasRealDriverGps 
+    ? [Number(driver.latitude), Number(driver.longitude)] 
+    : null;
+
+  // Fetch real turn-by-turn road route from OSRM
+  useEffect(() => {
+    const fetchRealRoadRoute = async () => {
+      try {
+        const start = RESTAURANT_LOCATION;
+        const dest = customerPos;
+        const url = `https://router.project-osrm.org/route/v1/driving/${start[1]},${start[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`;
+        const res = await fetch(url);
+        const data = await res.json();
+        if (data && data.routes && data.routes[0]) {
+          const coords = data.routes[0].geometry.coordinates.map(c => [c[1], c[0]]);
+          setRoadRoute(coords);
+          if (data.routes[0].distance) {
+            setRoadDistanceKm(Number((data.routes[0].distance / 1000).toFixed(1)));
+          }
+        }
+      } catch (err) {
+        // Fallback default city road waypoints
+        setRoadRoute([
+          RESTAURANT_LOCATION,
+          [11.5566, 104.9220],
+          [11.5592, 104.9215],
+          [11.5596, 104.9168],
+          customerPos
+        ]);
+      }
+    };
+
+    fetchRealRoadRoute();
+  }, [customerPos[0], customerPos[1]]);
+
+  const handleCopyOrderNumber = () => {
+    const num = order?.orderNumber || order?.order_number || order?.id;
+    if (num) {
+      navigator.clipboard.writeText(String(num));
+      setCopied(true);
+      toast.success("Order ID copied!");
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
 
   if (loading && !order) {
     return (
@@ -137,301 +295,490 @@ export default function OrderTrackingPage() {
 
   const currentStepIndex = STATUS_STEPS.findIndex(s => s.id === order.status);
   const isCancelled = order.status === "CANCELLED";
-  
-  const hasDriverLocation = driver && driver.latitude && driver.longitude;
-  const driverPos = hasDriverLocation ? [driver.latitude, driver.longitude] : null;
+  const isDelivered = order.status === "DELIVERED";
+  const isOutForDelivery = order.status === "OUT_FOR_DELIVERY";
+
+  // Effective route points: use real turn-by-turn road geometry
+  const displayRoute = roadRoute.length > 0 ? roadRoute : [
+    RESTAURANT_LOCATION,
+    [11.5566, 104.9220],
+    [11.5592, 104.9215],
+    [11.5596, 104.9168],
+    customerPos
+  ];
+
+  // Map Bounds
+  const mapBounds = [
+    RESTAURANT_LOCATION,
+    customerPos,
+    ...(realDriverPos ? [realDriverPos] : [])
+  ];
+
+  // Real distance and ETA computation
+  const remainingDistanceKm = realDriverPos 
+    ? calculateDistance(realDriverPos, customerPos)
+    : roadDistanceKm;
+
+  const remainingMinutes = Math.max(2, Math.round((remainingDistanceKm / 25) * 60));
+
+  const getStatusInfo = () => {
+    switch(order.status) {
+      case "PENDING":
+        return {
+          title: "Order Placed",
+          desc: "We received your order and the restaurant is reviewing it.",
+          eta: "30 - 45 mins",
+          badge: "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+        };
+      case "CONFIRMED":
+        return {
+          title: "Order Confirmed",
+          desc: "Kitchen accepted your order and is getting ingredients ready.",
+          eta: "25 - 35 mins",
+          badge: "bg-blue-500/15 text-blue-600 dark:text-blue-400"
+        };
+      case "PREPARING":
+        return {
+          title: "Baking in Wood-Fired Oven 🍕",
+          desc: "Fresh dough hand-crafted and baking at 450°C.",
+          eta: "20 - 30 mins",
+          badge: "bg-orange-500/15 text-orange-600 dark:text-orange-400"
+        };
+      case "READY":
+        return {
+          title: "Order Packed & Ready 📦",
+          desc: "Boxed hot and waiting for delivery partner pickup.",
+          eta: "15 - 20 mins",
+          badge: "bg-purple-500/15 text-purple-600 dark:text-purple-400"
+        };
+      case "OUT_FOR_DELIVERY":
+        return {
+          title: "Courier is on the Way! 🛵",
+          desc: "Your hot pizza is on its way to your doorstep.",
+          eta: hasRealDriverGps 
+            ? `~${remainingMinutes} mins (${remainingDistanceKm.toFixed(1)} km)`
+            : `~${remainingMinutes} mins (${remainingDistanceKm} km)`,
+          badge: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+        };
+      case "DELIVERED":
+        return {
+          title: "Delivered ✨",
+          desc: "Successfully delivered. Enjoy your hot meal!",
+          eta: "Completed",
+          badge: "bg-green-500/15 text-green-600 dark:text-green-400"
+        };
+      default:
+        return {
+          title: order.status,
+          desc: "",
+          eta: "--",
+          badge: "bg-secondary text-foreground"
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo();
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-32 pb-16">
+      
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-24 lg:pt-28 pb-16">
         <PageTransition>
-          <div className="mx-auto max-w-3xl px-4 py-8">
-            <div className="rounded-2xl sm:rounded-3xl border border-border/60 bg-card p-4 sm:p-10 shadow-warm-lg">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => navigate(-1)}
-                className="mb-4 sm:mb-6 -ml-2 sm:-ml-4 rounded-full text-foreground/70 hover:text-foreground flex items-center"
-              >
-                <ArrowLeft className="size-4 mr-1" />
-                Back
-              </Button>
+          {/* Responsive Outer Container - Smooth on Mobile, Tablet & all Laptop/Desktop Sizes */}
+          <div className="mx-auto max-w-6xl px-3.5 sm:px-6 lg:px-8 py-3 sm:py-6">
+            
+            {/* Unified Card Container */}
+            <div className="rounded-3xl border border-border/70 bg-card p-4 sm:p-7 lg:p-9 shadow-warm-lg">
+              
+              {/* Back Button & Status Badge */}
+              <div className="flex items-center justify-between mb-4 sm:mb-5">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate(-1)}
+                  className="rounded-full text-foreground/75 hover:text-foreground -ml-2 flex items-center gap-1.5 text-xs sm:text-sm font-semibold h-8"
+                >
+                  <ArrowLeft className="size-4" />
+                  Back
+                </Button>
 
-              <div className="flex flex-col sm:flex-row justify-between items-start mb-2 sm:mb-4 border-b border-border/60 pb-4 sm:pb-6 gap-2 sm:gap-3">
-                <div>
-                  <h1 className="font-serif text-lg sm:text-3xl font-bold bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent drop-shadow-sm break-all">
-                    Order #{order.orderNumber || order.order_number || order.id}
-                  </h1>
-                  <p className="text-[11px] sm:text-sm text-muted-foreground mt-0.5 sm:mt-1">
-                    Placed on <span className="font-medium text-foreground">{formatDate(order.createdAt || order.created_at)}</span>
-                  </p>
-                </div>
-                <div className="text-left sm:text-right">
-                  <span className="font-serif text-lg sm:text-2xl font-bold text-primary">
-                    ${order.total.toFixed(2)}
+                <div className="flex items-center gap-1.5">
+                  <span className={cn("text-[11px] sm:text-xs font-bold px-3 py-1 rounded-full", statusInfo.badge)}>
+                    {statusInfo.title}
                   </span>
                 </div>
               </div>
 
+              {/* Order Header Row */}
+              <div className="flex justify-between items-start mb-6 border-b border-border/60 pb-5 gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h1 className="font-serif text-xl sm:text-2xl lg:text-3xl font-bold text-primary">
+                      Order #{order.orderNumber || order.order_number || order.id}
+                    </h1>
+                    <button 
+                      onClick={handleCopyOrderNumber}
+                      title="Copy Order ID"
+                      className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+                    >
+                      {copied ? <Check className="size-4 text-green-600" /> : <Copy className="size-4" />}
+                    </button>
+                  </div>
+                  <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                    Placed on <span className="font-medium text-foreground">{formatDate(order.createdAt || order.created_at)}</span>
+                  </p>
+                </div>
+                
+                <div className="text-right">
+                  <span className="font-serif text-xl sm:text-2xl lg:text-3xl font-black text-primary">
+                    ${order.total.toFixed(2)}
+                  </span>
+                  {!isDelivered && !isCancelled && (
+                    <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                      ETA: <span className="font-bold text-foreground">{statusInfo.eta}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Order Cancelled State */}
               {isCancelled ? (
-                <div className="bg-destructive/10 text-destructive p-6 rounded-2xl text-center mb-6">
-                  <AlertCircle className="size-10 mx-auto mb-2" />
-                  <h2 className="text-xl font-bold">Order Cancelled</h2>
-                  <p className="text-sm mt-1">This order was cancelled and will not be delivered.</p>
+                <div className="bg-destructive/10 text-destructive p-5 rounded-2xl text-center mb-6">
+                  <AlertCircle className="size-8 mx-auto mb-2" />
+                  <h3 className="text-base font-bold">Order Cancelled</h3>
+                  <p className="text-xs text-muted-foreground">This order was cancelled.</p>
                 </div>
               ) : (
-                <div className="relative mb-6 sm:mb-8 mt-0 sm:mt-2 w-full max-w-full">
-                  <div className="w-full overflow-x-auto custom-scrollbar pb-10 sm:pb-12 pt-2 sm:pt-6 -mx-4 px-4 sm:mx-0 sm:px-0">
-                    <div className="min-w-[450px] sm:min-w-0 relative px-4 sm:px-8">
-                      {/* Progress Line */}
-                      <div className="absolute top-[17px] sm:top-[22px] left-8 right-8 sm:left-14 sm:right-14 h-1 bg-secondary rounded-full overflow-hidden">
-                        <motion.div 
-                          className="h-full bg-primary shadow-[0_0_10px_2px_rgba(239,68,68,0.7)]"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.max(0, currentStepIndex) / (STATUS_STEPS.length - 1) * 100}%` }}
-                          transition={{ duration: 1, ease: "easeOut" }}
-                        />
+                /* Stepper (Responsive across all screens with NO horizontal scrollbar) */
+                <div className="relative mb-6 lg:mb-8 w-full">
+                  <div className="relative w-full px-2 sm:px-4 lg:px-6">
+                    
+                    {/* Background Progress Bar */}
+                    <div className="absolute top-[14px] sm:top-[18px] lg:top-[20px] left-5 right-5 sm:left-8 sm:right-8 lg:left-12 lg:right-12 h-[3px] sm:h-1 bg-secondary rounded-full overflow-hidden">
+                      <motion.div 
+                        className="h-full bg-gradient-to-r from-amber-500 to-primary shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(0, currentStepIndex) / (STATUS_STEPS.length - 1) * 100}%` }}
+                        transition={{ duration: 0.6, ease: "easeOut" }}
+                      />
+                    </div>
+
+                    {/* Step Icons Array */}
+                    <div className="relative flex justify-between w-full">
+                      {STATUS_STEPS.map((step, idx) => {
+                        const isCompleted = idx <= currentStepIndex;
+                        const isCurrent = idx === currentStepIndex;
+                        const Icon = step.icon;
+
+                        return (
+                          <div key={step.id} className="flex flex-col items-center">
+                            <motion.div 
+                              initial={{ scale: 0.8 }}
+                              animate={{ scale: 1 }}
+                              className={cn(
+                                "size-7 sm:size-9 lg:size-10 rounded-full border-2 flex items-center justify-center bg-card z-10 transition-all duration-300 shadow-xs",
+                                isCompleted ? "border-primary text-primary" : "border-secondary text-muted-foreground",
+                                isCurrent && "bg-primary text-primary-foreground border-primary shadow-[0_0_12px_rgba(239,68,68,0.4)] ring-3 ring-primary/20 scale-110"
+                              )}
+                            >
+                              {isCompleted && !isCurrent ? (
+                                <Check className="size-3.5 sm:size-4 lg:size-5 stroke-[3]" />
+                              ) : (
+                                <Icon className="size-3.5 sm:size-4 lg:size-5" />
+                              )}
+                            </motion.div>
+
+                            <span className={cn(
+                              "text-[9px] sm:text-[11px] lg:text-xs font-bold mt-1.5 sm:mt-2 text-center leading-tight transition-colors",
+                              isCurrent ? "text-primary font-black" : (isCompleted ? "text-foreground font-semibold" : "text-muted-foreground font-medium")
+                            )}>
+                              {step.label}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                  </div>
+                </div>
+              )}
+
+              {/* Delivered Celebration Card */}
+              {isDelivered && (
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.96 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="mb-6 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-emerald-500/15 via-teal-500/10 to-transparent border border-emerald-500/25 text-center"
+                >
+                  <div className="size-11 mx-auto bg-gradient-to-tr from-emerald-600 to-teal-500 text-white rounded-full flex items-center justify-center shadow-md mb-2.5">
+                    <CheckCircle2 className="size-6" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold font-serif text-foreground">
+                    Delivered! Bon Appétit
+                  </h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                    Your order was safely delivered. Thank you for choosing Flame & Crust!
+                  </p>
+                  <div className="flex justify-center gap-2.5">
+                    <Button onClick={() => navigate("/menu")} size="sm" className="rounded-full h-9 px-5 text-xs sm:text-sm font-bold shadow-xs">
+                      <Flame className="size-3.5 mr-1.5" /> Order Again
+                    </Button>
+                    {items.length > 0 && (
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => navigate(`/review/${items[0]?.productId || items[0]?.product_id}`)}
+                        className="rounded-full h-9 px-5 text-xs sm:text-sm font-bold bg-card hover:bg-secondary border-border/60"
+                      >
+                        <Star className="size-3.5 mr-1.5 text-amber-400 fill-amber-400" /> Review
+                      </Button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+
+              {/* Responsive 2-Column Grid on Laptop/Desktop & Stacked on Mobile */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* LEFT SIDE: Live Map & Driver Card (lg:col-span-7) */}
+                {!isCancelled && (
+                  <div className="lg:col-span-7 flex flex-col gap-4">
+                    <div className="rounded-2xl border border-border/70 overflow-hidden bg-card shadow-xs">
+                      
+                      {/* Map Header Strip */}
+                      <div className="px-3.5 py-2.5 bg-secondary/30 border-b border-border/50 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="relative flex h-2 w-2">
+                            {hasRealDriverGps && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                            <span className={cn("relative inline-flex rounded-full h-2 w-2", hasRealDriverGps ? "bg-emerald-500" : "bg-amber-500")}></span>
+                          </span>
+                          <span className="text-xs font-bold text-foreground">
+                            {hasRealDriverGps 
+                              ? <span>Live GPS: <span className="text-primary">Courier Active</span></span>
+                              : <span>Delivery Route: <span className="text-muted-foreground">{statusInfo.title}</span></span>
+                            }
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] sm:text-xs bg-orange-500/10 text-orange-600 dark:text-orange-400 font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1">
+                            <Gauge className="size-3" />
+                            ~{remainingDistanceKm.toFixed(1)} km
+                          </span>
+                          
+                          <button 
+                            onClick={() => setRecenterCounter(c => c + 1)}
+                            className="text-[11px] font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-secondary/60 transition-colors"
+                            title="Recenter Map"
+                          >
+                            <Compass className="size-3.5" />
+                            <span>Recenter</span>
+                          </button>
+                        </div>
                       </div>
 
-                      {/* Steps */}
-                      <div className="relative flex justify-between w-full">
-                        {STATUS_STEPS.map((step, idx) => {
-                          const isCompleted = idx <= currentStepIndex;
-                          const isCurrent = idx === currentStepIndex;
-                          const Icon = step.icon;
+                      {/* Leaflet Map with Clean Tiles (No API key watermark) */}
+                      <div className="w-full h-[220px] sm:h-[260px] lg:h-[340px] relative z-0">
+                        <MapContainer 
+                          center={customerPos} 
+                          zoom={14} 
+                          className="w-full h-full z-0" 
+                          zoomControl={false}
+                          attributionControl={false}
+                        >
+                          <TileLayer
+                            url={theme === 'dark'
+                              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                              : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+                            }
+                          />
+
+                          {/* 1. Restaurant Marker */}
+                          <Marker position={RESTAURANT_LOCATION} icon={createRestaurantIcon()}>
+                            <Popup className="font-sans text-xs">
+                              <div className="text-center font-bold text-primary">Flame & Crust Kitchen</div>
+                            </Popup>
+                          </Marker>
+
+                          {/* 2. Customer Destination Marker */}
+                          <Marker position={customerPos} icon={createCustomerIcon()}>
+                            <Popup className="font-sans text-xs">
+                              <div className="text-center font-bold">Delivery Address</div>
+                            </Popup>
+                          </Marker>
+
+                          {/* 3. Real Driver GPS Motorcycle Marker (When real GPS available) */}
+                          {hasRealDriverGps && (
+                            <Marker position={realDriverPos} icon={createDriverMotoIcon()}>
+                              <Popup className="font-sans text-xs">
+                                <div className="text-center">
+                                  <p className="font-bold text-primary">{driver?.name || "Delivery Partner"}</p>
+                                  <p className="text-[10px] text-muted-foreground">Live GPS Location</p>
+                                </div>
+                              </Popup>
+                            </Marker>
+                          )}
+
+                          {/* Outer Glow Route along real roads */}
+                          <Polyline 
+                            positions={displayRoute} 
+                            pathOptions={{ 
+                              color: "#f97316", 
+                              weight: 6, 
+                              opacity: 0.35
+                            }} 
+                          />
+
+                          {/* Inner Dashed Route along real roads */}
+                          <Polyline 
+                            positions={displayRoute} 
+                            pathOptions={{ 
+                              color: "#ea580c", 
+                              weight: 3.5, 
+                              opacity: 0.95, 
+                              dashArray: "6, 6" 
+                            }} 
+                          />
+
+                          <MapBoundsController bounds={mapBounds} triggerCenter={recenterCounter} />
+                        </MapContainer>
+                      </div>
+
+                      {/* Driver Strip (When Driver is assigned) */}
+                      {driver ? (
+                        <div className="p-3.5 bg-secondary/20 border-t border-border/50 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            {driver.profilePhoto || driver.profile_photo ? (
+                              <img 
+                                src={driver.profilePhoto || driver.profile_photo} 
+                                alt={driver.name} 
+                                className="size-10 rounded-full object-cover border border-border shrink-0" 
+                              />
+                            ) : (
+                              <div className="size-10 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                                <Bike className="size-5" />
+                              </div>
+                            )}
+                            <div className="min-w-0">
+                              <h4 className="font-bold text-xs sm:text-sm text-foreground flex items-center gap-1.5 truncate">
+                                {driver.name}
+                                <span className="text-[9px] bg-emerald-500/15 text-emerald-600 font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                                  {hasRealDriverGps ? "Live GPS" : "Assigned"}
+                                </span>
+                              </h4>
+                              <p className="text-[11px] text-muted-foreground truncate">
+                                {driver.vehicleInfo || driver.vehicle_info || "Delivery Partner"}
+                                {hasRealDriverGps && <span className="text-primary font-bold"> • ~{remainingMinutes}m away</span>}
+                              </p>
+                            </div>
+                          </div>
+
+                          <a 
+                            href={`tel:${driver.phone || "012345678"}`} 
+                            className="flex items-center gap-1.5 bg-primary text-primary-foreground font-bold text-xs sm:text-sm px-4 py-2 rounded-full shadow-xs hover:bg-primary/90 transition-all active:scale-95 shrink-0"
+                          >
+                            <PhoneCall className="size-3.5" />
+                            <span>Call</span>
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="px-4 py-3 bg-secondary/15 border-t border-border/40 text-center text-xs text-muted-foreground">
+                          {order.status === "READY" 
+                            ? "Waiting for courier to accept & pick up delivery..." 
+                            : "Kitchen is preparing your order with fresh ingredients 🍕"}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* RIGHT SIDE: Delivery Address & Order Summary (lg:col-span-5) */}
+                <div className={cn("flex flex-col gap-4", !isCancelled ? "lg:col-span-5" : "lg:col-span-12")}>
+                  
+                  {/* Delivery Address */}
+                  {address && (
+                    <div>
+                      <h3 className="font-serif text-sm sm:text-base font-bold flex items-center gap-2 text-foreground mb-2">
+                        <Home className="size-4 text-primary" /> Delivery Address
+                      </h3>
+                      <div className="bg-secondary/20 rounded-2xl p-4 border border-border/40">
+                        <p className="font-semibold text-xs sm:text-sm text-foreground">
+                          {address.addressLine || address.address_line}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{address.city}</p>
+                        {address.notes && (
+                          <div className="text-xs bg-background/70 p-2.5 rounded-xl border border-border/40 mt-2.5">
+                            <span className="font-semibold text-primary">Note:</span> {address.notes}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Order Summary */}
+                  <div>
+                    <h3 className="font-serif text-sm sm:text-base font-bold flex items-center gap-2 text-foreground mb-2">
+                      <Receipt className="size-4 text-primary" /> Order Summary
+                    </h3>
+                    <div className="bg-secondary/20 rounded-2xl p-4 border border-border/40">
+                      <div className="space-y-2 mb-3 max-h-[180px] lg:max-h-[220px] overflow-y-auto custom-scrollbar pr-1">
+                        {items.map(item => {
+                          const dbProduct = products.find(p => String(p.id) === String(item.productId || item.product_id));
+                          const displayImage = dbProduct ? getImageUrl(dbProduct.image) : "/images/library/pizza.jpg";
                           return (
-                            <div key={step.id} className="relative flex flex-col items-center">
-                              <motion.div 
-                                initial={{ scale: 0.8, opacity: 0 }}
-                                animate={{ scale: 1, opacity: 1 }}
-                                transition={{ delay: idx * 0.1 }}
-                                className={cn(
-                                  "size-9 sm:size-12 rounded-full border-[3px] sm:border-4 flex items-center justify-center bg-card z-10 transition-all duration-500",
-                                  isCompleted ? "border-primary text-primary" : "border-secondary text-muted-foreground",
-                                  isCurrent && "bg-primary text-primary-foreground border-primary shadow-[0_0_15px_rgba(239,68,68,0.6)] animate-pulse ring-4 ring-primary/30"
-                                )}
-                              >
-                                <Icon className="size-4 sm:size-5" />
-                              </motion.div>
-                              <span className={cn(
-                                "text-[10px] sm:text-xs font-semibold mt-2 text-center absolute -bottom-7 sm:-bottom-8 w-16 sm:w-20 -ml-8 sm:-ml-10 left-1/2 leading-tight",
-                                isCurrent ? "text-primary" : (isCompleted ? "text-foreground" : "text-muted-foreground")
-                              )}>
-                                {step.label}
+                            <div 
+                              key={item.id} 
+                              className="flex justify-between items-center text-xs sm:text-sm gap-2 py-1.5"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="size-8 sm:size-9 rounded-lg bg-secondary overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
+                                  {displayImage ? (
+                                    <img src={displayImage} alt={item.productName || item.product_name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <ShoppingBag className="size-4 text-primary/60" />
+                                  )}
+                                </div>
+                                <span className="font-semibold text-foreground truncate">
+                                  {item.quantity}x {item.productName || item.product_name}
+                                </span>
+                              </div>
+                              <span className="font-bold text-foreground whitespace-nowrap">
+                                ${Number(item.lineTotal || item.line_total || 0).toFixed(2)}
                               </span>
                             </div>
                           );
                         })}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Delivered Celebration State */}
-              {order.status === "DELIVERED" && (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  className="mb-8 p-6 sm:p-12 rounded-3xl bg-gradient-to-br from-green-500/10 via-green-400/5 to-transparent border border-green-500/20 text-center relative overflow-hidden"
-                >
-                  <div className="absolute -top-10 -right-10 size-40 bg-green-500/20 blur-3xl rounded-full" />
-                  <div className="absolute -bottom-10 -left-10 size-40 bg-green-500/20 blur-3xl rounded-full" />
-                  
-                  <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: "spring", bounce: 0.5, delay: 0.2 }}
-                    className="size-24 sm:size-32 mx-auto bg-green-500 text-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(34,197,94,0.4)] mb-6"
-                  >
-                    <CheckCircle2 className="size-12 sm:size-16" />
-                  </motion.div>
-                  
-                  <h2 className="text-3xl sm:text-5xl font-black text-foreground mb-3 font-serif">Enjoy Your Meal!</h2>
-                  <p className="text-muted-foreground text-sm sm:text-base max-w-md mx-auto mb-8">
-                    Your order has been successfully delivered{driver ? ` by ` : "."}
-                    {driver && <span className="font-bold text-foreground">{driver.name}</span>}
-                    {driver && ". "}
-                    Thank you for choosing Flame & Crust!
-                  </p>
-                  
-                  <Button onClick={() => navigate("/")} className="rounded-full h-12 px-8 font-bold text-base shadow-lg hover:scale-105 transition-transform">
-                    Order Again
-                  </Button>
-                </motion.div>
-              )}
-
-              {/* Live Map & Driver Details */}
-              {driver && order.status === "OUT_FOR_DELIVERY" && (
-                <div className="mb-8 space-y-4">
-                  {/* Driver Card */}
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-secondary/40 rounded-2xl p-5 border border-border/50 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-                  >
-                    <div className="flex items-center gap-4">
-                      {driver.profilePhoto || driver.profile_photo ? (
-                        <img src={driver.profilePhoto || driver.profile_photo} alt={driver.name} className="size-14 rounded-full object-cover border-2 border-primary/50 shadow-sm" />
-                      ) : (
-                        <div className="size-14 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/50">
-                          <Bike className="size-6 text-primary" />
-                        </div>
-                      )}
-                      <div>
-                        <h4 className="font-bold text-lg text-foreground flex items-center gap-2">
-                          {driver.name}
-                          <span className="text-[10px] bg-green-500/20 text-green-600 px-2 py-0.5 rounded-full uppercase tracking-wider font-bold">Assigned</span>
-                        </h4>
-                        <p className="text-sm text-muted-foreground">{driver.vehicleInfo || driver.vehicle_info || "Delivery Partner"}</p>
-                        {order.status === "OUT_FOR_DELIVERY" && (
-                          <p className="text-xs text-primary font-medium mt-0.5 flex items-center gap-1">
-                            <Navigation className="size-3" /> Heading to your location...
-                          </p>
+                        {items.length === 0 && (
+                          <div className="text-center py-4 text-xs text-muted-foreground">
+                            Loading items...
+                          </div>
                         )}
                       </div>
-                    </div>
-                    <a href={`tel:${driver.phone}`} className="w-full sm:w-auto flex items-center justify-center gap-2 bg-background border border-border/60 px-5 py-2.5 rounded-full text-sm font-bold shadow-sm hover:text-primary hover:border-primary transition-all active:scale-95">
-                      <PhoneCall className="size-4" />
-                      Call Driver
-                    </a>
-                  </motion.div>
 
-                  {/* Map Section */}
-                  {hasDriverLocation && (
-                    <motion.div 
-                      initial={{ opacity: 0, scale: 0.98 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      className="w-full h-[300px] sm:h-[400px] rounded-2xl overflow-hidden border border-border/50 shadow-inner relative z-0"
-                    >
-                      <MapContainer center={driverPos} zoom={15} className="w-full h-full" zoomControl={false}>
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                          url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                        />
-                        <Marker position={driverPos}>
-                          <Popup className="font-sans">
-                            <div className="text-center">
-                              <p className="font-bold">{driver.name}</p>
-                              <p className="text-xs text-muted-foreground">Current Location</p>
-                            </div>
-                          </Popup>
-                        </Marker>
-                        <MapUpdater center={driverPos} />
-                      </MapContainer>
-                      
-                      {/* Overlay Indicator */}
-                      <div className="absolute top-4 left-4 z-[400] bg-white/90 dark:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-full shadow-md border border-border text-xs font-bold flex items-center gap-2">
-                        <div className="size-2 bg-green-500 rounded-full animate-pulse" />
-                        Live Tracking
-                      </div>
-                    </motion.div>
-                  )}
-                  {!hasDriverLocation && order.status === "OUT_FOR_DELIVERY" && (
-                    <div className="w-full p-4 rounded-xl bg-secondary/30 text-center text-sm text-muted-foreground border border-border border-dashed">
-                      Waiting for GPS signal from the driver...
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Delivery Details & Order Summary */}
-              <div className="grid sm:grid-cols-2 gap-4 sm:gap-6 pt-5 sm:pt-6 border-t border-border/60">
-                {/* Address Section */}
-                {address && (
-                  <motion.div 
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="space-y-2 sm:space-y-4 flex flex-col h-full"
-                  >
-                    <h3 className="font-serif text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
-                      <Home className="size-4 sm:size-5 text-primary" /> Delivery Address
-                    </h3>
-                    <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1">
-                      <p className="font-medium text-sm sm:text-base text-foreground mb-1">{address.addressLine || address.address_line}</p>
-                      <p className="text-xs sm:text-sm text-muted-foreground mb-3">{address.city}</p>
-                      {address.notes && (
-                        <div className="text-xs bg-background/50 p-2.5 sm:p-3 rounded-xl border border-border/40">
-                          <span className="font-semibold text-primary">Note:</span> {address.notes}
+                      <div className="pt-3 border-t border-border/60 space-y-1.5 text-xs sm:text-sm">
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Subtotal</span>
+                          <span>${Number(order.subtotal || 0).toFixed(2)}</span>
                         </div>
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-
-                {/* Order Summary */}
-                <motion.div 
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className="space-y-2 sm:space-y-4 flex flex-col h-full"
-                >
-                  <h3 className="font-serif text-base sm:text-lg font-bold flex items-center gap-2 text-foreground">
-                    <Receipt className="size-4 sm:size-5 text-primary" /> Order Summary
-                  </h3>
-                  <div className="bg-secondary/20 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-border/40 shadow-inner hover:border-primary/30 transition-colors duration-300 flex-1 flex flex-col">
-                    <div className="space-y-2 sm:space-y-3 mb-4 flex-1 overflow-y-auto max-h-[250px] sm:max-h-[350px] pr-2 custom-scrollbar">
-                      {items.map(item => {
-                        const dbProduct = products.find(p => String(p.id) === String(item.productId || item.product_id));
-                        const displayImage = dbProduct ? getImageUrl(dbProduct.image) : "/images/library/pizza.jpg";
-                        return (
-                          <Link key={item.id} to={`/product/${item.productId || item.product_id}`} className="flex justify-between items-center text-sm gap-3 p-2 -mx-2 rounded-xl hover:bg-secondary/40 transition-colors group cursor-pointer">
-                            <div className="flex items-center gap-2.5 sm:gap-3">
-                              <div className="size-8 sm:size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 shadow-sm flex items-center justify-center">
-                                {displayImage ? (
-                                  <img src={displayImage} alt={item.productName || item.product_name} className="w-full h-full object-cover hover:scale-110 transition-transform duration-500" />
-                                ) : (
-                                  <div className="w-full h-full bg-primary/10 flex items-center justify-center">
-                                    <ShoppingBag className="size-4 sm:size-6 text-primary/60" />
-                                  </div>
-                                )}
-                              </div>
-                              <div className="flex flex-col">
-                                <span className="font-semibold text-xs sm:text-sm text-foreground">
-                                  {item.quantity}x {item.productName || item.product_name}
-                                </span>
-                                {item.options && (
-                                  <span className="text-[10px] sm:text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
-                                    {(() => {
-                                      try {
-                                        return Object.values(JSON.parse(item.options)).join(", ");
-                                      } catch (e) {
-                                        return String(item.options);
-                                      }
-                                    })()}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            <span className="font-bold text-xs sm:text-sm whitespace-nowrap">${Number(item.lineTotal || item.line_total || 0).toFixed(2)}</span>
-                          </Link>
-                        );
-                      })}
-                      {items.length === 0 && (
-                        <div className="flex flex-col items-center justify-center h-full text-muted-foreground py-8 opacity-60">
-                          <ShoppingBag className="size-10 mb-3" />
-                          <p className="text-xs sm:text-sm text-center">No items found for this order.<br/>(This might be an older order)</p>
+                        <div className="flex justify-between text-muted-foreground">
+                          <span>Delivery Fee</span>
+                          <span>${Number(order.deliveryFee || order.delivery_fee || 0).toFixed(2)}</span>
                         </div>
-                      )}
-                    </div>
-                    <div className="pt-2 sm:pt-3 border-t border-border/60 space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Subtotal</span>
-                        <span>${Number(order.subtotal || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>Delivery Fee</span>
-                        <span>${Number(order.deliveryFee || order.delivery_fee || 0).toFixed(2)}</span>
-                      </div>
-                      <div className="flex justify-between font-bold text-foreground pt-1.5 sm:pt-2 text-sm sm:text-base">
-                        <span>Total</span>
-                        <span className="text-primary">${Number(order.total || 0).toFixed(2)}</span>
+                        <div className="flex justify-between font-bold text-foreground pt-2 text-sm sm:text-base border-t border-border/40">
+                          <span>Total</span>
+                          <span className="text-primary font-serif">${Number(order.total || 0).toFixed(2)}</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </motion.div>
+
+                </div>
+
               </div>
+
             </div>
+
           </div>
         </PageTransition>
       </main>

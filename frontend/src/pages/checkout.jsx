@@ -306,9 +306,13 @@ function CheckoutPage() {
         setIsPaymentVerified(true);
         if (showToast) toast.success("Payment verified! ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ");
         return true;
+      } else if (data.status === "LIMIT_EXCEEDED" || data.errorCode === 17) {
+        if (showToast) {
+          toast.error("Bakong API daily limit reached. Please try again tomorrow.");
+        }
       } else {
         if (showToast) {
-          toast.error("មិនទាន់ឃើញមានការផ្ទេរប្រាក់ចូលទេ។ សូមស្កេនបាញ់លុយជាមុនសិន ឬរើស Cash!");
+          toast.error("មិនទាន់ឃើញមានការផ្ទេរប្រាក់ចូលទេ។ សូមស្កេនបាញ់លុយជាមុនសិន!");
         }
       }
     } catch (e) {
@@ -369,24 +373,34 @@ function CheckoutPage() {
 
   const isAutoSubmittingRef = useRef(false);
 
-  // 100% Automatic Polling for KHQR / ABA_PAY
+  // 100% Automatic Polling for KHQR / ABA_PAY when Modal is Open
   useEffect(() => {
-    if (isPaymentVerified || (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") || !qrCodeString) return;
+    if (!showPaymentConfirmModal || isPaymentVerified || (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") || !qrCodeString) return;
 
+    let pollCount = 0;
+    const maxPolls = 40;
+
+    // Poll every 10 seconds (10000ms) to conserve Bakong API quota
     const pollTimer = setInterval(async () => {
       if (isAutoSubmittingRef.current) return;
+      pollCount++;
+      if (pollCount > maxPolls) {
+        clearInterval(pollTimer);
+        return;
+      }
       const isSuccess = await verifyPaymentWithBakong(false);
       if (isSuccess && !isAutoSubmittingRef.current) {
         isAutoSubmittingRef.current = true;
-        toast.success("ទទួលបានការបាញ់លុយជោគជ័យ! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
+        setShowPaymentConfirmModal(false);
+        toast.success("🎉 ទទួលបានការផ្ទេរប្រាក់ជោគជ័យពី Bakong! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
         setTimeout(() => {
           handleSubmit(onSubmit)();
-        }, 700);
+        }, 600);
       }
-    }, 2000);
+    }, 10000);
 
     return () => clearInterval(pollTimer);
-  }, [qrCodeString, paymentMethod, isPaymentVerified]);
+  }, [showPaymentConfirmModal, qrCodeString, paymentMethod, isPaymentVerified]);
 
   const handleApplyCoupon = async (e) => {
     if (e) e.preventDefault();
@@ -556,8 +570,8 @@ function CheckoutPage() {
       const targetAddress = `${address1}${address2 ? `, ${address2}` : ""}, ${city}`;
 
       setTimeout(() => {
-        clear();
-        removeCoupon();
+        if (typeof clear === "function") clear();
+        if (typeof removeCoupon === "function") removeCoupon();
       }, 200);
 
       navigate("/order-confirmation", {
@@ -1512,15 +1526,17 @@ function CheckoutPage() {
               </button>
             </div>
             
-            <div className="inline-flex items-center gap-2 px-3.5 py-2 mt-2 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
-              <Loader2 className="size-3.5 animate-spin text-primary" />
-              <span>កំពុងរង់ចាំការបាញ់លុយដោយស្វ័យប្រវត្តិ...</span>
+            <div className="w-full space-y-2 pt-2">
+              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
+                <Loader2 className="size-4 animate-spin text-primary" />
+                <span>កំពុងរង់ចាំការបាញ់លុយពី Bakong...</span>
+              </div>
             </div>
             
             <Button
               type="button"
               variant="outline"
-              className="w-full mt-2 rounded-full border-border/60 text-xs"
+              className="w-full rounded-full border-border/60 text-xs h-9"
               onClick={() => {
                 setShowPaymentConfirmModal(false);
                 setSubmitting(false);

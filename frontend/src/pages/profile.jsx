@@ -47,7 +47,7 @@ import { CartDrawer } from "@/components/food/cart-drawer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
-import { list, create, update, get, remove } from "@/lib/api";
+import { list, create, update, get, remove, API_URL } from "@/lib/api";
 import { fetchDashboard, getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -273,12 +273,19 @@ export default function ProfilePage() {
       const uploadedUrl = await uploadImageToCloudinary(file);
       setSettingsForm((prev) => ({ ...prev, avatar: uploadedUrl }));
       
-      // Auto-save to customer profile immediately
-      if (customer) {
+      // Auto-save to customer profile immediately via backend API
+      if (customer && customer.email) {
         try {
-          if (customer.id) {
-            await update("customers", customer.id, { avatar: uploadedUrl });
-          }
+          await fetch(`${API_URL}/auth/customer-update-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: customer.email,
+              name: settingsForm.name || customer.name,
+              phone: settingsForm.phone || customer.phone,
+              avatar: uploadedUrl
+            }),
+          });
         } catch (e) {
           console.warn("Could not sync avatar to backend:", e);
         }
@@ -288,7 +295,7 @@ export default function ProfilePage() {
         setCustomer(updatedCustomer);
         window.dispatchEvent(new Event("authChanged"));
       }
-      toast.success("Profile picture updated!");
+      toast.success("Profile picture updated and saved!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to upload image. Please try again.");
@@ -308,6 +315,7 @@ export default function ProfilePage() {
           email: customer.email,
           name: settingsForm.name,
           phone: settingsForm.phone,
+          avatar: settingsForm.avatar,
         }),
       });
       const data = await response.json();
@@ -315,7 +323,12 @@ export default function ProfilePage() {
         throw new Error(data.error || "Failed to update profile information");
       }
       
-      const updatedCustomer = { ...customer, name: settingsForm.name, phone: settingsForm.phone };
+      const updatedCustomer = { 
+        ...customer, 
+        name: settingsForm.name, 
+        phone: settingsForm.phone,
+        avatar: settingsForm.avatar
+      };
       delete updatedCustomer.password;
       localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
       setCustomer(updatedCustomer);
@@ -513,22 +526,32 @@ export default function ProfilePage() {
                   {/* Avatar with luxury golden ring & edit camera badge */}
                   <div className="relative mx-auto size-24 sm:size-28 mb-3.5 group">
                     <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background/80 shadow-md">
-                      <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center">
+                      <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
                         {customer.avatar ? (
                           <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                         ) : (
                           <User className="size-12 text-primary" />
                         )}
+                        {isUploadingAvatar && (
+                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                            <Loader2 className="size-5 animate-spin text-primary" />
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("SETTINGS")}
+                    <label
                       className="absolute bottom-0 right-0 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                       title="Change Photo"
                     >
                       <Camera className="size-4" />
-                    </button>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleAvatarFileChange} 
+                        disabled={isUploadingAvatar}
+                      />
+                    </label>
                   </div>
 
                   {/* User Name & Phone */}
@@ -546,12 +569,36 @@ export default function ProfilePage() {
                     </p>
                   </div>
 
-                  {/* Member Badge & Admin Panel Pill */}
+                  {/* Real Dynamic Member Badge & Admin Panel Pill */}
                   <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/25 shadow-2xs">
-                      <Flame className="size-3.5 fill-primary" />
-                      VIP Foodie Member
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground/85 border border-border/60 shadow-2xs">
+                      {orders.length >= 30 ? (
+                        <>
+                          <Flame className="size-3.5 fill-red-500 text-red-500" />
+                          <span className="text-red-600 dark:text-red-400 font-bold">VIP Member</span>
+                        </>
+                      ) : orders.length >= 15 ? (
+                        <>
+                          <Sparkles className="size-3.5 fill-amber-500 text-amber-500" />
+                          <span className="text-amber-600 dark:text-amber-400 font-bold">Gold Member</span>
+                        </>
+                      ) : orders.length >= 5 ? (
+                        <>
+                          <Star className="size-3.5 fill-slate-400 text-slate-400" />
+                          <span className="font-semibold">Silver Member</span>
+                        </>
+                      ) : (
+                        <>
+                          <User className="size-3.5 text-primary" />
+                          <span className="font-medium text-foreground/80">Member</span>
+                        </>
+                      )}
                     </span>
+                    {customer.phone && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <Check className="size-3" /> Verified
+                      </span>
+                    )}
                     {isAdmin && (
                       <button
                         type="button"

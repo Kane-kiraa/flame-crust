@@ -16,6 +16,10 @@ public class BakongVerificationRequest {
     @JsonAlias({"md5", "md5Hash", "md5_hash"})
     private String md5;
 
+    @JsonProperty("confirm_fallback")
+    @JsonAlias({"confirmFallback", "confirm_fallback", "force_confirm", "forceConfirm"})
+    private Boolean confirmFallback;
+
     public String getOrderId() {
         return orderId;
     }
@@ -38,5 +42,13 @@ public class BakongVerificationRequest {
 
     public void setMd5(String md5) {
         this.md5 = md5;
+    }
+
+    public Boolean getConfirmFallback() {
+        return confirmFallback;
+    }
+
+    public void setConfirmFallback(Boolean confirmFallback) {
+        this.confirmFallback = confirmFallback;
     }
 }

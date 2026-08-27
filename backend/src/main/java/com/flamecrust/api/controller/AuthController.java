@@ -174,6 +174,45 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("customer", customer, "token", token));
     }
 
+    @PostMapping("/customer-register")
+    public ResponseEntity<?> customerRegister(@RequestBody Map<String, String> body) {
+        String name = body.get("name");
+        String email = body.get("email");
+        String phone = body.get("phone");
+        String password = body.get("password");
+
+        if (email == null || email.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+        if (password == null || password.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
+        }
+        if (name == null || name.isBlank()) {
+            name = email.contains("@") ? email.substring(0, email.indexOf("@")) : "Customer";
+        }
+
+        // Check if customer already exists
+        List<Map<String, Object>> existing = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email);
+        if (!existing.isEmpty()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "An account with this email already exists. Please sign in."));
+        }
+
+        String encodedPassword = passwordEncoder.encode(password);
+        jdbc.update("INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)",
+                name, email, phone, encodedPassword);
+
+        Map<String, Object> customer = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email).getFirst();
+        customer.remove("password_hash");
+
+        String token = jwtUtil.generateToken(email, "CUSTOMER");
+        return ResponseEntity.ok(Map.of(
+                "type", "CUSTOMER",
+                "role", "CUSTOMER",
+                "customer", customer,
+                "token", token
+        ));
+    }
+
     @PostMapping("/login")
     public ResponseEntity<?> unifiedLogin(@RequestBody Map<String, String> body) {
         String email = body.get("email");
@@ -297,19 +336,24 @@ public class AuthController {
             if (name == null || name.isBlank()) {
                 name = email.contains("@") ? email.substring(0, email.indexOf("@")) : "User";
             }
-            jdbc.update("INSERT INTO customers (name, email) VALUES (?, ?)", name, email);
+            jdbc.update("INSERT INTO customers (name, email, avatar) VALUES (?, ?, ?)", name, email, avatar);
             customer = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email).getFirst();
         } else {
             customer = customers.getFirst();
+            if (avatar != null && !avatar.isBlank()) {
+                jdbc.update("UPDATE customers SET avatar = ? WHERE id = ? AND (avatar IS NULL OR avatar = '')", avatar, customer.get("id"));
+                customer = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email).getFirst();
+            }
         }
 
+        customer.remove("password_hash");
         String token = jwtUtil.generateToken(email, "CUSTOMER");
         return ResponseEntity.ok(Map.of(
                 "type", "CUSTOMER",
                 "role", "CUSTOMER",
                 "customer", customer,
                 "token", token,
-                "avatar", avatar != null ? avatar : ""
+                "avatar", customer.get("avatar") != null ? customer.get("avatar") : (avatar != null ? avatar : "")
         ));
     }
 
@@ -610,6 +654,8 @@ public class AuthController {
         }
         String name = (String) body.get("name");
         String phone = (String) body.get("phone");
+        String avatar = (String) body.get("avatar");
+        String password = (String) body.get("password");
 
         List<Map<String, Object>> customers = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email);
         if (customers.isEmpty()) {
@@ -622,6 +668,12 @@ public class AuthController {
         }
         if (phone != null) {
             jdbc.update("UPDATE customers SET phone = ? WHERE id = ?", phone, customerId);
+        }
+        if (avatar != null) {
+            jdbc.update("UPDATE customers SET avatar = ? WHERE id = ?", avatar, customerId);
+        }
+        if (password != null && !password.isBlank() && password.length() >= 6) {
+            jdbc.update("UPDATE customers SET password_hash = ? WHERE id = ?", passwordEncoder.encode(password), customerId);
         }
 
         Map<String, Object> updated = jdbc.queryForList("SELECT * FROM customers WHERE id = ? LIMIT 1", customerId).getFirst();

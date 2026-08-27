@@ -22,7 +22,13 @@ function formatDate(dateInput) {
   }
 }
 
+function formatPrice(amount) {
+  const num = Number(amount || 0);
+  return `$${num.toFixed(2)}`;
+}
+
 export {
   cn,
-  formatDate
+  formatDate,
+  formatPrice
 };

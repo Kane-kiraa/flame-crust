@@ -2,13 +2,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Flame, Instagram, Twitter, Facebook, Mail, Phone, MapPin, ArrowRight } from "lucide-react";
+import { Flame, Instagram, Twitter, Facebook, ArrowRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fetchCategories } from "@/lib/food-api";
 
-function Footer({ hideNewsletter = false }) {
+export function Footer({ hideNewsletter = false }) {
   const [categories, setCategories] = useState([]);
 
   useEffect(() => {
@@ -33,7 +33,6 @@ function Footer({ hideNewsletter = false }) {
     Company: [
       { label: "Our story", to: "/#features" },
       { label: "Careers", to: "#" },
-      { label: "Press", to: "#" },
       { label: "Franchising", to: "#" },
       { label: "Gift cards", to: "#" },
     ],
@@ -41,105 +40,101 @@ function Footer({ hideNewsletter = false }) {
       { label: "Help center", to: "#" },
       { label: "Track order", to: "#" },
       { label: "Contact us", to: "#" },
-      { label: "Allergens", to: "#" },
       { label: "FAQs", to: "#" },
     ],
     Legal: [
-      { label: "Privacy", to: "#" },
-      { label: "Terms", to: "#" },
-      { label: "Cookies", to: "#" },
-      { label: "Accessibility", to: "#" },
+      { label: "Privacy Policy", to: "#" },
+      { label: "Terms of Service", to: "#" },
+      { label: "Cookie Policy", to: "#" },
     ],
   };
 
   return (
-    <footer className="relative bg-background text-foreground overflow-hidden mt-auto pt-10 lg:pt-14 pb-20 lg:pb-0 border-t border-border/60">
+    <footer className="relative bg-background text-foreground overflow-hidden mt-auto pt-6 sm:pt-10 lg:pt-14 pb-36 sm:pb-24 lg:pb-12 border-t border-border/60">
       <div className="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        
+        {/* Newsletter Banner */}
         {!hideNewsletter && (
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-            className="relative rounded-3xl bg-gradient-to-br from-primary via-primary to-accent p-8 lg:p-12 shadow-warm-lg"
+            viewport={{ once: true, margin: "-40px" }}
+            transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+            className="relative rounded-2xl sm:rounded-3xl bg-gradient-to-tr from-red-600 via-orange-600 to-amber-500 p-5 sm:p-8 lg:p-10 shadow-warm-lg overflow-hidden"
           >
-            <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 lg:gap-10 items-center">
+            {/* Subtle background glow */}
+            <div className="absolute -right-10 -bottom-10 size-48 rounded-full bg-white/10 blur-2xl pointer-events-none" />
+
+            <div className="grid lg:grid-cols-[1.3fr_1fr] gap-4 sm:gap-6 lg:gap-10 items-center relative z-10">
               <div>
-                <h3 className="font-serif text-3xl sm:text-4xl lg:text-5xl font-bold text-white leading-tight">
+                <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-black/20 text-white text-[10px] sm:text-xs font-bold uppercase tracking-wider mb-2 backdrop-blur-xs">
+                  <Flame className="size-3 text-amber-300" /> Exclusive Offers
+                </span>
+                <h3 className="font-serif text-xl sm:text-3xl lg:text-4xl font-bold text-white leading-tight">
                   Hungry yet? Let's fix that.
                 </h3>
-                <p className="mt-3 text-white/85 text-base sm:text-lg max-w-lg">
-                  Get exclusive deals, secret menu drops, and a free garlic knots on your first order over $20.
+                <p className="mt-1 sm:mt-2 text-white/90 text-xs sm:text-base max-w-md leading-relaxed">
+                  Get secret menu drops, VIP discount codes, and free garlic knots on your first order over $20.
                 </p>
               </div>
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   toast.success("You're in! Check your inbox for the deal.");
                   e.target.reset();
                 }}
-                className="flex flex-col sm:flex-row gap-2"
+                className="flex flex-col sm:flex-row gap-2 mt-1 sm:mt-0"
               >
                 <Input
                   type="email"
                   required
                   placeholder="your@email.com"
-                  className="h-12 lg:h-13 rounded-full bg-card border-border text-foreground placeholder:text-muted-foreground"
+                  className="h-10 sm:h-12 rounded-xl sm:rounded-full bg-card/95 border-0 text-foreground placeholder:text-muted-foreground text-xs sm:text-sm px-4 shadow-inner"
                 />
                 <Button
                   type="submit"
                   size="lg"
-                  className="h-12 lg:h-13 px-6 rounded-full bg-foreground text-background hover:bg-foreground/90 whitespace-nowrap"
+                  className="h-10 sm:h-12 px-5 sm:px-6 rounded-xl sm:rounded-full bg-slate-950 text-white hover:bg-slate-900 text-xs sm:text-sm font-bold shadow-md whitespace-nowrap active:scale-95 transition-all"
                 >
                   <span>Subscribe</span>
-                  <ArrowRight className="size-4 ml-1" />
+                  <ArrowRight className="size-3.5 ml-1" />
                 </Button>
               </form>
             </div>
           </motion.div>
         )}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-10 pt-10 pb-12">
+        {/* Footer Navigation Columns */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6 sm:gap-8 pt-8 sm:pt-10 pb-6">
           <div className="col-span-2 lg:col-span-2">
             <Link to="/" className="flex items-center">
               <img
                 src="/images/library/logo.jpg"
                 alt="Flame & Crust logo"
-                className="h-20 w-40 object-contain"
+                className="h-14 sm:h-16 w-auto object-contain"
               />
             </Link>
-            <p className="mt-5 text-sm text-muted-foreground max-w-xs leading-relaxed">
-              Wood-fired pizzas, hand-rolled pizza bagels, and smashed Angus burgers. Crafted with care, delivered hot.
+            <p className="mt-3 text-xs sm:text-sm text-muted-foreground max-w-xs leading-relaxed">
+              Wood-fired sourdough pizzas, hand-rolled pizza bagels, and smashed Angus burgers. Crafted with care, delivered hot in 25 minutes.
             </p>
-            <div className="mt-6 flex items-center gap-2">
-              {[Instagram,].map((Icon, i) => (
+            
+            {/* Social Links */}
+            <div className="mt-4 flex items-center gap-2">
+              {[
+                { icon: Instagram, href: "https://instagram.com" },
+                { icon: Twitter, href: "https://twitter.com" },
+                { icon: Facebook, href: "https://facebook.com" }
+              ].map((item, i) => (
                 <a
                   key={i}
-                  href="https://www.facebook.com/share/193HJWpF4T/?mibextid=wwXIfr"
-                  className="flex items-center justify-center size-10 rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground text-foreground/80 transition-colors"
-                  aria-label="Social link"
+                  href={item.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center justify-center size-8 sm:size-9 rounded-full bg-secondary/80 hover:bg-primary hover:text-white text-muted-foreground transition-all cursor-pointer shadow-2xs"
+                  aria-label="Social Link"
                 >
-                  <Icon className="size-4.5" />
-                </a>
-              ))}
-              {[Twitter].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="https://www.facebook.com/share/193HJWpF4T/?mibextid=wwXIfr"
-                  className="flex items-center justify-center size-10 rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground text-foreground/80 transition-colors"
-                  aria-label="Social link"
-                >
-                  <Icon className="size-4.5" />
-                </a>
-              ))}
-              {[Facebook].map((Icon, i) => (
-                <a
-                  key={i}
-                  href="https://www.facebook.com/share/193HJWpF4T/?mibextid=wwXIfr"
-                  className="flex items-center justify-center size-10 rounded-full bg-secondary hover:bg-accent hover:text-accent-foreground text-foreground/80 transition-colors"
-                  aria-label="Social link"
-                >
-                  <Icon className="size-4.5" />
+                  <item.icon className="size-4" />
                 </a>
               ))}
             </div>
@@ -147,17 +142,17 @@ function Footer({ hideNewsletter = false }) {
 
           {Object.entries(footerLinks).map(([title, links]) => (
             <div key={title}>
-              <h4 className="font-serif text-sm font-bold text-foreground uppercase tracking-wider mb-4">
+              <h4 className="font-serif text-xs sm:text-sm font-bold text-foreground uppercase tracking-wider mb-2.5 sm:mb-3.5">
                 {title}
               </h4>
-              <ul className="space-y-2.5">
-                {links.map((l) => (
-                  <li key={l.label}>
+              <ul className="space-y-1.5 sm:space-y-2">
+                {links.map((link) => (
+                  <li key={link.label}>
                     <Link
-                      to={l.to}
-                      className="text-sm text-muted-foreground hover:text-accent transition-colors"
+                      to={link.to}
+                      className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors inline-block"
                     >
-                      {l.label}
+                      {link.label}
                     </Link>
                   </li>
                 ))}
@@ -166,35 +161,17 @@ function Footer({ hideNewsletter = false }) {
           ))}
         </div>
 
-        <div className="grid sm:grid-cols-3 gap-6 py-8 border-t border-border/60">
-          {[
-            { icon: Phone, label: "Call us", value: "(855) 965-755-963" },
-            { icon: Mail, label: "Email", value: "chanthakhemara12@gmail.com" },
-            { icon: MapPin, label: "Visit", value: "142 Brick Lane, Eastside" }
-          ].map((c) => (
-            <div key={c.label} className="flex items-center gap-3">
-              <span className="flex items-center justify-center size-10 rounded-full bg-secondary text-accent">
-                <c.icon className="size-4.5" />
-              </span>
-              <div>
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-                  {c.label}
-                </div>
-                <div className="text-sm font-medium text-foreground/90">{c.value}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="py-6 border-t border-border/60 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground">
-          <p>© {new Date().getFullYear()} Flame & Crust Artisan Kitchen. All rights reserved.</p>
-          <p className="flex items-center gap-1.5">
-            Made with <Flame className="size-3.5 text-accent animate-flicker" /> and a lot of dough.
+        {/* Bottom Copyright */}
+        <div className="pt-4 pb-2 border-t border-border/40 flex flex-col sm:flex-row items-center justify-between gap-2 text-[11px] sm:text-xs text-muted-foreground">
+          <p>© {new Date().getFullYear()} Flame & Crust Pizza Co. All rights reserved.</p>
+          <p className="flex items-center gap-1">
+            Crafted with <Heart className="size-3 text-red-500 fill-red-500" /> for artisan pizza lovers
           </p>
         </div>
+
       </div>
     </footer>
   );
 }
 
-export { Footer };
+export default Footer;

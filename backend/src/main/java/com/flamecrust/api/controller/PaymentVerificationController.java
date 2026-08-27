@@ -45,9 +45,9 @@ public class PaymentVerificationController {
         try {
             // 1. Generate MD5 of the QR Code string or use provided MD5
             String md5Hash = hasMd5 ? request.getMd5().trim() : DigestUtils.md5DigestAsHex(request.getQrCodeString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            System.out.println("Checking Bakong MD5: " + md5Hash);
+            System.out.println("Verifying Bakong Transaction with MD5: " + md5Hash);
 
-            // 2. Call Bakong Open API
+            // 2. Call Official Bakong Open API
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
             if (bakongApiToken != null && !bakongApiToken.isEmpty()) {
@@ -67,41 +67,52 @@ public class PaymentVerificationController {
             );
 
             Map<String, Object> responseBody = bakongResponse.getBody();
-            if (responseBody != null && responseBody.containsKey("responseCode")) {
+            if (responseBody != null) {
                 Object responseCodeObj = responseBody.get("responseCode");
-                int responseCode = responseCodeObj instanceof Number ? ((Number) responseCodeObj).intValue() : Integer.parseInt(responseCodeObj.toString());
+                Object errorCodeObj = responseBody.get("errorCode");
+                int responseCode = responseCodeObj instanceof Number ? ((Number) responseCodeObj).intValue() : (responseCodeObj != null ? Integer.parseInt(responseCodeObj.toString()) : -1);
+                int errorCode = errorCodeObj instanceof Number ? ((Number) errorCodeObj).intValue() : (errorCodeObj != null ? Integer.parseInt(errorCodeObj.toString()) : 0);
 
+                // Check for Bakong 100 requests/day limit
+                if (errorCode == 17 || (responseBody.get("responseMessage") != null && responseBody.get("responseMessage").toString().contains("Daily request limit"))) {
+                    response.put("status", "LIMIT_EXCEEDED");
+                    response.put("errorCode", 17);
+                    response.put("message", "Bakong daily limit of 100 requests exceeded.");
+                    return ResponseEntity.ok(response);
+                }
+
+                // Official Bakong Success (Response Code 0 = Transaction Settled and Paid)
                 if (responseCode == 0) {
-                    // Success! Update payment and order in database if orderId exists
+                    // Update database transaction status strictly on verified payment
                     if (request.getOrderId() != null && !request.getOrderId().trim().isEmpty()) {
                         try {
                             Long orderId = Long.parseLong(request.getOrderId());
                             jdbcTemplate.update("UPDATE payments SET status = 'PAID', paid_at = CURRENT_TIMESTAMP WHERE order_id = ?", orderId);
                             jdbcTemplate.update("UPDATE orders SET status = 'CONFIRMED' WHERE id = ?", orderId);
-                            jdbcTemplate.update("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, 'CONFIRMED', 'Payment verified')", orderId);
+                            jdbcTemplate.update("INSERT INTO order_status_history (order_id, status, notes) VALUES (?, 'CONFIRMED', 'Payment verified via Bakong KHQR Open API')", orderId);
                         } catch (Exception ex) {
-                            // orderId might not be numeric or not found yet
+                            // Non-numeric or not yet inserted
                         }
                     }
                     
                     response.put("status", "SUCCESS");
-                    response.put("message", "Payment verified successfully");
+                    response.put("data", responseBody.get("data"));
+                    response.put("message", "Payment verified successfully via Bakong network");
                     return ResponseEntity.ok(response);
                 } else {
                     response.put("status", "PENDING");
-                    response.put("message", "Payment not completed yet or failed. Code: " + responseCode);
+                    response.put("message", responseBody.get("responseMessage") != null ? responseBody.get("responseMessage").toString() : "Awaiting payment transaction");
                     return ResponseEntity.ok(response);
                 }
             } else {
                 response.put("status", "PENDING");
-                response.put("message", "Payment pending on Bakong");
+                response.put("message", "Awaiting response from Bakong gateway");
                 return ResponseEntity.ok(response);
             }
 
         } catch (Exception e) {
-            e.printStackTrace();
             response.put("status", "ERROR");
-            response.put("message", "Verification failed due to error: " + e.getMessage());
+            response.put("message", "Gateway error: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
     }

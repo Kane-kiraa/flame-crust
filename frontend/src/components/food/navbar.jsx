@@ -268,7 +268,7 @@ function Navbar() {
               />
             </Link>
 
-            {/* Active Orders Compact Icon Badge (Clean & Static) */}
+            {/* Active Orders Compact Icon Badge (Clean on Desktop/Tablet) */}
             {activeOrders.length > 0 && (
               <button
                 type="button"
@@ -276,22 +276,14 @@ function Navbar() {
                   if (activeOrders.length === 1) navigate(`/track/${activeOrders[0].id}`);
                   else setOrdersModalOpen(true);
                 }}
-                className={cn(
-                  "items-center gap-1.5 p-1.5 sm:px-3 sm:py-1.5 rounded-full bg-primary/15 text-primary border border-primary/40 text-[11px] sm:text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-colors shrink-0 cursor-pointer shadow-xs relative group",
-                  location.pathname === "/cart" || location.pathname === "/profile" || location.pathname === "/checkout" ? "hidden sm:flex" : "flex"
-                )}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 text-primary border border-primary/40 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-colors shrink-0 cursor-pointer shadow-xs"
                 title={activeOrders.length === 1 ? `Order #${activeOrders[0].order_number}` : `${activeOrders.length} Active Orders`}
               >
                 <span className="size-2 rounded-full bg-green-500 shrink-0" />
                 <Package className="size-4 shrink-0" />
-                <span className="hidden sm:inline font-bold">
+                <span className="font-bold">
                   {activeOrders.length === 1 ? `#${activeOrders[0].order_number}` : `${activeOrders.length} Orders`}
                 </span>
-                {activeOrders.length > 1 && (
-                  <span className="sm:hidden absolute -top-1 -right-1 text-[9px] bg-primary text-primary-foreground font-bold size-4 rounded-full flex items-center justify-center border border-background shadow-xs">
-                    {activeOrders.length}
-                  </span>
-                )}
               </button>
             )}
           </div>

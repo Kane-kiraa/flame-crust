@@ -1,0 +1,1 @@
+ALTER TABLE customers ADD COLUMN avatar VARCHAR(500) NULL AFTER phone;

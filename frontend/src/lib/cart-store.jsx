@@ -1,6 +1,7 @@
 "use client";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+
 const useCart = create()(
   persist(
     (set, get) => ({
@@ -29,14 +30,15 @@ const useCart = create()(
       decrement: (id) => set((state) => ({
         lines: state.lines.map((l) => String(l.id) === String(id) ? { ...l, qty: l.qty - 1 } : l).filter((l) => l.qty > 0)
       })),
-      clear: () => set({ lines: [] }),
+      clear: () => set({ lines: [], coupon: null }),
       openCart: () => set({ isOpen: true }),
       closeCart: () => set({ isOpen: false }),
       toggleCart: () => set((s) => ({ isOpen: !s.isOpen })),
       subtotal: () => get().lines.reduce((sum, l) => sum + l.price * l.qty, 0),
       count: () => get().lines.reduce((sum, l) => sum + l.qty, 0),
       applyCoupon: (couponData) => set({ coupon: couponData }),
-      clearCoupon: () => set({ coupon: null })
+      clearCoupon: () => set({ coupon: null }),
+      removeCoupon: () => set({ coupon: null })
     }),
     {
       name: "flame-crust-cart",
@@ -44,6 +46,7 @@ const useCart = create()(
     }
   )
 );
+
 export {
   useCart
 };

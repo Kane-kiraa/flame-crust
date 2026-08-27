@@ -1,88 +1,331 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Bike, Package, ChevronRight, X, ChefHat, Clock, CheckCircle2 } from "lucide-react";
+import { 
+  Bike, 
+  Package, 
+  ChevronRight, 
+  X, 
+  ChefHat, 
+  Clock, 
+  Flame, 
+  Layers, 
+  ArrowRight 
+} from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { list } from "@/lib/api";
+import { cn, formatPrice } from "@/lib/utils";
+
+const HIDDEN_ROUTES = ["/admin", "/driver", "/kitchen", "/track", "/payment", "/checkout", "/login", "/product", "/cart"];
 
 export function ActiveOrderWidget() {
   const [activeOrders, setActiveOrders] = useState([]);
-  const [dismissed, setDismissed] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const widgetRef = useRef(null);
 
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (widgetRef.current && !widgetRef.current.contains(event.target)) {
-        setIsExpanded(false);
-      }
-    };
-
-    if (isExpanded) {
-      document.addEventListener("mousedown", handleClickOutside);
-      document.addEventListener("touchstart", handleClickOutside);
-    }
-    
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
-    };
-  }, [isExpanded]);
-
-  useEffect(() => {
-    // Reset state when route changes
-    setDismissed(false);
-    setIsExpanded(false);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    // Don't show on admin or driver pages
-    if (location.pathname.includes("/admin") || location.pathname.includes("/driver")) {
+    if (HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route))) {
       return;
     }
 
-    const checkActiveOrder = async () => {
+    const checkActiveOrders = async () => {
       try {
         const stored = localStorage.getItem("customerAuth");
-        if (!stored) return;
+        if (!stored) {
+          setActiveOrders([]);
+          return;
+        }
         const customer = JSON.parse(stored);
-        
+        if (!customer || !customer.id) return;
+
         const orders = await list("orders");
         const activeList = orders
-          .filter(o => String(o.customer_id) === String(customer.id) && o.status !== "DELIVERED" && o.status !== "CANCELLED")
+          .filter(
+            (o) =>
+              (String(o.customer_id) === String(customer.id) || o.customer_phone === customer.phone) &&
+              o.status !== "DELIVERED" &&
+              o.status !== "CANCELLED"
+          )
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-          
-        if (activeList.length > 0) {
-          const allItems = await list("order_items");
-          activeList.forEach(active => {
-            active.items = allItems.filter(item => String(item.order_id) === String(active.id));
-          });
-        }
-          
+
         setActiveOrders(activeList);
-      } catch(e) {}
+      } catch (e) {
+        // silent fail
+      }
     };
 
-    checkActiveOrder();
-    const interval = setInterval(checkActiveOrder, 15000); // Check every 15s
-    
-    // Listen for custom event
+    checkActiveOrders();
+    const interval = setInterval(checkActiveOrders, 10000);
+
     const handleOrderPlaced = () => {
-      setDismissed(false);
-      checkActiveOrder();
+      setIsDismissed(false);
+      checkActiveOrders();
     };
 
-    window.addEventListener("storage", checkActiveOrder);
     window.addEventListener("orderPlaced", handleOrderPlaced);
-    
+    window.addEventListener("authChanged", checkActiveOrders);
+    window.addEventListener("storage", checkActiveOrders);
+
     return () => {
       clearInterval(interval);
-      window.removeEventListener("storage", checkActiveOrder);
       window.removeEventListener("orderPlaced", handleOrderPlaced);
+      window.removeEventListener("authChanged", checkActiveOrders);
+      window.removeEventListener("storage", checkActiveOrders);
     };
   }, [location.pathname]);
 
-  // Active order tracking is now rendered directly inside top navbar (navbar.jsx)
-  return null;
+  // Reset dismissed state when moving to another page so user can see their active order
+  useEffect(() => {
+    setIsDismissed(false);
+  }, [location.pathname]);
+
+  if (HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route))) {
+    return null;
+  }
+
+  if (activeOrders.length === 0) return null;
+
+  const isMultiple = activeOrders.length > 1;
+  const currentOrder = activeOrders[0];
+
+  const getStatusInfo = (status) => {
+    switch (status?.toUpperCase()) {
+      case "OUT_FOR_DELIVERY":
+      case "ON_DELIVERY":
+        return {
+          title: "Driver on the way",
+          sub: "Arriving in ~10-15 min",
+          icon: Bike,
+          badgeColor: "bg-emerald-500 text-white",
+          dotColor: "bg-emerald-500",
+          statusText: "On Delivery"
+        };
+      case "COOKING":
+      case "PREPARING":
+        return {
+          title: "Baking in Wood Oven",
+          sub: "Hot & fresh in ~15-20 min",
+          icon: ChefHat,
+          badgeColor: "bg-amber-500 text-white",
+          dotColor: "bg-amber-500",
+          statusText: "Baking"
+        };
+      case "READY":
+        return {
+          title: "Order Ready",
+          sub: "Waiting for rider pickup",
+          icon: Package,
+          badgeColor: "bg-blue-500 text-white",
+          dotColor: "bg-blue-500",
+          statusText: "Ready"
+        };
+      default:
+        return {
+          title: "Order Confirmed",
+          sub: "Kitchen preparing pizza",
+          icon: Clock,
+          badgeColor: "bg-primary text-white",
+          dotColor: "bg-primary",
+          statusText: "Confirmed"
+        };
+    }
+  };
+
+  const statusInfo = getStatusInfo(currentOrder.status);
+  const StatusIcon = statusInfo.icon;
+
+  const handleWidgetClick = () => {
+    if (isMultiple) {
+      setModalOpen(true);
+    } else {
+      navigate(`/track/${currentOrder.id}`);
+    }
+  };
+
+  return (
+    <>
+      <AnimatePresence>
+        {/* If user clicked X to minimize, show a sleek mini floating bubble */}
+        {isDismissed ? (
+          <motion.div
+            key="minimized-pill"
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            onClick={() => setIsDismissed(false)}
+            className="fixed z-[65] bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 lg:bottom-6 lg:right-6 select-none cursor-pointer"
+            title="Open Live Order Tracking"
+          >
+            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
+              <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+              <StatusIcon className="size-4 text-primary animate-pulse" />
+              <span>#{currentOrder.order_number || currentOrder.id}</span>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key={isMultiple ? `multi-orders-${activeOrders.length}` : `active-order-${currentOrder.id}`}
+            initial={{ opacity: 0, y: 30, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ type: "spring", stiffness: 350, damping: 28 }}
+            className="fixed z-[65] bottom-[calc(4.5rem+env(safe-area-inset-bottom))] inset-x-3 max-w-md mx-auto lg:bottom-6 lg:right-6 lg:left-auto lg:mx-0 lg:max-w-sm lg:w-full select-none"
+          >
+            <div
+              onClick={handleWidgetClick}
+              className="relative overflow-hidden bg-card/95 backdrop-blur-xl border border-primary/30 rounded-2xl p-3 sm:p-3.5 shadow-2xl shadow-primary/10 hover:border-primary/60 transition-all cursor-pointer group flex items-center justify-between gap-3"
+            >
+              {/* Ambient Glow */}
+              <div className="absolute -right-8 -top-8 size-24 rounded-full bg-primary/10 blur-xl pointer-events-none" />
+
+              {/* Left Icon with Live Pulse */}
+              <div className="relative shrink-0 flex items-center justify-center">
+                {isMultiple ? (
+                  <div className="size-10 sm:size-11 rounded-xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md">
+                    <Layers className="size-5 sm:size-5.5 animate-pulse" />
+                  </div>
+                ) : (
+                  <div className={cn("size-10 sm:size-11 rounded-xl flex items-center justify-center shadow-md", statusInfo.badgeColor)}>
+                    <StatusIcon className="size-5 sm:size-5.5 animate-pulse" />
+                  </div>
+                )}
+                <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background animate-ping", statusInfo.dotColor)} />
+                <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background", statusInfo.dotColor)} />
+              </div>
+
+              {/* Middle Details */}
+              <div className="flex-1 min-w-0">
+                {isMultiple ? (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
+                        {activeOrders.length} Active Orders
+                      </span>
+                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-primary/15 text-primary border border-primary/25">
+                        Live
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
+                      Tap to track all ongoing deliveries
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
+                        {statusInfo.title}
+                      </span>
+                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50">
+                        #{currentOrder.order_number || currentOrder.id}
+                      </span>
+                    </div>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
+                      {statusInfo.sub}
+                    </p>
+                  </>
+                )}
+              </div>
+
+              {/* Right Action Button & Dismiss */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleWidgetClick();
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs group-hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
+                >
+                  <span>{isMultiple ? `View (${activeOrders.length})` : "Track"}</span>
+                  <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsDismissed(true);
+                  }}
+                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
+                  title="Minimize"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Multi-Order Live Tracking Modal */}
+      <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl bg-card border border-border/80 shadow-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-secondary/30">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="size-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+                  <Package className="size-5" />
+                </div>
+                <div>
+                  <DialogTitle className="font-serif text-lg font-bold text-foreground">
+                    Active Orders ({activeOrders.length})
+                  </DialogTitle>
+                  <p className="text-xs text-muted-foreground">
+                    Track your orders in real-time
+                  </p>
+                </div>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto divide-y divide-border/40">
+            {activeOrders.map((order) => {
+              const info = getStatusInfo(order.status);
+              const Icon = info.icon;
+              return (
+                <div
+                  key={order.id}
+                  className="pt-3 first:pt-0 flex items-center justify-between gap-3 group"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs", info.badgeColor)}>
+                      <Icon className="size-5 animate-pulse" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                          Order #{order.order_number || order.id}
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-foreground/80 border border-border/50">
+                          {info.statusText}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                        {formatPrice(order.total || order.total_amount || 0)}{" "}
+                        {order.delivery_address ? `• ${order.delivery_address}` : ""}
+                      </p>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModalOpen(false);
+                      navigate(`/track/${order.id}`);
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+                  >
+                    <span>Track</span>
+                    <ArrowRight className="size-3.5" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
 }
