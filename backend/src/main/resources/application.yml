@@ -6,8 +6,9 @@ spring:
   application:
     name: flame-crust-api
   flyway:
+    enabled: true
     baseline-on-migrate: true
-    baseline-version: "2"
+    baseline-version: "0"
   
   datasource:
     url: ${MYSQL_URL:jdbc:mysql://localhost:3306/flame_crust?createDatabaseIfNotExist=true&serverTimezone=UTC}
