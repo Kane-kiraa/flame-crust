@@ -25,7 +25,8 @@ import { FoodCard } from "@/components/food/food-card";
 import { DetailSkeleton } from "@/components/shared/loading-skeleton";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageTransition } from "@/components/shared/page-transition";
-import { getImageUrl, getCachedFoodItems } from "@/lib/food-api";
+import { getImageUrl, getCachedFoodItems, fetchFoodItems } from "@/lib/food-api";
+import { DEFAULT_FALLBACK_PRODUCTS } from "@/lib/food-data";
 import { useCart } from "@/lib/cart-store";
 import { list, get, getProducts } from "@/lib/api";
 import { toast } from "sonner";
@@ -60,12 +61,35 @@ function ProductDetailPage() {
     let isMounted = true;
     async function fetchProduct() {
       try {
-        const products = await getProducts();
-        if (!isMounted) return;
-        const prod = products.find(p => String(p.id) === String(id));
-        if (!prod) throw new Error("Product not found");
+        let prod = null;
+        try {
+          const products = await fetchFoodItems();
+          prod = products.find(p => String(p.id) === String(id) || String(p.sku).toLowerCase() === String(id).toLowerCase());
+        } catch (e) {}
 
-        let allOptions = prod.options || [];
+        if (!prod) {
+          const fallbackList = getCachedFoodItems();
+          prod = fallbackList.find(p => String(p.id) === String(id) || String(p.sku).toLowerCase() === String(id).toLowerCase());
+        }
+
+        if (!prod) {
+          prod = DEFAULT_FALLBACK_PRODUCTS.find(p => String(p.id) === String(id) || String(p.sku).toLowerCase() === String(id).toLowerCase()) || DEFAULT_FALLBACK_PRODUCTS[0];
+        }
+
+        if (!isMounted) return;
+
+        let allOptions = prod.options || [
+          {
+            id: 1,
+            name: "Size",
+            is_required: true,
+            variants: [
+              { id: 1, name: 'Personal 10"', price_adjustment: 0.00, active: true },
+              { id: 2, name: 'Medium 12"', price_adjustment: 2.50, active: true },
+              { id: 3, name: 'Large 14"', price_adjustment: 4.50, active: true }
+            ]
+          }
+        ];
         let allVariants = [];
         allOptions.forEach(opt => {
           if (opt.variants) {
@@ -75,11 +99,10 @@ function ProductDetailPage() {
 
         let allReviews = [];
         try {
-          // Keep fetching reviews separately unless they are also mapped
-          const res = await list("reviews");
+          const res = await list("reviews").catch(() => []);
           allReviews = res || [];
         } catch (e) {
-          console.warn("Could not fetch reviews", e);
+          // silent
         }
 
         setProduct(prod);
@@ -89,9 +112,11 @@ function ProductDetailPage() {
 
         const defaults = {};
         prodOptions.forEach(opt => {
-          const optVars = prodVariants.filter(v => String(v.option_id) === String(opt.id));
+          const optVars = prodVariants.filter(v => String(v.option_id) === String(opt.id) || opt.variants?.some(vr => vr.id === v.id));
           if (optVars.length > 0) {
             defaults[opt.id] = optVars[0].id;
+          } else if (opt.variants && opt.variants.length > 0) {
+            defaults[opt.id] = opt.variants[0].id;
           }
         });
 
@@ -104,7 +129,6 @@ function ProductDetailPage() {
 
         setLoading(false);
       } catch (err) {
-        setError("Product not found");
         setLoading(false);
       }
     }

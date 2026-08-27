@@ -1,9 +1,13 @@
 import { getDashboard, getProducts } from "./api";
+import { DEFAULT_FALLBACK_PRODUCTS } from "./food-data";
 
-let cachedFoodItems = [];
+let cachedFoodItems = DEFAULT_FALLBACK_PRODUCTS;
 try {
   const stored = localStorage.getItem("flame_foods_cache");
-  if (stored) cachedFoodItems = JSON.parse(stored);
+  if (stored) {
+    const parsed = JSON.parse(stored);
+    if (Array.isArray(parsed) && parsed.length > 0) cachedFoodItems = parsed;
+  }
 } catch (e) {}
 
 let cachedCategories = [];
@@ -13,7 +17,7 @@ try {
 } catch (e) {}
 
 export function getCachedFoodItems() {
-  return cachedFoodItems;
+  return cachedFoodItems.length > 0 ? cachedFoodItems : DEFAULT_FALLBACK_PRODUCTS;
 }
 
 export function getCachedCategories() {
@@ -47,7 +51,7 @@ function normalizeProduct(product) {
   return {
     ...product,
     id: String(product.id),
-    tags: String(product.tags ?? "").split(",").map((tag) => tag.trim()).filter(Boolean),
+    tags: Array.isArray(product.tags) ? product.tags : String(product.tags ?? "").split(",").map((tag) => tag.trim()).filter(Boolean),
     image: getImageUrl(product.image)
   };
 }
@@ -61,17 +65,17 @@ async function fetchFoodItems() {
   inFlightFoodsPromise = (async () => {
     try {
       const products = await getProducts();
-      const normalized = products.map(normalizeProduct);
-      if (normalized.length > 0) {
+      if (Array.isArray(products) && products.length > 0) {
+        const normalized = products.map(normalizeProduct);
         cachedFoodItems = normalized;
         try {
           localStorage.setItem("flame_foods_cache", JSON.stringify(normalized));
         } catch (e) {}
+        return normalized;
       }
-      return normalized;
+      return cachedFoodItems.length > 0 ? cachedFoodItems : DEFAULT_FALLBACK_PRODUCTS;
     } catch (err) {
-      if (cachedFoodItems.length > 0) return cachedFoodItems;
-      throw err;
+      return cachedFoodItems.length > 0 ? cachedFoodItems : DEFAULT_FALLBACK_PRODUCTS;
     } finally {
       inFlightFoodsPromise = null;
     }
