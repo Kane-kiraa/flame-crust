@@ -58,7 +58,7 @@ function OrderConfirmationPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28 pb-16 pb-[calc(4rem+env(safe-area-inset-bottom))]">
         <PageTransition>
           <div className="mx-auto max-w-2xl px-4 sm:px-6 lg:px-8 py-12 text-center">
             <motion.div

@@ -1,5 +1,4 @@
 "use client";
-import { Fragment, jsx, jsxs } from "react/jsx-runtime";
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -17,43 +16,69 @@ import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useTheme } from "@/components/theme-provider.jsx";
 import { PaymentForm } from "./payment-form.jsx";
-import { AvailableCoupons } from "./available-coupons.jsx";
-import { useNavigate } from "react-router-dom";
-const DELIVERY_FEE = 3.99;
-const FREE_DELIVERY_THRESHOLD = 25;
+import { useNavigate, useLocation } from "react-router-dom";
 
-function CartDrawer() {
+const DELIVERY_FEE = 3.99;
+
+export function CartDrawer() {
   const navigate = useNavigate();
-  const { isOpen, closeCart, lines, increment, decrement, removeItem, clear, coupon, applyCoupon, clearCoupon } = useCart();
+  const location = useLocation();
+  const { 
+    isOpen, 
+    closeCart, 
+    lines, 
+    increment, 
+    decrement, 
+    removeItem, 
+    clear, 
+    coupon, 
+    applyCoupon, 
+    clearCoupon 
+  } = useCart();
+  
   const [mounted, setMounted] = useState(false);
   const [paymentOpen, setPaymentOpen] = useState(false);
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [isApplying, setIsApplying] = useState(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Reset payment view when drawer closes
+  useEffect(() => {
+    if (!isOpen) {
+      setPaymentOpen(false);
+    }
+  }, [isOpen]);
+
   const grossSubtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
-  const total = grossSubtotal;
+  const isCouponValid = coupon && (!coupon.min_order_amount || grossSubtotal >= Number(coupon.min_order_amount));
+  const discount = isCouponValid
+    ? coupon.discount_type === "PERCENTAGE"
+      ? Math.min(grossSubtotal, (grossSubtotal * Number(coupon.discount_value)) / 100)
+      : coupon.discount_type === "FREE_DELIVERY"
+        ? 0
+        : Math.min(grossSubtotal, Number(coupon.discount_value))
+    : 0;
+  const subtotal = grossSubtotal - discount;
+  const deliveryFee = (isCouponValid && coupon.discount_type === "FREE_DELIVERY") ? 0 : (subtotal === 0 ? 0 : DELIVERY_FEE);
+  const total = subtotal + deliveryFee;
+
   const handleCheckout = () => {
-    try {
-      const stored = localStorage.getItem("customerAuth");
-      if (!stored) {
-        toast.error("សូមបញ្ជាក់ការចូលប្រើ (Sign In) មុននឹងទិញទំនិញ!");
-        closeCart();
-        navigate("/login");
-        return;
-      }
-      setPaymentOpen(true);
-    } catch (e) {
-      toast.error("សូមបញ្ជាក់ការចូលប្រើ (Sign In) មុននឹងទិញទំនិញ!");
+    const stored = localStorage.getItem("customerAuth");
+    if (!stored) {
+      toast.error("Please sign in before completing your order.");
       closeCart();
       navigate("/login");
+      return;
     }
+    setPaymentOpen(true);
   };
+
   const handlePaymentSuccess = async (paymentDetails) => {
     try {
       const { create } = await import("@/lib/api");
@@ -65,83 +90,116 @@ function CartDrawer() {
 
       let customerId = customer?.id;
       if (!customerId) {
-        toast.error("អ្នកមិនទាន់បាន Sign In ទេ! សូម Sign In ម្តងទៀត!");
+        toast.error("Please sign in to place order.");
+        navigate("/login");
         return;
       }
 
-      const addressRes = await create("addresses", {
-        customer_id: customerId,
-        label: "Delivery",
-        address_line: paymentDetails.address || "Unknown location",
-        city: paymentDetails.city || "Phnom Penh",
-        is_default: true
-      });
+      let addressId = null;
+      try {
+        const addressRes = await create("addresses", {
+          customer_id: customerId,
+          label: "Delivery",
+          address_line: paymentDetails.address || "Phnom Penh",
+          city: paymentDetails.city || "Phnom Penh",
+          notes: paymentDetails.notes || null,
+          is_default: true
+        });
+        addressId = addressRes?.id;
+      } catch (e) {
+        console.warn("Address create warning:", e);
+      }
 
-      const finalDeliveryAndServiceFee = deliveryFee;
-      const orderNumber = "ORD-" + Math.floor(100000 + Math.random() * 900000);
+      const isDigitalPaid = ["CARD", "KHQR", "ABA_PAY"].includes(paymentDetails.method);
+      const orderStatus = isDigitalPaid ? "CONFIRMED" : "PENDING";
+      const paymentStatus = isDigitalPaid ? "PAID" : "PENDING";
+
+      const orderNumber = `FC-${Date.now()}`;
       const orderRes = await create("orders", {
         order_number: orderNumber,
         customer_id: customerId,
-        address_id: addressRes.id,
+        address_id: addressId,
         coupon_id: coupon?.id || null,
-        status: "PENDING",
+        status: orderStatus,
         order_type: "DELIVERY",
-        subtotal: subtotal,
-        discount_amount: discount,
-        delivery_fee: finalDeliveryAndServiceFee,
+        subtotal: Number(subtotal.toFixed(2)),
+        discount_amount: Number(discount.toFixed(2)),
+        delivery_fee: Number(deliveryFee.toFixed(2)),
         driver_commission: 0,
-        total: total,
-        notes: "Payment: " + paymentDetails.method
+        total: Number(total.toFixed(2)),
+        notes: paymentDetails.notes || `Payment: ${paymentDetails.method}`
       });
 
-      for (const line of lines) {
-        await create("order_items", {
-          order_id: orderRes.id,
-          product_id: Number(line.originalId || line.id) || parseInt(String(line.originalId || line.id).replace(/\D/g, '')) || 1,
-          product_name: line.name,
-          quantity: line.qty,
-          unit_price: line.price,
-          line_total: line.price * line.qty,
-          status: "PENDING",
-          options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null
-        });
-      }
+      const targetOrderId = orderRes.id;
 
-      const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentDetails.method) ? paymentDetails.method : "OTHER";
-      const dbStatus = paymentDetails.method === "CASH" ? "PENDING" : "PAID";
+      await Promise.all(
+        lines.map((line) =>
+          create("order_items", {
+            order_id: targetOrderId,
+            product_id: Number(line.originalId || line.id) || 1,
+            product_name: line.name,
+            quantity: line.qty,
+            unit_price: Number(line.price.toFixed(2)),
+            line_total: Number((line.price * line.qty).toFixed(2)),
+            status: "PENDING",
+            options: line.selectedOptions ? JSON.stringify(line.selectedOptions) : null
+          })
+        )
+      );
+
+      const dbMethod = ["CASH", "CARD", "ABA_PAY", "WING"].includes(paymentDetails.method) ? paymentDetails.method : "KHQR";
 
       await create("payments", {
-        order_id: orderRes.id,
+        order_id: targetOrderId,
         method: dbMethod,
-        status: dbStatus,
-        amount: total,
-        transaction_id: paymentDetails.method === "CASH" ? null : "TXN-" + Date.now()
+        status: paymentStatus,
+        amount: Number(total.toFixed(2)),
+        transaction_id: isDigitalPaid ? `TXN-${Date.now()}` : null
       });
+
+      const confirmationState = {
+        orderId: targetOrderId,
+        total: Number(total.toFixed(2)),
+        itemCount,
+        paymentMethod: paymentDetails.method,
+        address: `${paymentDetails.address}, ${paymentDetails.city || "Phnom Penh"}`
+      };
 
       setPaymentOpen(false);
       closeCart();
       clear();
+      if (typeof clearCoupon === "function") clearCoupon();
+
       toast.success("Order Placed Successfully!");
       window.dispatchEvent(new CustomEvent("orderPlaced"));
-      navigate(`/track/${orderRes.id}`);
+
+      navigate("/order-confirmation", {
+        replace: true,
+        state: confirmationState
+      });
     } catch (error) {
-      toast.error("Failed to place order: " + error.message);
+      console.error("Payment submission failed:", error);
+      toast.error("Failed to place order: " + (error.message || "Unknown error"));
     }
   };
+
   const handleApplyCoupon = async (e) => {
     e.preventDefault();
-    if (!couponCode) return;
+    if (!couponCode.trim()) return;
     setIsApplying(true);
     setCouponError("");
     try {
       const { list } = await import("@/lib/api");
       const coupons = await list("coupons");
-      const found = coupons.find(c => c.code.toUpperCase() === couponCode.toUpperCase());
+      const found = coupons.find(c => c.code.toUpperCase() === couponCode.trim().toUpperCase());
       if (!found || !found.active) {
         setCouponError("Invalid or inactive promo code.");
+      } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {
+        setCouponError(`Minimum order amount is $${Number(found.min_order_amount).toFixed(2)}`);
       } else {
         applyCoupon(found);
         setCouponCode("");
+        toast.success(`Promo code "${found.code}" applied!`);
       }
     } catch {
       setCouponError("Failed to apply code.");
@@ -149,183 +207,210 @@ function CartDrawer() {
       setIsApplying(false);
     }
   };
+
   if (!mounted) return null;
   const isMobile = typeof window !== "undefined" && window.innerWidth < 640;
-  return /* @__PURE__ */ jsx(AnimatePresence, { children: isOpen && /* @__PURE__ */ jsxs(Fragment, { children: [
-      /* @__PURE__ */ jsx(
-        motion.div,
-        {
-          initial: { opacity: 0 },
-          animate: { opacity: 1 },
-          exit: { opacity: 0 },
-          transition: { duration: 0.2, ease: "linear" },
-          onClick: closeCart,
-          className: "fixed inset-0 z-50 bg-black/55 backdrop-blur-md touch-none overscroll-contain"
-        }
-      ),
-      /* @__PURE__ */ jsxs(
-        motion.aside,
-        {
-          initial: { x: isMobile ? 0 : "100%", y: isMobile ? "100%" : 0 },
-          animate: { x: 0, y: 0 },
-          exit: { x: isMobile ? 0 : "100%", y: isMobile ? "100%" : 0 },
-          transition: { duration: 0.15, ease: "easeOut" },
-          className: "fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-background/95 sm:bg-background/85 backdrop-blur-3xl shadow-2xl sm:border-l border-border/50 flex flex-col will-change-transform transform-gpu rounded-t-[2rem] sm:rounded-t-none sm:rounded-l-[2.5rem] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]",
-        children: [
-          /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between px-5 sm:px-6 pt-10 sm:pt-6 pb-5 border-b border-border/60 shrink-0", children: [
-            /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-3", children: [
-              /* @__PURE__ */ jsx("span", { className: "flex items-center justify-center size-10 rounded-full bg-primary text-primary-foreground", children: /* @__PURE__ */ jsx(ShoppingBag, { className: "size-5" }) }),
-              /* @__PURE__ */ jsxs("div", { children: [
-                /* @__PURE__ */ jsx("h3", { className: "font-serif text-2xl font-bold text-foreground tracking-tight", children: "Your order" }),
-                /* @__PURE__ */ jsxs("p", { className: "text-xs font-medium text-primary mt-0.5", children: [
-                  itemCount,
-                  " item",
-                  itemCount !== 1 ? "s" : "",
-                  " in cart"
-                ] })
-              ] })
-            ] }),
-            /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1", children: [
-              lines.length > 0 && /* @__PURE__ */ jsx(
-                Button,
-                {
-                  variant: "ghost",
-                  size: "sm",
-                  onClick: () => {
-                    clear();
-                    toast.info("Cart cleared");
-                  },
-                  className: "text-muted-foreground hover:text-destructive",
-                  children: /* @__PURE__ */ jsx(Trash2, { className: "size-4" })
-                }
-              ),
-              /* @__PURE__ */ jsx(
-                Button,
-                {
-                  variant: "ghost",
-                  size: "icon",
-                  onClick: closeCart,
-                  className: "rounded-full",
-                  children: /* @__PURE__ */ jsx(X, { className: "size-5" })
-                }
-              )
-            ] })
-          ] }),
-          paymentOpen && <PaymentForm total={total} onBack={() => setPaymentOpen(false)} onSuccess={handlePaymentSuccess} />,
-          lines.length === 0 ? (
-            /* @__PURE__ */ jsxs("div", { className: "flex-1 flex flex-col items-center justify-center px-8 text-center gap-4 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-6", children: [
-              /* @__PURE__ */ jsxs("div", { className: "relative", children: [
-                /* @__PURE__ */ jsx("div", { className: "size-28 rounded-full bg-secondary flex items-center justify-center", children: /* @__PURE__ */ jsx(ShoppingBag, { className: "size-12 text-muted-foreground" }) }),
-                /* @__PURE__ */ jsx("div", { className: "absolute -top-1 -right-1 size-8 rounded-full bg-accent flex items-center justify-center animate-flicker", children: /* @__PURE__ */ jsx(Sparkles, { className: "size-4 text-accent-foreground" }) })
-              ] }),
-              /* @__PURE__ */ jsx("h4", { className: "font-serif text-2xl font-bold text-foreground", children: "Your cart is empty" }),
-              /* @__PURE__ */ jsx("p", { className: "text-sm text-muted-foreground max-w-xs", children: "Looks like you haven't added anything yet. Let's fix that \u2014 your cravings are waiting." }),
-              /* @__PURE__ */ jsxs(
-                Button,
-                {
-                  onClick: closeCart,
-                  className: "mt-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-12 px-6",
-                  children: [
-                    "Browse the menu",
-                    /* @__PURE__ */ jsx(ArrowRight, { className: "size-4 ml-1" })
-                  ]
-                }
-              )
-            ] })
-          ) : /* @__PURE__ */ jsxs(Fragment, { children: [
-            /* @__PURE__ */ jsx("div", { className: "flex-1 overflow-y-auto px-5 sm:px-6 py-4", children: /* @__PURE__ */ jsx(AnimatePresence, { initial: false, children: lines.map((line) => /* @__PURE__ */ jsxs(
-              motion.div,
-              {
-                layout: "position",
-                initial: { opacity: 0, height: 0 },
-                animate: { opacity: 1, height: "auto" },
-                exit: { opacity: 0, x: -40 },
-                transition: { duration: 0.25 },
-                className: "flex gap-4 p-4 rounded-3xl bg-secondary/30 border border-white/5 hover:bg-secondary/50 hover:border-primary/20 transition-all duration-300 mb-4 last:mb-0 group shadow-sm",
-                children: [
-                  /* @__PURE__ */ jsx("div", { className: "size-20 rounded-2xl overflow-hidden flex-shrink-0 bg-secondary", children: /* @__PURE__ */ jsx(
-                    "img",
-                    {
-                      src: line.image,
-                      alt: line.name,
-                      className: "w-full h-full object-cover"
-                    }
-                  ) }),
-                  /* @__PURE__ */ jsxs("div", { className: "flex-1 min-w-0 flex flex-col", children: [
-                    /* @__PURE__ */ jsxs("div", { className: "flex justify-between gap-2", children: [
-                      /* @__PURE__ */ jsx("h4", { className: "font-semibold text-foreground text-sm leading-snug", children: line.name }),
-                      /* @__PURE__ */ jsx(
-                        "button",
-                        {
-                          onClick: () => removeItem(line.id),
-                          className: "text-muted-foreground hover:text-destructive transition-colors p-1 -m-1",
-                          "aria-label": `Remove ${line.name}`,
-                          children: /* @__PURE__ */ jsx(Trash2, { className: "size-4" })
-                        }
-                      )
-                    ] }),
-                    /* @__PURE__ */ jsx("p", { className: "text-xs text-muted-foreground mt-0.5 line-clamp-1", children: line.description }),
-                    /* @__PURE__ */ jsxs("div", { className: "mt-auto flex items-center justify-between pt-2", children: [
-                      /* @__PURE__ */ jsxs("div", { className: "flex items-center gap-1 rounded-full bg-secondary border border-border/60 p-0.5", children: [
-                        /* @__PURE__ */ jsx(
-                          "button",
-                          {
-                            onClick: () => decrement(line.id),
-                            className: "size-7 rounded-full bg-background hover:bg-primary hover:text-primary-foreground text-foreground flex items-center justify-center transition-colors",
-                            "aria-label": "Decrease quantity",
-                            children: /* @__PURE__ */ jsx(Minus, { className: "size-3.5" })
-                          }
-                        ),
-                        /* @__PURE__ */ jsx("span", { className: "min-w-6 text-center font-semibold text-sm text-foreground", children: line.qty }),
-                        /* @__PURE__ */ jsx(
-                          "button",
-                          {
-                            onClick: () => increment(line.id),
-                            className: "size-7 rounded-full bg-background hover:bg-primary hover:text-primary-foreground text-foreground flex items-center justify-center transition-colors",
-                            "aria-label": "Increase quantity",
-                            children: /* @__PURE__ */ jsx(Plus, { className: "size-3.5" })
-                          }
-                        )
-                      ] }),
-                      /* @__PURE__ */ jsxs("span", { className: "font-serif font-bold text-foreground", children: [
-                        "$",
-                        (line.price * line.qty).toFixed(2)
-                      ] })
-                    ] })
-                  ] })
-                ]
-              },
-              line.id
-            )) }) }),
-            /* @__PURE__ */ jsxs("div", { className: "border-t border-border/50 px-5 sm:px-6 pt-5 pb-[calc(5.5rem+env(safe-area-inset-bottom))] lg:pb-5 bg-background/90 backdrop-blur-md space-y-4", children: [
-              /* @__PURE__ */ jsxs("div", { className: "space-y-1.5 text-sm", children: [
-                /* @__PURE__ */ jsxs("div", { className: "flex justify-between items-baseline pt-2", children: [
-                  /* @__PURE__ */ jsx("span", { className: "font-serif text-lg font-bold text-foreground", children: "Total" }),
-                  /* @__PURE__ */ jsxs("span", { className: "font-serif text-2xl font-bold text-primary", children: [
-                    "$",
-                    total.toFixed(2)
-                  ] })
-                ] })
-              ] }),
-              /* @__PURE__ */ jsxs(
-                Button,
-                {
-                  onClick: handleCheckout,
-                  className: "w-full h-14 rounded-full bg-gradient-to-r from-primary via-orange-500 to-primary bg-[length:200%_auto] animate-gradient text-white shadow-[0_0_20px_rgba(239,68,68,0.4)] hover:shadow-[0_0_30px_rgba(239,68,68,0.6)] hover:scale-[1.02] transition-all duration-300 text-base font-bold",
-                  children: [
-                    "Place order",
-                    /* @__PURE__ */ jsx(ArrowRight, { className: "size-5 ml-1" })
-                  ]
-                }
-              ),
-              /* @__PURE__ */ jsx("p", { className: "text-center text-[11px] text-muted-foreground", children: "\u{1F512} Secure checkout \xB7 Estimated delivery 25\u201335 min" })
-            ] })
-          ] })
-        ]
-      }
-    )
-  ] }) });
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          {/* Backdrop Overlay */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2, ease: "linear" }}
+            onClick={closeCart}
+            className="fixed inset-0 z-50 bg-black/55 backdrop-blur-xs touch-none overscroll-contain"
+          />
+
+          {/* Slide-out Side Drawer on Laptop */}
+          <motion.aside
+            initial={{ x: isMobile ? 0 : "100%", y: isMobile ? "100%" : 0 }}
+            animate={{ x: 0, y: 0 }}
+            exit={{ x: isMobile ? 0 : "100%", y: isMobile ? "100%" : 0 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="fixed top-0 right-0 bottom-0 z-50 w-full sm:max-w-md lg:max-w-lg bg-card shadow-2xl sm:border-l border-border/70 flex flex-col will-change-transform transform-gpu rounded-t-[2rem] sm:rounded-t-none sm:rounded-l-[2rem] overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]"
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 sm:px-6 pt-5 pb-4 border-b border-border/60 shrink-0 bg-card">
+              <div className="flex items-center gap-3">
+                <span className="flex items-center justify-center size-10 rounded-full bg-primary/15 text-primary">
+                  <ShoppingBag className="size-5" />
+                </span>
+                <div>
+                  <h3 className="font-serif text-xl font-bold text-foreground tracking-tight">Your Order</h3>
+                  <p className="text-xs font-semibold text-primary">
+                    {itemCount} {itemCount === 1 ? "item" : "items"} in cart
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                {lines.length > 0 && !paymentOpen && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      clear();
+                      toast.info("Cart cleared");
+                    }}
+                    className="text-muted-foreground hover:text-destructive text-xs cursor-pointer"
+                  >
+                    <Trash2 className="size-4 mr-1" />
+                    Clear
+                  </Button>
+                )}
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={closeCart}
+                  className="rounded-full hover:bg-secondary cursor-pointer"
+                >
+                  <X className="size-5" />
+                </Button>
+              </div>
+            </div>
+
+            {/* Embedded Payment View */}
+            {paymentOpen ? (
+              <PaymentForm
+                lines={lines}
+                grossSubtotal={grossSubtotal}
+                discount={discount}
+                deliveryFee={deliveryFee}
+                total={total}
+                coupon={coupon}
+                onApplyCoupon={(c) => applyCoupon(c)}
+                onRemoveCoupon={() => typeof clearCoupon === "function" && clearCoupon()}
+                onBack={() => setPaymentOpen(false)}
+                onSuccess={handlePaymentSuccess}
+              />
+            ) : lines.length === 0 ? (
+              /* Empty State */
+              <div className="flex-1 flex flex-col items-center justify-center px-8 text-center gap-4 pb-12">
+                <div className="relative">
+                  <div className="size-24 rounded-full bg-secondary flex items-center justify-center">
+                    <ShoppingBag className="size-10 text-muted-foreground" />
+                  </div>
+                  <div className="absolute -top-1 -right-1 size-7 rounded-full bg-primary flex items-center justify-center text-white">
+                    <Sparkles className="size-3.5" />
+                  </div>
+                </div>
+                <h4 className="font-serif text-2xl font-bold text-foreground">Your cart is empty</h4>
+                <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
+                  Looks like you haven't added any pizza yet. Your delicious cravings are waiting.
+                </p>
+                <Button
+                  onClick={() => {
+                    closeCart();
+                    navigate("/menu");
+                  }}
+                  className="mt-2 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 font-bold text-sm shadow-md cursor-pointer"
+                >
+                  Browse Menu
+                  <ArrowRight className="size-4 ml-1.5" />
+                </Button>
+              </div>
+            ) : (
+              /* Items List + Summary */
+              <>
+                <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-3 no-scrollbar">
+                  <AnimatePresence initial={false}>
+                    {lines.map((line) => (
+                      <motion.div
+                        key={line.id}
+                        layout="position"
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="flex gap-3.5 p-3.5 rounded-2xl bg-secondary/30 border border-border/50 hover:border-primary/20 transition-all group shadow-2xs"
+                      >
+                        <div className="size-16 rounded-xl overflow-hidden flex-shrink-0 bg-secondary border border-border/40">
+                          <img
+                            src={line.image}
+                            alt={line.name}
+                            className="size-full object-cover"
+                          />
+                        </div>
+
+                        <div className="flex-1 min-w-0 flex flex-col justify-between">
+                          <div className="flex justify-between items-start gap-1">
+                            <h4 className="font-bold text-foreground text-xs sm:text-sm leading-snug truncate">{line.name}</h4>
+                            <button
+                              onClick={() => removeItem(line.id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1 -m-1 cursor-pointer"
+                              aria-label={`Remove ${line.name}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </button>
+                          </div>
+
+                          {line.description && (
+                            <p className="text-[11px] text-muted-foreground truncate">{line.description}</p>
+                          )}
+
+                          <div className="flex items-center justify-between pt-1 mt-1 border-t border-border/30">
+                            <div className="flex items-center gap-1 rounded-full bg-secondary border border-border/60 p-0.5">
+                              <button
+                                onClick={() => decrement(line.id)}
+                                className="size-6 rounded-full bg-background hover:bg-primary hover:text-white text-foreground flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="size-3" />
+                              </button>
+                              <span className="min-w-5 text-center font-bold text-xs text-foreground">
+                                {line.qty}
+                              </span>
+                              <button
+                                onClick={() => increment(line.id)}
+                                className="size-6 rounded-full bg-background hover:bg-primary hover:text-white text-foreground flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="size-3" />
+                              </button>
+                            </div>
+
+                            <span className="font-serif font-bold text-xs sm:text-sm text-primary">
+                              ${(line.price * line.qty).toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+
+                {/* Footer Section in Drawer */}
+                <div className="border-t border-border/60 px-5 sm:px-6 pt-4 pb-6 bg-card space-y-3">
+                  {/* Subtotal & Total */}
+                  <div className="flex justify-between items-baseline font-bold text-sm pt-1">
+                    <span className="text-foreground">Total ({itemCount} {itemCount === 1 ? "item" : "items"})</span>
+                    <span className="font-serif text-2xl font-bold text-primary">${grossSubtotal.toFixed(2)}</span>
+                  </div>
+
+                  {/* Proceed to Payment in Drawer */}
+                  <Button
+                    onClick={handleCheckout}
+                    className="w-full h-12 rounded-full bg-gradient-to-r from-primary to-orange-500 hover:from-primary/90 hover:to-orange-500/90 text-white font-bold text-sm shadow-md shadow-primary/20 cursor-pointer active:scale-98 transition-all"
+                  >
+                    Proceed to Payment (${grossSubtotal.toFixed(2)})
+                    <ArrowRight className="size-4 ml-1.5" />
+                  </Button>
+
+                  <p className="text-center text-[10px] text-muted-foreground">
+                    🔒 Secure checkout · Hot delivery in 25–35 min
+                  </p>
+                </div>
+              </>
+            )}
+          </motion.aside>
+        </>
+      )}
+    </AnimatePresence>
+  );
 }
-export {
-  CartDrawer
-};
+
+export default CartDrawer;

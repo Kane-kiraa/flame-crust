@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -18,7 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
-import { CartDrawer } from "@/components/food/cart-drawer";
 import { EmptyState } from "@/components/shared/empty-state";
 import { PageTransition } from "@/components/shared/page-transition";
 import { useCart } from "@/lib/cart-store";
@@ -30,7 +29,12 @@ const DELIVERY_FEE = 3.99;
 
 function CartPage() {
   const navigate = useNavigate();
-  const { lines, increment, decrement, removeItem, clear } = useCart();
+  const { lines, increment, decrement, removeItem, clear, closeCart } = useCart();
+
+  useEffect(() => {
+    closeCart();
+  }, [closeCart]);
+
   const subtotal = lines.reduce((s, l) => s + l.price * l.qty, 0);
   const itemCount = lines.reduce((s, l) => s + l.qty, 0);
   const total = subtotal;
@@ -38,7 +42,6 @@ function CartPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       <Navbar />
-      <CartDrawer />
       <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-24 pb-52 sm:pb-16">
         <PageTransition>
           <div className="mx-auto max-w-3xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
@@ -169,20 +172,26 @@ function CartPage() {
         </PageTransition>
       </main>
 
-      {/* Sticky Bottom Bar for Mobile (Positioned cleanly above mobile bottom nav) */}
+      {/* Sticky Bottom Floating Checkout Card for Mobile (Floating seamlessly above mobile bottom nav) */}
       {lines.length > 0 && (
-        <div className="sm:hidden fixed bottom-[calc(3.85rem+env(safe-area-inset-bottom,0px))] left-0 right-0 z-30 bg-card border-t border-border/80 p-3 shadow-lg px-4 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total ({itemCount} items)</p>
-            <p className="font-serif text-xl font-bold text-primary leading-tight">${total.toFixed(2)}</p>
+        <div className="sm:hidden fixed bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 z-30 pointer-events-none select-none">
+          <div className="pointer-events-auto max-w-md mx-auto bg-card/90 dark:bg-card/95 backdrop-blur-xl border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_10px_35px_rgba(0,0,0,0.15)] rounded-2xl p-2.5 px-4 flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                Total ({itemCount} {itemCount === 1 ? "item" : "items"})
+              </p>
+              <p className="font-serif text-2xl font-bold text-foreground leading-tight">
+                ${total.toFixed(2)}
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/checkout")}
+              className="h-11 px-6 rounded-xl bg-gradient-to-r from-primary to-orange-500 text-white font-bold text-sm shadow-md shadow-primary/30 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer"
+            >
+              <span>Checkout</span>
+              <ArrowRight className="size-4" />
+            </Button>
           </div>
-          <Button
-            onClick={() => navigate("/checkout")}
-            className="h-11 px-6 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white font-bold text-sm shadow-md shadow-primary/25 active:scale-95 transition-all"
-          >
-            Checkout
-            <ArrowRight className="size-4 ml-1.5" />
-          </Button>
         </div>
       )}
     </div>

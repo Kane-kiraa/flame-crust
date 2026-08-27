@@ -53,26 +53,67 @@ import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
+import { ProfileSkeleton } from "@/components/shared/loading-skeleton";
+
+let profileMemoryCache = {
+  orders: [],
+  addresses: [],
+  coupons: [],
+  favorites: [],
+  allOrderItems: [],
+  allProducts: [],
+  hasPassword: false,
+};
+
+try {
+  const saved = localStorage.getItem("flame_profile_cache");
+  if (saved) {
+    profileMemoryCache = { ...profileMemoryCache, ...JSON.parse(saved) };
+  }
+} catch (e) {}
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { addItem, toggleCart } = useCart();
   const { theme, setTheme } = useTheme();
-  const [customer, setCustomer] = useState(null);
-  const [orders, setOrders] = useState([]);
-  const [addresses, setAddresses] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [allProducts, setAllProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [customer, setCustomer] = useState(() => {
+    try {
+      const auth = localStorage.getItem("customerAuth");
+      return auth ? JSON.parse(auth) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [orders, setOrders] = useState(() => profileMemoryCache.orders || []);
+  const [addresses, setAddresses] = useState(() => profileMemoryCache.addresses || []);
+  const [favorites, setFavorites] = useState(() => profileMemoryCache.favorites || []);
+  const [allProducts, setAllProducts] = useState(() => profileMemoryCache.allProducts || []);
+  const [loading, setLoading] = useState(false);
   
   const searchParams = new URLSearchParams(location.search);
   const tabParam = searchParams.get('tab');
   const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "MENU");
   
   // Settings & Coupons state
-  const [coupons, setCoupons] = useState([]);
-  const [settingsForm, setSettingsForm] = useState({ name: "", email: "", phone: "", password: "", confirmPassword: "", oldPassword: "" });
+  const [coupons, setCoupons] = useState(() => profileMemoryCache.coupons || []);
+  const [settingsForm, setSettingsForm] = useState(() => {
+    try {
+      const auth = localStorage.getItem("customerAuth");
+      const c = auth ? JSON.parse(auth) : null;
+      return {
+        name: c?.name || "",
+        email: c?.email || "",
+        phone: c?.phone || "",
+        avatar: c?.avatar || c?.profile_image || c?.image_url || "",
+        password: "",
+        confirmPassword: "",
+        oldPassword: ""
+      };
+    } catch (e) {
+      return { name: "", email: "", phone: "", avatar: "", password: "", confirmPassword: "", oldPassword: "" };
+    }
+  });
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
@@ -161,21 +202,33 @@ export default function ProfilePage() {
         get("customers", c.id).catch(() => null),
         list("products").catch(() => [])
       ]);
-      setOrders(allOrders
+      const userOrders = allOrders
         .filter(o => String(o.customer_id) === String(c.id) || o.customer_phone === c.phone)
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-      );
-      setAddresses(allAddresses.filter(a => String(a.customer_id) === String(c.id)));
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const userAddresses = allAddresses.filter(a => String(a.customer_id) === String(c.id));
+
+      setOrders(userOrders);
+      setAddresses(userAddresses);
       setCoupons(allCoupons);
       setAllOrderItems(items || []);
       setAllProducts(productsList || []);
 
       // Verify if password is set on the customer
-      if (freshCustomer && freshCustomer.password_hash) {
-        setHasPassword(true);
-      } else {
-        setHasPassword(false);
-      }
+      const isPwdSet = Boolean(freshCustomer && freshCustomer.password_hash);
+      setHasPassword(isPwdSet);
+
+      profileMemoryCache = {
+        ...profileMemoryCache,
+        orders: userOrders,
+        addresses: userAddresses,
+        coupons: allCoupons,
+        allOrderItems: items || [],
+        allProducts: productsList || [],
+        hasPassword: isPwdSet,
+      };
+      try {
+        localStorage.setItem("flame_profile_cache", JSON.stringify(profileMemoryCache));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     } finally {
@@ -490,203 +543,201 @@ export default function ProfilePage() {
     }
   };
 
-  if (!customer) return null;
+  if (!customer) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Navbar />
+        <main className="flex-1" />
+      </div>
+    );
+  }
 
   const isAdmin = Boolean(
     localStorage.getItem("adminAuth") ||
     (customer && ["ADMIN", "MANAGER", "STAFF"].includes((customer.role || "").toUpperCase()))
   );
 
-  const displayTab = activeTab === "MENU" ? "SETTINGS" : activeTab;
-
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-32 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-16">
+      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28 lg:pt-32 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-16">
         <PageTransition>
-          <div className="mx-auto max-w-5xl px-3 sm:px-4">
-            <div className="grid lg:grid-cols-[300px_1fr] gap-8">
-              
-              {/* Sidebar Profile / Mobile Hub */}
-              <motion.div 
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-                className={cn(
-                  activeTab !== "MENU" ? "hidden lg:block" : "block",
-                  "space-y-4 lg:bg-card/50 lg:border lg:border-border/60 lg:rounded-3xl lg:p-6 lg:h-fit lg:shadow-warm-lg"
-                )}
-              >
-                {/* 1. VIP Profile Hero Header Card */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card/95 to-secondary/60 border border-border/70 p-6 text-center shadow-warm">
-                  {/* Decorative subtle ambient glows */}
-                  <div className="absolute -top-12 -right-12 size-36 rounded-full bg-primary/15 blur-2xl pointer-events-none" />
-                  <div className="absolute -bottom-12 -left-12 size-36 rounded-full bg-amber-500/10 blur-2xl pointer-events-none" />
+          <div className={cn(
+            "mx-auto px-4 sm:px-6 lg:px-8 transition-all",
+            activeTab === "MENU" ? "max-w-5xl" : "max-w-4xl"
+          )}>
+            {activeTab === "MENU" ? (
+              /* Profile Hub Menu View */
+              <div className="space-y-6">
+                {/* 1. VIP Profile Hero Header Card (Responsive: 2-column on desktop, centered on mobile) */}
+                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card/95 to-secondary/40 border border-border/70 p-6 sm:p-8 shadow-warm-lg">
+                  {/* Decorative ambient glows */}
+                  <div className="absolute -top-12 -right-12 size-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
+                  <div className="absolute -bottom-12 -left-12 size-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
 
-                  {/* Avatar with luxury golden ring & edit camera badge */}
-                  <div className="relative mx-auto size-24 sm:size-28 mb-3.5 group">
-                    <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background/80 shadow-md">
-                      <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
-                        {customer.avatar ? (
-                          <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <User className="size-12 text-primary" />
-                        )}
-                        {isUploadingAvatar && (
-                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
-                            <Loader2 className="size-5 animate-spin text-primary" />
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+                    {/* User Avatar & Info */}
+                    <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                      {/* Avatar with Ring */}
+                      <div className="relative size-24 sm:size-28 shrink-0 group">
+                        <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background/80 shadow-md">
+                          <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
+                            {customer.avatar ? (
+                              <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                            ) : (
+                              <User className="size-12 text-primary" />
+                            )}
+                            {isUploadingAvatar && (
+                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                                <Loader2 className="size-5 animate-spin text-primary" />
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
+                        <label
+                          className="absolute bottom-0 right-0 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                          title="Change Photo"
+                        >
+                          <Camera className="size-4" />
+                          <input 
+                            type="file" 
+                            accept="image/*" 
+                            className="hidden" 
+                            onChange={handleAvatarFileChange} 
+                            disabled={isUploadingAvatar}
+                          />
+                        </label>
+                      </div>
+
+                      {/* Name, Phone, Badges */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
+                            {customer.name || "Flame Foodie"}
+                          </h2>
+                          <span className="inline-flex items-center text-amber-500" title="Flame VIP Member">
+                            <Sparkles className="size-5 fill-amber-500" />
+                          </span>
+                        </div>
+                        <p className="text-muted-foreground text-xs sm:text-sm font-medium">
+                          {customer.phone || customer.email}
+                        </p>
+
+                        <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
+                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground/85 border border-border/60 shadow-2xs">
+                            {orders.length >= 30 ? (
+                              <>
+                                <Flame className="size-3.5 fill-red-500 text-red-500" />
+                                <span className="text-red-600 dark:text-red-400 font-bold">VIP Member</span>
+                              </>
+                            ) : orders.length >= 15 ? (
+                              <>
+                                <Sparkles className="size-3.5 fill-amber-500 text-amber-500" />
+                                <span className="text-amber-600 dark:text-amber-400 font-bold">Gold Member</span>
+                              </>
+                            ) : orders.length >= 5 ? (
+                              <>
+                                <Star className="size-3.5 fill-slate-400 text-slate-400" />
+                                <span className="font-semibold">Silver Member</span>
+                              </>
+                            ) : (
+                              <>
+                                <User className="size-3.5 text-primary" />
+                                <span className="font-medium text-foreground/80">Member</span>
+                              </>
+                            )}
+                          </span>
+                          {customer.phone && (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                              <Check className="size-3" /> Verified
+                            </span>
+                          )}
+                          {isAdmin && (
+                            <button
+                              type="button"
+                              onClick={() => navigate("/admin/dashboard")}
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer shadow-2xs"
+                            >
+                              <ShieldCheck className="size-3.5" />
+                              Admin Panel →
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <label
-                      className="absolute bottom-0 right-0 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                      title="Change Photo"
-                    >
-                      <Camera className="size-4" />
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        className="hidden" 
-                        onChange={handleAvatarFileChange} 
-                        disabled={isUploadingAvatar}
-                      />
-                    </label>
-                  </div>
 
-                  {/* User Name & Phone */}
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                      <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                        {customer.name || "Flame Foodie"}
-                      </h2>
-                      <span className="inline-flex items-center text-amber-500" title="Flame VIP Member">
-                        <Sparkles className="size-4.5 fill-amber-500" />
-                      </span>
-                    </div>
-                    <p className="text-muted-foreground text-xs sm:text-sm font-medium">
-                      {customer.phone || customer.email}
-                    </p>
-                  </div>
-
-                  {/* Real Dynamic Member Badge & Admin Panel Pill */}
-                  <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground/85 border border-border/60 shadow-2xs">
-                      {orders.length >= 30 ? (
-                        <>
-                          <Flame className="size-3.5 fill-red-500 text-red-500" />
-                          <span className="text-red-600 dark:text-red-400 font-bold">VIP Member</span>
-                        </>
-                      ) : orders.length >= 15 ? (
-                        <>
-                          <Sparkles className="size-3.5 fill-amber-500 text-amber-500" />
-                          <span className="text-amber-600 dark:text-amber-400 font-bold">Gold Member</span>
-                        </>
-                      ) : orders.length >= 5 ? (
-                        <>
-                          <Star className="size-3.5 fill-slate-400 text-slate-400" />
-                          <span className="font-semibold">Silver Member</span>
-                        </>
-                      ) : (
-                        <>
-                          <User className="size-3.5 text-primary" />
-                          <span className="font-medium text-foreground/80">Member</span>
-                        </>
-                      )}
-                    </span>
-                    {customer.phone && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                        <Check className="size-3" /> Verified
-                      </span>
-                    )}
-                    {isAdmin && (
+                    {/* 4 Interactive Quick Stat Tiles (Grid on desktop) */}
+                    <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 w-full sm:w-auto pt-4 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border/60 sm:pl-6">
                       <button
                         type="button"
-                        onClick={() => navigate("/admin/dashboard")}
-                        className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer shadow-2xs"
+                        onClick={() => setActiveTab("ORDERS")}
+                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-primary/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
                       >
-                        <ShieldCheck className="size-3.5" />
-                        Admin Panel →
+                        <span className="font-serif text-xl font-bold text-foreground group-hover/stat:text-primary transition-colors">
+                          {orders.length}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Orders</span>
                       </button>
-                    )}
-                  </div>
 
-                  {/* 4 Interactive Quick Stat Tiles */}
-                  <div className="mt-5 grid grid-cols-4 gap-2 pt-4 border-t border-border/50">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("ORDERS")}
-                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
-                    >
-                      <span className="font-serif text-lg font-bold text-foreground group-hover/stat:text-primary transition-colors">
-                        {orders.length}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Orders</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("COUPONS")}
+                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-emerald-500/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
+                      >
+                        <span className="font-serif text-xl font-bold text-emerald-600 dark:text-emerald-400 group-hover/stat:text-emerald-500 transition-colors">
+                          {coupons.length}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Coupons</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("COUPONS")}
-                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
-                    >
-                      <span className="font-serif text-lg font-bold text-emerald-600 dark:text-emerald-400 group-hover/stat:text-emerald-500 transition-colors">
-                        {coupons.length}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Coupons</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("FAVORITES")}
+                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-rose-500/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
+                      >
+                        <span className="font-serif text-xl font-bold text-rose-500 group-hover/stat:text-rose-600 transition-colors">
+                          {favorites.length}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Favorites</span>
+                      </button>
 
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("FAVORITES")}
-                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
-                    >
-                      <span className="font-serif text-lg font-bold text-rose-500 group-hover/stat:text-rose-600 transition-colors">
-                        {favorites.length}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Favorites</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab("ADDRESSES")}
-                      className="flex flex-col items-center p-2 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/30 transition-all cursor-pointer group/stat active:scale-95"
-                    >
-                      <span className="font-serif text-lg font-bold text-sky-500 group-hover/stat:text-sky-600 transition-colors">
-                        {addresses.length}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Saved</span>
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab("ADDRESSES")}
+                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-sky-500/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
+                      >
+                        <span className="font-serif text-xl font-bold text-sky-500 group-hover/stat:text-sky-600 transition-colors">
+                          {addresses.length}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Saved</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* 2. Curated iOS/Grab Styled Menu Groups */}
-                <div className="space-y-4">
-                  {/* GROUP 1: Activity & Orders */}
-                  <div className="rounded-3xl bg-card border border-border/70 p-2 shadow-warm space-y-1">
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Activities & Orders
+                {/* 2. Curated Menu Groups in a Beautiful 2-Column Grid on Laptop */}
+                <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
+                  {/* COLUMN 1: Activities & Orders */}
+                  <div className="rounded-3xl bg-card border border-border/70 p-3 sm:p-4 shadow-warm space-y-1.5 h-fit">
+                    <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Activities &amp; Orders
                     </p>
 
                     <button 
                       type="button"
-                      className={cn(
-                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
-                        activeTab === "ORDERS" 
-                          ? "text-primary bg-primary/10 font-semibold" 
-                          : "hover:bg-secondary/60 text-foreground"
-                      )}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
                       onClick={() => setActiveTab("ORDERS")}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs">
                           <ShoppingBag className="size-5" />
                         </div>
-                        <div className="text-left">
-                          <span className="font-semibold text-foreground text-sm block">Order History</span>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-sm block truncate">Order History</span>
                           <span className="text-xs text-muted-foreground">Track and re-order meals</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {orders.length > 0 && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
                             {orders.length}
@@ -698,24 +749,19 @@ export default function ProfilePage() {
 
                     <button 
                       type="button"
-                      className={cn(
-                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
-                        activeTab === "COUPONS" 
-                          ? "text-primary bg-primary/10 font-semibold" 
-                          : "hover:bg-secondary/60 text-foreground"
-                      )}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
                       onClick={() => setActiveTab("COUPONS")}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
                           <Ticket className="size-5" />
                         </div>
-                        <div className="text-left">
-                          <span className="font-semibold text-foreground text-sm block">My Coupons & Rewards</span>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-sm block truncate">My Coupons &amp; Rewards</span>
                           <span className="text-xs text-muted-foreground">Save on your pizza orders</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {coupons.length > 0 && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                             {coupons.length} Available
@@ -727,24 +773,19 @@ export default function ProfilePage() {
 
                     <button 
                       type="button"
-                      className={cn(
-                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
-                        activeTab === "FAVORITES" 
-                          ? "text-primary bg-primary/10 font-semibold" 
-                          : "hover:bg-secondary/60 text-foreground"
-                      )}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
                       onClick={() => setActiveTab("FAVORITES")}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs">
                           <Heart className="size-5" />
                         </div>
-                        <div className="text-left">
-                          <span className="font-semibold text-foreground text-sm block">Favorite Pizzas</span>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-sm block truncate">Favorite Pizzas</span>
                           <span className="text-xs text-muted-foreground">Your most loved dishes</span>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {favorites.length > 0 && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500">
                             {favorites.length}
@@ -755,123 +796,108 @@ export default function ProfilePage() {
                     </button>
                   </div>
 
-                  {/* GROUP 2: Account & Settings */}
-                  <div className="rounded-3xl bg-card border border-border/70 p-2 shadow-warm space-y-1">
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Account & Details
-                    </p>
+                  {/* COLUMN 2: Account & Details + Preferences */}
+                  <div className="space-y-4">
+                    {/* GROUP 2: Account & Settings */}
+                    <div className="rounded-3xl bg-card border border-border/70 p-3 sm:p-4 shadow-warm space-y-1.5">
+                      <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Account &amp; Details
+                      </p>
 
-                    <button 
-                      type="button"
-                      className={cn(
-                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
-                        activeTab === "SETTINGS" 
-                          ? "text-primary bg-primary/10 font-semibold" 
-                          : "hover:bg-secondary/60 text-foreground"
-                      )}
-                      onClick={() => setActiveTab("SETTINGS")}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
-                          <Settings className="size-5" />
-                        </div>
-                        <div className="text-left">
-                          <span className="font-semibold text-foreground text-sm block">Profile Settings</span>
-                          <span className="text-xs text-muted-foreground">Name, phone, avatar & password</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="size-4 text-muted-foreground/60" />
-                    </button>
-
-                    <button 
-                      type="button"
-                      className={cn(
-                        "w-full flex items-center justify-between p-3 rounded-2xl text-sm font-medium transition-all cursor-pointer",
-                        activeTab === "ADDRESSES" 
-                          ? "text-primary bg-primary/10 font-semibold" 
-                          : "hover:bg-secondary/60 text-foreground"
-                      )}
-                      onClick={() => setActiveTab("ADDRESSES")}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs">
-                          <MapPin className="size-5" />
-                        </div>
-                        <div className="text-left">
-                          <span className="font-semibold text-foreground text-sm block">Saved Addresses</span>
-                          <span className="text-xs text-muted-foreground">Delivery drop-off locations</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {addresses.length > 0 && (
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {addresses.length} saved
-                          </span>
-                        )}
-                        <ChevronRight className="size-4 text-muted-foreground/60" />
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* GROUP 3: Preferences & Actions */}
-                  <div className="rounded-3xl bg-card border border-border/70 p-2 shadow-warm space-y-1">
-                    <p className="px-3 pt-2 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Preferences
-                    </p>
-
-                    {/* Dark/Light Theme Toggle Switch Row */}
-                    <div className="w-full flex items-center justify-between p-3 rounded-2xl text-sm">
-                      <div className="flex items-center gap-3">
-                        <div className="size-10 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
-                          {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
-                        </div>
-                        <div className="text-left">
-                          <span className="font-semibold text-foreground text-sm block">Appearance</span>
-                          <span className="text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
-                        </div>
-                      </div>
-                      <button
+                      <button 
                         type="button"
-                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                        className="h-8 px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
+                        onClick={() => setActiveTab("SETTINGS")}
                       >
-                        {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
-                        <span>{theme === "dark" ? "Dark" : "Light"}</span>
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="size-11 rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
+                            <Settings className="size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-sm block truncate">Profile Settings</span>
+                            <span className="text-xs text-muted-foreground">Name, phone, avatar &amp; password</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-muted-foreground/60 shrink-0" />
+                      </button>
+
+                      <button 
+                        type="button"
+                        className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
+                        onClick={() => setActiveTab("ADDRESSES")}
+                      >
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="size-11 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs">
+                            <MapPin className="size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-sm block truncate">Saved Addresses</span>
+                            <span className="text-xs text-muted-foreground">Delivery drop-off locations</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          {addresses.length > 0 && (
+                            <span className="text-xs font-medium text-muted-foreground">
+                              {addresses.length} saved
+                            </span>
+                          )}
+                          <ChevronRight className="size-4 text-muted-foreground/60" />
+                        </div>
                       </button>
                     </div>
 
-                    <div className="pt-1">
+                    {/* GROUP 3: Preferences & Actions */}
+                    <div className="rounded-3xl bg-card border border-border/70 p-3 sm:p-4 shadow-warm space-y-1.5">
+                      <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Preferences
+                      </p>
+
+                      {/* Theme Switcher */}
+                      <div className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="size-11 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                            {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-sm block">Appearance</span>
+                            <span className="text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          className="h-8 px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+                          <span>{theme === "dark" ? "Dark" : "Light"}</span>
+                        </button>
+                      </div>
+
+                      {/* Sign Out */}
                       <button 
                         type="button"
-                        className="w-full flex items-center justify-between p-3 rounded-2xl text-sm font-semibold text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+                        className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20"
                         onClick={handleLogout}
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="size-10 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="size-11 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs">
                             <LogOut className="size-5" />
                           </div>
-                          <div className="text-left">
+                          <div className="text-left min-w-0">
                             <span className="font-semibold text-destructive text-sm block">Sign Out</span>
                             <span className="text-xs text-destructive/70">Log out from this device</span>
                           </div>
                         </div>
-                        <ChevronRight className="size-4 text-destructive/40" />
+                        <ChevronRight className="size-4 text-destructive/40 shrink-0" />
                       </button>
                     </div>
                   </div>
                 </div>
-              </motion.div>
-
-              {/* Main Content */}
-              <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className={cn(
-                  "space-y-6",
-                  activeTab === "MENU" ? "hidden lg:block" : "block"
-                )}
-              >
-                <div className="lg:hidden mb-4">
+              </div>
+            ) : (
+              /* Detail Sub-page View (when clicked from Menu Hub) */
+              <div className="space-y-6">
+                <div className="mb-4">
                   <button 
                     type="button"
                     onClick={() => { navigate("/profile"); setActiveTab("MENU"); }} 
@@ -882,7 +908,7 @@ export default function ProfilePage() {
                   </button>
                 </div>
 
-                {displayTab === "SETTINGS" && (
+                {activeTab === "SETTINGS" && (
                   <>
                     <div className="mb-6">
                       <h3 className="font-serif text-3xl font-bold text-foreground">Profile Settings</h3>
@@ -1158,7 +1184,7 @@ export default function ProfilePage() {
                   </>
                 )}
 
-                {displayTab === "ORDERS" && (
+                {activeTab === "ORDERS" && (
                   <>
                     <h3 className="font-serif text-3xl font-bold text-foreground mb-6">
                       Recent Orders
@@ -1246,7 +1272,7 @@ export default function ProfilePage() {
                   </>
                 )}
 
-                {displayTab === "ADDRESSES" && (
+                {activeTab === "ADDRESSES" && (
                   <>
                     <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
                       <div>
@@ -1600,7 +1626,7 @@ export default function ProfilePage() {
                     </Dialog>
                   </>
                 )}
-                {displayTab === "FAVORITES" && (
+                {activeTab === "FAVORITES" && (
                   <>
                     <h3 className="font-serif text-3xl font-bold text-foreground mb-6">Favorites</h3>
                     {favorites.length === 0 ? (
@@ -1637,7 +1663,7 @@ export default function ProfilePage() {
                     )}
                   </>
                 )}
-                {displayTab === "COUPONS" && (
+                {activeTab === "COUPONS" && (
                   <>
                     <h3 className="font-serif text-3xl font-bold text-foreground mb-6">My Coupons</h3>
                     {loading ? (
@@ -1718,9 +1744,8 @@ export default function ProfilePage() {
                     )}
                   </>
                 )}
-              </motion.div>
-
-            </div>
+              </div>
+            )}
           </div>
         </PageTransition>
 
@@ -1813,7 +1838,6 @@ export default function ProfilePage() {
         )}
       </AnimatePresence>
       </main>
-      <CartDrawer />
     </div>
   );
 }

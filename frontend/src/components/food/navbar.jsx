@@ -248,10 +248,11 @@ function Navbar() {
   return (
     <header
       className={cn(
-        "fixed top-0 inset-x-0 z-40 transition-colors duration-200 border-b pt-[env(safe-area-inset-top)]",
-        mobileOpen || scrolled
-          ? "bg-background border-border/40 shadow-xs"
-          : "bg-transparent border-transparent shadow-none"
+        "fixed top-0 inset-x-0 z-40 transition-colors duration-200 pt-[env(safe-area-inset-top)]",
+        mobileOpen
+          ? "bg-background border-b border-border/40 shadow-xs"
+          : "bg-transparent border-transparent shadow-none",
+        scrolled && "lg:bg-background lg:border-b lg:border-border/40 lg:shadow-xs"
       )}
       style={{ backdropFilter: "none", WebkitBackdropFilter: "none" }}
     >
@@ -267,25 +268,6 @@ function Navbar() {
                 className="h-10 sm:h-16 w-auto object-contain"
               />
             </Link>
-
-            {/* Active Orders Compact Icon Badge (Clean on Desktop/Tablet) */}
-            {activeOrders.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  if (activeOrders.length === 1) navigate(`/track/${activeOrders[0].id}`);
-                  else setOrdersModalOpen(true);
-                }}
-                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/15 text-primary border border-primary/40 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition-colors shrink-0 cursor-pointer shadow-xs"
-                title={activeOrders.length === 1 ? `Order #${activeOrders[0].order_number}` : `${activeOrders.length} Active Orders`}
-              >
-                <span className="size-2 rounded-full bg-green-500 shrink-0" />
-                <Package className="size-4 shrink-0" />
-                <span className="font-bold">
-                  {activeOrders.length === 1 ? `#${activeOrders[0].order_number}` : `${activeOrders.length} Orders`}
-                </span>
-              </button>
-            )}
           </div>
 
           {/* Mobile Page Titles in Top Navbar (Hidden when menu open or search focused) */}

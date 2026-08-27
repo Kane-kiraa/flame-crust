@@ -1,14 +1,14 @@
 import { useState, useEffect } from "react";
-import { Link, useLocation, useNavigate } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { UtensilsCrossed, Store, Search, ShoppingBag, User } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useCart } from "@/lib/cart-store";
 import { SearchModal } from "./search-modal";
+import { cn } from "@/lib/utils";
 
 export function MobileBottomNav() {
   const location = useLocation();
-  const navigate = useNavigate();
   const [searchOpen, setSearchOpen] = useState(false);
+
   const [customer, setCustomer] = useState(() => {
     try {
       const auth = localStorage.getItem("customerAuth");
@@ -19,9 +19,7 @@ export function MobileBottomNav() {
   });
 
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
-  const openCart = useCart((s) => s.openCart);
   const closeCart = useCart((s) => s.closeCart);
-  const isCartOpen = useCart((s) => s.isOpen);
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -56,126 +54,147 @@ export function MobileBottomNav() {
     window.dispatchEvent(new Event("closeNavbarModals"));
   };
 
+  const navItems = [
+    {
+      id: "food",
+      label: "Food",
+      to: "/",
+      isActive: isHome,
+      icon: UtensilsCrossed,
+    },
+    {
+      id: "menu",
+      label: "Menu",
+      to: "/menu",
+      isActive: isMenu,
+      icon: Store,
+    },
+    {
+      id: "search",
+      label: "Search",
+      isAction: true,
+      onClick: () => {
+        handleTabClick();
+        window.dispatchEvent(new Event("focusNavbarSearch"));
+      },
+      icon: Search,
+    },
+    {
+      id: "cart",
+      label: "Cart",
+      to: "/cart",
+      isActive: isCart,
+      icon: ShoppingBag,
+      badge: count,
+    },
+    {
+      id: "account",
+      label: "Account",
+      to: customer ? "/profile" : "/login",
+      isActive: isProfile,
+      icon: User,
+      avatar: customer?.avatar,
+    },
+  ];
+
   return (
     <>
-      <nav
-        className="fixed bottom-0 inset-x-0 z-[70] lg:hidden bg-background border-t border-border/60 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 px-2 shadow-2xl transition-all"
-        aria-label="Mobile Bottom Navigation"
-      >
-        <div className="grid grid-cols-5 items-center justify-items-center max-w-md mx-auto">
-          {/* 1. Home / Food */}
-          <Link
-            to="/"
-            onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isHome ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-              }`}
-          >
-            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              <UtensilsCrossed className={`size-5 transition-transform ${isHome ? "scale-110" : ""}`} />
-              {isHome && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
-                />
-              )}
-            </motion.div>
-            <span className="text-[11px] leading-none tracking-tight">Food</span>
-          </Link>
+      {/* Authentic iOS Frosted Glass Mobile Bottom Capsule */}
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] lg:hidden select-none">
+        <nav
+          className="mx-auto max-w-md bg-background/70 dark:bg-zinc-900/70 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-300"
+          aria-label="Mobile Navigation Dock"
+        >
+          <div className="grid grid-cols-5 items-center gap-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const content = (
+                <div
+                  className={cn(
+                    "relative flex flex-col items-center justify-center py-1.5 px-1 rounded-full transition-all duration-150 cursor-pointer touch-manipulation select-none w-full",
+                    item.isActive
+                      ? "bg-primary/12 text-primary shadow-2xs"
+                      : "text-muted-foreground/75 hover:text-foreground hover:bg-foreground/5 active:scale-90"
+                  )}
+                >
+                  {/* Icon Wrapper */}
+                  <div className="relative flex items-center justify-center size-6 mb-0.5">
+                    {item.avatar ? (
+                      <div
+                        className={cn(
+                          "size-5.5 rounded-full overflow-hidden border transition-all duration-150",
+                          item.isActive
+                            ? "border-primary ring-2 ring-primary/40 scale-110 shadow-xs"
+                            : "border-border/70 opacity-90"
+                        )}
+                      >
+                        <img src={item.avatar} alt="Account" className="size-full object-cover" />
+                      </div>
+                    ) : (
+                      <Icon
+                        className={cn(
+                          "size-5 transition-transform duration-150 ease-out",
+                          item.isActive ? "scale-110 stroke-[2.3]" : "stroke-[1.8]"
+                        )}
+                      />
+                    )}
 
-          {/* 2. Menu */}
-          <Link
-            to="/menu"
-            onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isMenu ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-              }`}
-          >
-            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              <Store className={`size-5 transition-transform ${isMenu ? "scale-110" : ""}`} />
-              {isMenu && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
-                />
-              )}
-            </motion.div>
-            <span className="text-[11px] leading-none tracking-tight">Menu</span>
-          </Link>
+                    {/* Cart Counter Badge */}
+                    {item.badge > 0 && (
+                      <span className="absolute -top-1.5 -right-2.5 min-w-[17px] h-[17px] px-1 rounded-full bg-gradient-to-r from-primary to-orange-500 text-white text-[9px] font-extrabold flex items-center justify-center ring-2 ring-background shadow-xs animate-in zoom-in-75 duration-150">
+                        {item.badge}
+                      </span>
+                    )}
+                  </div>
 
-          {/* 3. Search */}
-          <button
-            type="button"
-            onClick={() => {
-              handleTabClick();
-              window.scrollTo({ top: 0, behavior: "smooth" });
-              window.dispatchEvent(new Event("focusNavbarSearch"));
-            }}
-            className="flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl text-muted-foreground hover:text-foreground font-medium transition-all cursor-pointer"
-          >
-            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              <Search className="size-5" />
-            </motion.div>
-            <span className="text-[11px] leading-none tracking-tight">Search</span>
-          </button>
-
-          {/* 4. Cart */}
-          <Link
-            to="/cart"
-            onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isCart ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-              }`}
-          >
-            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              <ShoppingBag className={`size-5 transition-transform ${isCart ? "scale-110" : ""}`} />
-              <AnimatePresence>
-                {count > 0 && (
-                  <motion.span
-                    initial={{ scale: 0, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    exit={{ scale: 0, opacity: 0 }}
-                    className="absolute -top-1.5 -right-2 min-w-4 h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ring-2 ring-background"
+                  {/* Label */}
+                  <span
+                    className={cn(
+                      "text-[10px] tracking-tight leading-none transition-colors duration-150",
+                      item.isActive ? "font-bold text-primary" : "font-medium"
+                    )}
                   >
-                    {count}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-              {isCart && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
-                />
-              )}
-            </motion.div>
-            <span className="text-[11px] leading-none tracking-tight">Cart</span>
-          </Link>
+                    {item.label}
+                  </span>
 
-          {/* 5. Account / Profile */}
-          <Link
-            to={customer ? "/profile" : "/login"}
-            onClick={handleTabClick}
-            className={`flex flex-col items-center justify-center gap-1 w-full py-1 rounded-xl transition-all ${isProfile ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-              }`}
-          >
-            <motion.div whileTap={{ scale: 0.88 }} className="relative flex flex-col items-center">
-              {customer?.avatar ? (
-                <div className={`size-5.5 rounded-full overflow-hidden border ${isProfile ? "border-primary ring-2 ring-primary/30" : "border-border/60"}`}>
-                  <img src={customer.avatar} alt="Account" className="size-full object-cover" />
+                  {/* Subtle Active Pill Indicator Glow */}
+                  {item.isActive && (
+                    <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
+                  )}
                 </div>
-              ) : (
-                <User className={`size-5 transition-transform ${isProfile ? "scale-110" : ""}`} />
-              )}
-              {isProfile && (
-                <motion.div
-                  layoutId="activeTabIndicator"
-                  className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 size-1 rounded-full bg-primary"
-                />
-              )}
-            </motion.div>
-            <span className="text-[11px] leading-none tracking-tight">Account</span>
-          </Link>
-        </div>
-      </nav>
+              );
+
+              if (item.isAction) {
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={item.onClick}
+                    className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+                  >
+                    {content}
+                  </button>
+                );
+              }
+
+              return (
+                <Link
+                  key={item.id}
+                  to={item.to}
+                  onClick={handleTabClick}
+                  className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
+                >
+                  {content}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      </div>
 
       <SearchModal isOpen={searchOpen} onClose={setSearchOpen} />
     </>
   );
 }
+
+export default MobileBottomNav;

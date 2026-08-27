@@ -7,14 +7,12 @@ import { HowItWorks } from "@/components/food/how-it-works";
 import { Features } from "@/components/food/features";
 import { Testimonials } from "@/components/food/testimonials";
 import { Footer } from "@/components/food/footer";
-import { CartDrawer } from "@/components/food/cart-drawer";
 import { PageTransition } from "@/components/shared/page-transition";
 
 function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <CartDrawer />
       <main className="flex-1">
         <PageTransition>
           <Hero />

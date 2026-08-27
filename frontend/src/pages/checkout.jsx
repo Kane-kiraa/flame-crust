@@ -637,7 +637,6 @@ function CheckoutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground selection:bg-primary selection:text-white">
       <Navbar />
-      <CartDrawer />
 
       <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-24 pb-44 lg:pb-16">
         <PageTransition>

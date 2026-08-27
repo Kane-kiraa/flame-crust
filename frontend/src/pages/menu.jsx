@@ -18,19 +18,13 @@ import { cn } from "@/lib/utils";
 
 import { Flame, Sparkles, Filter, Check, Star, Leaf, LayoutGrid } from "lucide-react";
 
-const AnimatedGrid = ({ items }) => {
+const FoodGrid = ({ items }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -15, pointerEvents: "none" }}
-      transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="[grid-area:stack] mt-5 sm:mt-8 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6"
-    >
+    <div className="mt-5 sm:mt-8 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
       {items.map((item, idx) => (
         <FoodCard key={item.id} item={item} index={idx} />
       ))}
-    </motion.div>
+    </div>
   );
 };
 
@@ -156,7 +150,6 @@ function MenuPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <CartDrawer />
       <main className="flex-1 min-h-[calc(100vh-140px)] pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-24">
         <PageTransition>
           <section className="pt-2 pb-16 sm:pb-24">
@@ -237,19 +230,10 @@ function MenuPage() {
               </div>
 
               {/* Category Description Banner */}
-              <div className="grid [grid-template-areas:'stack'] mt-3 min-h-[40px]">
-                <AnimatePresence>
-                  <motion.p
-                    key={active}
-                    initial={{ opacity: 0, y: 4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -4, pointerEvents: "none" }}
-                    transition={{ duration: 0.2 }}
-                    className="[grid-area:stack] text-center text-xs sm:text-sm text-muted-foreground italic max-w-lg mx-auto"
-                  >
-                    {meta.description}
-                  </motion.p>
-                </AnimatePresence>
+              <div className="mt-3 min-h-[32px]">
+                <p className="text-center text-xs sm:text-sm text-muted-foreground italic max-w-lg mx-auto">
+                  {meta.description}
+                </p>
               </div>
 
               {/* Food Items Grid with Bottom Padding for Mobile Nav */}
@@ -286,11 +270,7 @@ function MenuPage() {
                   </div>
                 ) : (
                   <>
-                    <div className="grid [grid-template-areas:'stack']">
-                      <AnimatePresence>
-                        <AnimatedGrid key={active + search + dietaryFilter} items={visibleItems} />
-                      </AnimatePresence>
-                    </div>
+                    <FoodGrid items={visibleItems} />
 
                     {active === "all" && dietaryFilter === "all" && !search.trim() && visibleCount < filteredItems.length && (
                       <div className="mt-10 sm:mt-12 text-center flex flex-col items-center gap-3">

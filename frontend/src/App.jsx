@@ -6,6 +6,7 @@ import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
 import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
+import { CartDrawer } from "@/components/food/cart-drawer.jsx";
 
 const Home = lazy(() => import("./pages/home.jsx"));
 const MenuPage = lazy(() => import("./pages/menu.jsx"));
@@ -64,6 +65,7 @@ export default function App() {
       <Toaster position="top-center" richColors closeButton offset="76px" />
       <ActiveOrderWidget />
       <FlyToCart />
+      <CartDrawer />
       <MobileBottomNav />
       <Routes>
         <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />

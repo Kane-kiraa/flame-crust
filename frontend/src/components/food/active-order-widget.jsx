@@ -1,26 +1,46 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Bike, 
-  Package, 
-  ChevronRight, 
-  X, 
-  ChefHat, 
-  Clock, 
-  Flame, 
-  Layers, 
-  ArrowRight 
+import {
+  Bike,
+  Package,
+  ChevronRight,
+  X,
+  ChefHat,
+  Clock,
+  Flame,
+  Layers,
+  ArrowRight
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { list } from "@/lib/api";
 import { cn, formatPrice } from "@/lib/utils";
+import { useCart } from "@/lib/cart-store";
 
-const HIDDEN_ROUTES = ["/admin", "/driver", "/kitchen", "/track", "/payment", "/checkout", "/login", "/product", "/cart"];
+const HIDDEN_ROUTES = [
+  "/admin",
+  "/driver",
+  "/kitchen",
+  "/track",
+  "/payment",
+  "/checkout",
+  "/order-confirmation",
+  "/login",
+  "/product",
+  "/cart",
+  "/review",
+];
 
 export function ActiveOrderWidget() {
+  const { isOpen: isCartOpen } = useCart();
   const [activeOrders, setActiveOrders] = useState([]);
-  const [isDismissed, setIsDismissed] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(() => {
+    try {
+      return localStorage.getItem("flame_active_order_minimized") === "true";
+    } catch (e) {
+      return false;
+    }
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
@@ -61,6 +81,9 @@ export function ActiveOrderWidget() {
 
     const handleOrderPlaced = () => {
       setIsDismissed(false);
+      try {
+        localStorage.setItem("flame_active_order_minimized", "false");
+      } catch (e) { }
       checkActiveOrders();
     };
 
@@ -76,12 +99,7 @@ export function ActiveOrderWidget() {
     };
   }, [location.pathname]);
 
-  // Reset dismissed state when moving to another page so user can see their active order
-  useEffect(() => {
-    setIsDismissed(false);
-  }, [location.pathname]);
-
-  if (HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route))) {
+  if (isCartOpen || HIDDEN_ROUTES.some((route) => location.pathname.startsWith(route))) {
     return null;
   }
 
@@ -154,8 +172,13 @@ export function ActiveOrderWidget() {
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
-            onClick={() => setIsDismissed(false)}
-            className="fixed z-[65] bottom-[calc(4.5rem+env(safe-area-inset-bottom))] right-3 lg:bottom-6 lg:right-6 select-none cursor-pointer"
+            onClick={() => {
+              setIsDismissed(false);
+              try {
+                localStorage.setItem("flame_active_order_minimized", "false");
+              } catch (err) { }
+            }}
+            className="fixed z-[65] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] right-3 lg:bottom-6 lg:right-6 select-none cursor-pointer"
             title="Open Live Order Tracking"
           >
             <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
@@ -171,7 +194,7 @@ export function ActiveOrderWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", stiffness: 350, damping: 28 }}
-            className="fixed z-[65] bottom-[calc(4.5rem+env(safe-area-inset-bottom))] inset-x-3 max-w-md mx-auto lg:bottom-6 lg:right-6 lg:left-auto lg:mx-0 lg:max-w-sm lg:w-full select-none"
+            className="fixed z-[65] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 max-w-md mx-auto lg:bottom-6 lg:right-6 lg:left-auto lg:mx-0 lg:max-w-sm lg:w-full select-none"
           >
             <div
               onClick={handleWidgetClick}
@@ -247,6 +270,9 @@ export function ActiveOrderWidget() {
                   onClick={(e) => {
                     e.stopPropagation();
                     setIsDismissed(true);
+                    try {
+                      localStorage.setItem("flame_active_order_minimized", "true");
+                    } catch (err) { }
                   }}
                   className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
                   title="Minimize"

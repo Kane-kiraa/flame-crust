@@ -25,7 +25,7 @@ import { FoodCard } from "@/components/food/food-card";
 import { DetailSkeleton } from "@/components/shared/loading-skeleton";
 import { ErrorState } from "@/components/shared/error-state";
 import { PageTransition } from "@/components/shared/page-transition";
-import { getImageUrl } from "@/lib/food-api";
+import { getImageUrl, getCachedFoodItems } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { list, get, getProducts } from "@/lib/api";
 import { toast } from "sonner";
@@ -40,8 +40,13 @@ function ProductDetailPage() {
   const isCartOpen = useCart((s) => s.isOpen);
   const inCart = lines.find((l) => l.id === id);
 
-  const [product, setProduct] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [product, setProduct] = useState(() => {
+    const cached = getCachedFoodItems().find((p) => String(p.id) === String(id));
+    return cached || null;
+  });
+  const [loading, setLoading] = useState(() => {
+    return !getCachedFoodItems().some((p) => String(p.id) === String(id));
+  });
   const [error, setError] = useState(null);
   const [qty, setQty] = useState(1);
   const [options, setOptions] = useState([]);
@@ -52,11 +57,11 @@ function ProductDetailPage() {
   const [imgLoaded, setImgLoaded] = useState(false);
 
   useEffect(() => {
-    setImgLoaded(false);
-    setLoading(true);
+    let isMounted = true;
     async function fetchProduct() {
       try {
         const products = await getProducts();
+        if (!isMounted) return;
         const prod = products.find(p => String(p.id) === String(id));
         if (!prod) throw new Error("Product not found");
 
@@ -212,7 +217,6 @@ function ProductDetailPage() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Navbar />
-      <CartDrawer />
       <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28 pb-28 sm:pb-12">
         <PageTransition>
           <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
