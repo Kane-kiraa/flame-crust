@@ -119,6 +119,7 @@ function MenuPage() {
 
   const handleCategoryChange = (cat) => {
     setActive(cat);
+    setDietaryFilter("all");
     setSearchParams({ category: cat });
   };
 

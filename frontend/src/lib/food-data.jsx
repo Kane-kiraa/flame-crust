@@ -205,7 +205,7 @@ const DEFAULT_FALLBACK_PRODUCTS = [
     tags: ["Snack", "Cheesy", "Handheld"],
     rating: 4.7,
     popular: true,
-    spicy: false,
+    spicy: true,
     vegetarian: false,
     active: true
   },
