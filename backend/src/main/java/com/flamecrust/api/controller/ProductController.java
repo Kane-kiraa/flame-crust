@@ -32,10 +32,15 @@ public class ProductController {
         return ResponseEntity.ok(categories.findByActiveTrueOrderBySortOrderAsc());
     }
 
-    @GetMapping("/{category}")
-    public ResponseEntity<List<Product>> byCategory(@PathVariable String category) {
-        return ResponseEntity.ok(products.findByCategoryIgnoreCase(category).stream()
-                .filter(Product::isActive)
-                .toList());
+    @GetMapping("/{idOrCategory}")
+    public ResponseEntity<?> byIdOrCategory(@PathVariable String idOrCategory) {
+        try {
+            long id = Long.parseLong(idOrCategory);
+            return products.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        } catch (NumberFormatException e) {
+            return ResponseEntity.ok(products.findByCategoryIgnoreCase(idOrCategory).stream()
+                    .filter(Product::isActive)
+                    .toList());
+        }
     }
 }
