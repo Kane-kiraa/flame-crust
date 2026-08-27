@@ -244,6 +244,7 @@ function CheckoutPage() {
   const total = subtotal + deliveryFee;
 
   const [qrCodeString, setQrCodeString] = useState("");
+  const [qrMd5, setQrMd5] = useState("");
   const [isPaymentVerified, setIsPaymentVerified] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
 
@@ -269,11 +270,14 @@ function CheckoutPage() {
       const res = khqr.generateIndividual(qrInfo);
       if (res && res.data && res.data.qr) {
         setQrCodeString(res.data.qr);
+        setQrMd5(res.data.md5 || "");
       } else {
         setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD&bill=${billNumber}`);
+        setQrMd5("");
       }
     } catch (e) {
       setQrCodeString(`https://bakong.nbc.gov.kh/pay?account=khemara_chantha1@bkrt&amount=${total.toFixed(2)}&currency=USD&bill=${Date.now()}`);
+      setQrMd5("");
     }
   };
 
@@ -294,7 +298,7 @@ function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           qr_code_string: qrCodeString,
-          qrCodeString: qrCodeString
+          md5: qrMd5
         })
       });
       const data = await res.json();
@@ -1235,7 +1239,7 @@ function CheckoutPage() {
               </div>
 
               {/* Mobile Fixed Sticky Bottom Action Bar */}
-              <div className="lg:hidden fixed bottom-0 inset-x-0 bg-background border-t border-border/80 p-3.5 pb-[max(1.15rem,env(safe-area-inset-bottom))] z-50 shadow-2xl">
+              <div className="lg:hidden fixed bottom-0 inset-x-0 bg-background border-t border-border/80 p-3.5 pb-[max(1.15rem,env(safe-area-inset-bottom))] z-40 shadow-2xl">
                 <div className="max-w-md mx-auto flex items-center justify-between gap-3">
                   <div className="flex flex-col">
                     <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">
