@@ -47,8 +47,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/payments/verify-khqr").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/products", "/api/products/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/categories", "/api/categories/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/coupons", "/api/coupons/**").permitAll()
                 
-                // Admin endpoints (must be authenticated and ideally have ADMIN role)
+                // Admin endpoints (authenticated)
                 .requestMatchers("/api/admin/**").authenticated()
                 
                 // Any other request must be authenticated

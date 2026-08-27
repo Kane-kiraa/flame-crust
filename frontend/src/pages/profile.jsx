@@ -195,8 +195,8 @@ export default function ProfilePage() {
     setLoading(true);
     try {
       const [allOrders, allAddresses, allCoupons, items, freshCustomer, productsList] = await Promise.all([
-        list("orders"),
-        list("addresses"),
+        list("orders").catch(() => []),
+        list("addresses").catch(() => []),
         list("coupons").catch(() => []),
         list("order_items").catch(() => []),
         get("customers", c.id).catch(() => null),
