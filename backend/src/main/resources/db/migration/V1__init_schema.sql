@@ -347,39 +347,11 @@ CREATE TABLE IF NOT EXISTS inventory (
     CONSTRAINT fk_inventory_branch FOREIGN KEY (branch_id) REFERENCES branches(id) ON DELETE CASCADE,
     CONSTRAINT fk_inventory_product FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE
 );
-
--- Legacy database compatibility. MySQL 8.4 does not support
--- `ADD COLUMN IF NOT EXISTS`, so these statements are intentionally allowed
--- to report duplicate-column errors on later starts (see application.yml).
-ALTER TABLE products ADD COLUMN sku VARCHAR(40) NULL;
-ALTER TABLE products ADD COLUMN category_id BIGINT NULL;
-ALTER TABLE products ADD COLUMN base_price DECIMAL(10, 2) NULL;
-ALTER TABLE products ADD COLUMN active BOOLEAN NOT NULL DEFAULT TRUE;
-ALTER TABLE products ADD COLUMN created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP;
-ALTER TABLE products ADD COLUMN updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP;
-ALTER TABLE customers ADD COLUMN password_hash VARCHAR(255) NULL;
-ALTER TABLE customers ADD COLUMN status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE';
-ALTER TABLE customers ADD COLUMN deleted_at TIMESTAMP NULL;
-ALTER TABLE customers MODIFY COLUMN email VARCHAR(180) NULL;
-ALTER TABLE orders ADD COLUMN coupon_id BIGINT NULL;
-ALTER TABLE orders ADD COLUMN driver_id BIGINT NULL;
-ALTER TABLE orders ADD COLUMN branch_id BIGINT NULL;
-ALTER TABLE orders ADD COLUMN discount_amount DECIMAL(10, 2) NOT NULL DEFAULT 0.00;
-ALTER TABLE order_items ADD COLUMN product_name VARCHAR(150) NULL;
-ALTER TABLE order_items ADD COLUMN options JSON NULL;
-
 INSERT INTO roles (name, permissions) VALUES
     ('Admin', JSON_OBJECT('can_delete', TRUE, 'can_manage_users', TRUE)),
     ('Manager', JSON_OBJECT('can_delete', FALSE, 'can_manage_users', FALSE)),
     ('Staff', JSON_OBJECT('can_delete', FALSE, 'can_manage_users', FALSE))
 ON DUPLICATE KEY UPDATE permissions = VALUES(permissions);
-
--- Backfill the immutable item label when upgrading an existing database.
-UPDATE order_items oi
-JOIN products p ON p.id = oi.product_id
-SET oi.product_name = p.name
-WHERE oi.product_name IS NULL;
-ALTER TABLE order_items MODIFY COLUMN product_name VARCHAR(150) NOT NULL;
 
 CREATE TABLE IF NOT EXISTS kitchen_staff (
     id BIGINT NOT NULL AUTO_INCREMENT,
