@@ -68,10 +68,10 @@ export default function App() {
       <CartDrawer />
       <MobileBottomNav />
       <Routes>
-        <Route path="/" element={<RequireAuth><Home /></RequireAuth>} />
-        <Route path="/menu" element={<RequireAuth><MenuPage /></RequireAuth>} />
-        <Route path="/product/:id" element={<RequireAuth><ProductDetailPage /></RequireAuth>} />
-        <Route path="/cart" element={<RequireAuth><CartPage /></RequireAuth>} />
+        <Route path="/" element={<Home />} />
+        <Route path="/menu" element={<MenuPage />} />
+        <Route path="/product/:id" element={<ProductDetailPage />} />
+        <Route path="/cart" element={<CartPage />} />
         <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
         <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
         <Route path="/order-confirmation" element={<OrderConfirmationPage />} />

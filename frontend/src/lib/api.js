@@ -77,13 +77,6 @@ async function request(path, options = {}) {
   });
 
   if (!response.ok) {
-    if (response.status === 401 || response.status === 403) {
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem("adminAuth");
-        localStorage.removeItem("customerAuth");
-        window.location.href = `/login?redirect=${encodeURIComponent(window.location.pathname)}`;
-      }
-    }
     let message = `API request failed: ${response.status} ${response.statusText}`;
     try {
       const error = await response.json();
