@@ -238,7 +238,17 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const auth = localStorage.getItem("customerAuth");
+    const adminAuth = localStorage.getItem("adminAuth");
     if (!auth) {
+      if (adminAuth) {
+        try {
+          const a = JSON.parse(adminAuth);
+          if ((a.role || "").toUpperCase() === "ADMIN") {
+            navigate("/admin/dashboard");
+            return;
+          }
+        } catch (e) {}
+      }
       navigate("/login");
       return;
     }

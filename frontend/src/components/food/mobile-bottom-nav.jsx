@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { UtensilsCrossed, Store, Search, ShoppingBag, User } from "lucide-react";
+import { UtensilsCrossed, Store, Search, ShoppingBag, User, ShieldCheck } from "lucide-react";
 import { useCart } from "@/lib/cart-store";
 import { SearchModal } from "./search-modal";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,15 @@ export function MobileBottomNav() {
     }
   });
 
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      const auth = localStorage.getItem("adminAuth");
+      return auth ? JSON.parse(auth) : null;
+    } catch (e) {
+      return null;
+    }
+  });
+
   const count = useCart((s) => s.lines.reduce((acc, l) => acc + l.qty, 0));
   const closeCart = useCart((s) => s.closeCart);
 
@@ -25,9 +34,12 @@ export function MobileBottomNav() {
     const handleAuthChange = () => {
       try {
         const auth = localStorage.getItem("customerAuth");
+        const adminAuth = localStorage.getItem("adminAuth");
         setCustomer(auth ? JSON.parse(auth) : null);
+        setAdminUser(adminAuth ? JSON.parse(adminAuth) : null);
       } catch (e) {
         setCustomer(null);
+        setAdminUser(null);
       }
     };
     window.addEventListener("storage", handleAuthChange);
@@ -89,10 +101,10 @@ export function MobileBottomNav() {
     },
     {
       id: "account",
-      label: "Account",
-      to: customer ? "/profile" : "/login",
-      isActive: isProfile,
-      icon: User,
+      label: customer ? "Account" : (adminUser ? "Admin" : "Account"),
+      to: customer ? "/profile" : (adminUser ? "/admin/dashboard" : "/login"),
+      isActive: isProfile || (Boolean(adminUser) && location.pathname.startsWith("/admin")),
+      icon: adminUser && !customer ? ShieldCheck : User,
       avatar: customer?.avatar,
     },
   ];

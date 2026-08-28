@@ -37,6 +37,14 @@ function Navbar() {
       return null;
     }
   });
+  const [adminUser, setAdminUser] = useState(() => {
+    try {
+      const adminAuth = localStorage.getItem("adminAuth");
+      return adminAuth ? JSON.parse(adminAuth) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const [isAdmin, setIsAdmin] = useState(() => {
     try {
       const adminAuth = localStorage.getItem("adminAuth");
@@ -160,15 +168,17 @@ function Navbar() {
         const auth = localStorage.getItem("customerAuth");
         const adminAuth = localStorage.getItem("adminAuth");
         const c = auth ? JSON.parse(auth) : null;
+        const a = adminAuth ? JSON.parse(adminAuth) : null;
         setCustomer(c);
-        if (adminAuth) {
-          const a = JSON.parse(adminAuth);
+        setAdminUser(a);
+        if (a) {
           setIsAdmin((a.role || "").toUpperCase() === "ADMIN");
         } else {
           setIsAdmin(false);
         }
       } catch (e) {
         setCustomer(null);
+        setAdminUser(null);
         setIsAdmin(false);
       }
     };
@@ -444,6 +454,21 @@ function Navbar() {
                 </div>
                 <span className="hidden md:inline text-xs font-semibold pr-2.5 truncate max-w-[100px]">{customer.name || customer.phone}</span>
               </button>
+            ) : adminUser ? (
+              <button 
+                type="button"
+                className="hidden sm:flex shrink-0 items-center gap-2 p-0.5 pr-2.5 rounded-full border border-primary/40 hover:border-primary bg-primary/10 transition-all cursor-pointer shadow-xs"
+                onClick={() => {
+                  setMobileOpen(false);
+                  navigate("/admin/dashboard");
+                }}
+                aria-label="Admin Dashboard"
+              >
+                <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0 border border-primary/40 font-bold text-xs text-primary">
+                  {adminUser.name ? adminUser.name.slice(0, 2).toUpperCase() : "AD"}
+                </div>
+                <span className="hidden md:inline text-xs font-semibold truncate max-w-[110px] text-primary">{adminUser.name || "Admin"}</span>
+              </button>
             ) : location.pathname !== "/login" ? (
               <Button 
                 className="hidden sm:flex rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 sm:h-11 px-4 sm:px-6 font-semibold text-xs sm:text-sm transition-all shadow-warm"
@@ -532,6 +557,26 @@ function Navbar() {
                     </div>
                     <span className="text-xs text-primary font-semibold px-2.5 py-1 rounded-full bg-primary/10 border border-primary/20 shrink-0">
                       Settings
+                    </span>
+                  </div>
+                ) : adminUser ? (
+                  <div 
+                    onClick={() => { setMobileOpen(false); navigate("/admin/dashboard"); }}
+                    className="p-3 mb-1 rounded-2xl bg-primary/10 hover:bg-primary/15 border border-primary/30 flex items-center justify-between cursor-pointer transition-all active:scale-[0.99]"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="size-11 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden border-2 border-primary/40 shrink-0 font-bold text-sm text-primary">
+                        {adminUser.name ? adminUser.name.slice(0, 2).toUpperCase() : "AD"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-bold text-sm text-foreground truncate">{adminUser.name || "Administrator"}</p>
+                        <p className="text-xs text-primary font-semibold truncate flex items-center gap-1">
+                          <ShieldCheck className="size-3 text-primary" /> {adminUser.email || "Admin Account"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-xs text-primary-foreground font-semibold px-2.5 py-1 rounded-full bg-primary shrink-0 shadow-xs">
+                      Dashboard
                     </span>
                   </div>
                 ) : location.pathname !== "/login" ? (
