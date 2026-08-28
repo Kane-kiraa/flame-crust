@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
 @RestController
@@ -717,6 +718,53 @@ public class AuthController {
         jdbc.update("UPDATE users SET password_hash = ? WHERE id = ?", encoded, userId);
 
         return ResponseEntity.ok(Map.of("message", "Admin password changed successfully (ប្តូរលេខសម្ងាត់បានជោគជ័យ)"));
+    }
+
+    @GetMapping("/customer-profile-data")
+    public ResponseEntity<?> getCustomerProfileData(
+            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) String email,
+            @RequestParam(required = false) String phone) {
+        
+        Map<String, Object> result = new LinkedHashMap<>();
+        
+        List<Map<String, Object>> customers = List.of();
+        if (customerId != null) {
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", customerId);
+        } else if (email != null && !email.isBlank()) {
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email);
+        } else if (phone != null && !phone.isBlank()) {
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone);
+        }
+
+        if (customers.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Customer not found"));
+        }
+
+        Map<String, Object> customer = customers.getFirst();
+        long cid = ((Number) customer.get("id")).longValue();
+        String cPhone = (String) customer.get("phone");
+
+        // 1. Fetch only this customer's orders (last 50)
+        List<Map<String, Object>> orders = jdbc.queryForList(
+                "SELECT * FROM orders WHERE customer_id = ? OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = ?) ORDER BY id DESC LIMIT 50",
+                cid, cPhone != null ? cPhone : "");
+
+        // 2. Fetch only this customer's addresses
+        List<Map<String, Object>> addresses = jdbc.queryForList(
+                "SELECT * FROM addresses WHERE customer_id = ? ORDER BY id DESC LIMIT 20", cid);
+
+        // 3. Fetch active coupons
+        List<Map<String, Object>> coupons = jdbc.queryForList(
+                "SELECT * FROM coupons WHERE active = 1 ORDER BY id DESC LIMIT 30");
+
+        result.put("customer", customer);
+        result.put("orders", orders);
+        result.put("addresses", addresses);
+        result.put("coupons", coupons);
+        result.put("hasPassword", Boolean.TRUE.equals(customer.get("has_password")) || ((Number) customer.getOrDefault("has_password", 0)).intValue() == 1);
+
+        return ResponseEntity.ok(result);
     }
 
     private boolean verifyPassword(String rawPassword, String passwordHash, String table, Object id) {

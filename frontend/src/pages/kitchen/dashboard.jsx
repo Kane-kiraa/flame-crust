@@ -17,11 +17,13 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
 
+let cachedStandaloneKitchenProducts = [];
+
 export default function StandaloneKitchenDashboard() {
   const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [orderItems, setOrderItems] = useState([]);
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState(() => cachedStandaloneKitchenProducts);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [user, setUser] = useState(null);
@@ -59,19 +61,25 @@ export default function StandaloneKitchenDashboard() {
     }
   }, [navigate]);
 
-  const fetchData = async () => {
+  const fetchData = async (isInitial = false) => {
     try {
-      const [allOrders, allItems, allProducts] = await Promise.all([
+      const promises = [
         list("orders"),
-        list("order_items"),
-        list("products")
-      ]);
+        list("order_items")
+      ];
+      if (cachedStandaloneKitchenProducts.length === 0 || isInitial) {
+        promises.push(list("products"));
+      }
       
-      setOrders(allOrders);
-      setOrderItems(allItems);
-      setProducts(allProducts);
+      const results = await Promise.all(promises);
+      setOrders(results[0] || []);
+      setOrderItems(results[1] || []);
+      if (results[2]) {
+        cachedStandaloneKitchenProducts = results[2];
+        setProducts(results[2]);
+      }
     } catch (error) {
-      toast.error("Failed to load kitchen data.");
+      if (isInitial) toast.error("Failed to load kitchen data.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -79,8 +87,8 @@ export default function StandaloneKitchenDashboard() {
   };
 
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10000); // Auto-refresh every 10 seconds
+    fetchData(true);
+    const interval = setInterval(() => fetchData(false), 10000);
     return () => clearInterval(interval);
   }, []);
 

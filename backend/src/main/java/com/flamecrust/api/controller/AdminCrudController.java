@@ -6,6 +6,7 @@ import com.flamecrust.api.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
@@ -77,9 +78,16 @@ public class AdminCrudController {
     }
 
     @GetMapping("/{resource}")
-    public List<?> all(@PathVariable String resource) {
+    public List<?> all(
+            @PathVariable String resource,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "150") int limit,
+            @RequestParam(required = false) Integer size) {
+        int pageSize = size != null ? size : limit;
+        if (pageSize <= 0) pageSize = 150;
+        if (pageSize > 500) pageSize = 500;
         JpaRepository<Object, Long> repo = getRepository(resource);
-        return repo.findAll(Sort.by(Sort.Direction.DESC, "id"));
+        return repo.findAll(PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "id"))).getContent();
     }
 
     @GetMapping("/{resource}/{id}")

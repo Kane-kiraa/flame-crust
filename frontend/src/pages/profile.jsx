@@ -194,41 +194,30 @@ export default function ProfilePage() {
   const fetchProfileData = async (c) => {
     setLoading(true);
     try {
-      const [allOrders, allAddresses, allCoupons, items, freshCustomer, productsList] = await Promise.all([
-        list("orders").catch(() => []),
-        list("addresses").catch(() => []),
-        list("coupons").catch(() => []),
-        list("order_items").catch(() => []),
-        get("customers", c.id).catch(() => null),
-        list("products").catch(() => [])
-      ]);
-      const userOrders = allOrders
-        .filter(o => String(o.customer_id) === String(c.id) || o.customer_phone === c.phone)
-        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-      const userAddresses = allAddresses.filter(a => String(a.customer_id) === String(c.id));
+      const res = await fetch(`${API_URL}/auth/customer-profile-data?customerId=${c.id || ""}&phone=${encodeURIComponent(c.phone || "")}&email=${encodeURIComponent(c.email || "")}`);
+      if (res.ok) {
+        const data = await res.json();
+        const userOrders = data.orders || [];
+        const userAddresses = data.addresses || [];
+        const activeCoupons = data.coupons || [];
+        const isPwdSet = Boolean(data.hasPassword);
 
-      setOrders(userOrders);
-      setAddresses(userAddresses);
-      setCoupons(allCoupons);
-      setAllOrderItems(items || []);
-      setAllProducts(productsList || []);
+        setOrders(userOrders);
+        setAddresses(userAddresses);
+        setCoupons(activeCoupons);
+        setHasPassword(isPwdSet);
 
-      // Verify if password is set on the customer
-      const isPwdSet = Boolean(freshCustomer && freshCustomer.password_hash);
-      setHasPassword(isPwdSet);
-
-      profileMemoryCache = {
-        ...profileMemoryCache,
-        orders: userOrders,
-        addresses: userAddresses,
-        coupons: allCoupons,
-        allOrderItems: items || [],
-        allProducts: productsList || [],
-        hasPassword: isPwdSet,
-      };
-      try {
-        localStorage.setItem("flame_profile_cache", JSON.stringify(profileMemoryCache));
-      } catch (e) {}
+        profileMemoryCache = {
+          ...profileMemoryCache,
+          orders: userOrders,
+          addresses: userAddresses,
+          coupons: activeCoupons,
+          hasPassword: isPwdSet,
+        };
+        try {
+          localStorage.setItem("flame_profile_cache", JSON.stringify(profileMemoryCache));
+        } catch (e) {}
+      }
     } catch (err) {
       console.error(err);
     } finally {
