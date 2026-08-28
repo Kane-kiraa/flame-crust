@@ -681,6 +681,44 @@ public class AuthController {
         return ResponseEntity.ok(updated);
     }
 
+    @PostMapping("/admin-change-password")
+    public ResponseEntity<?> adminChangePassword(@RequestBody Map<String, String> body) {
+        String email = body.get("email");
+        String oldPassword = body.get("oldPassword");
+        String newPassword = body.get("newPassword");
+
+        if (email == null || email.isBlank() || newPassword == null || newPassword.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email and new password are required"));
+        }
+
+        if (newPassword.length() < 6) {
+            return ResponseEntity.badRequest().body(Map.of("error", "New password must be at least 6 characters long"));
+        }
+
+        List<Map<String, Object>> users = jdbc.queryForList(
+                "SELECT u.id, u.name, u.email, u.status, u.password_hash, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.status = 'ACTIVE' LIMIT 1",
+                email);
+        if (users.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Admin user not found or inactive"));
+        }
+
+        Map<String, Object> user = users.getFirst();
+        long userId = ((Number) user.get("id")).longValue();
+        String currentHash = (String) user.get("password_hash");
+
+        if (oldPassword != null && !oldPassword.isBlank()) {
+            boolean isOldMatch = verifyPassword(oldPassword, currentHash, "users", userId);
+            if (!isOldMatch) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Current password is incorrect (លេខសម្ងាត់ចាស់មិនត្រឹមត្រូវ)"));
+            }
+        }
+
+        String encoded = passwordEncoder.encode(newPassword);
+        jdbc.update("UPDATE users SET password_hash = ? WHERE id = ?", encoded, userId);
+
+        return ResponseEntity.ok(Map.of("message", "Admin password changed successfully (ប្តូរលេខសម្ងាត់បានជោគជ័យ)"));
+    }
+
     private boolean verifyPassword(String rawPassword, String passwordHash, String table, Object id) {
         if (passwordHash == null) return false;
         boolean isMatch = false;

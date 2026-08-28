@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
-import { Menu as MenuIcon, X, Sun, Moon, Store, ShieldCheck, ChevronRight } from "lucide-react";
+import { Menu as MenuIcon, X, Sun, Moon, Store, ShieldCheck, ChevronRight, KeyRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider.jsx";
 import AdminSidebar from "./sidebar.jsx";
 import AdminResourcePage from "./resource-page.jsx";
 import AdminDashboard from "./dashboard.jsx";
 import KitchenDashboard from "./kitchen-dashboard.jsx";
+import AdminChangePasswordDialog from "./change-password-dialog.jsx";
 
 const adminResources = [
   "products",
@@ -31,6 +32,7 @@ const adminResources = [
 
 function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -112,6 +114,18 @@ function AdminLayout() {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-2">
+            {/* Change Password Button */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setChangePasswordOpen(true)}
+              className="rounded-xl border-border/80 text-xs font-semibold h-9 px-3 hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-1.5"
+              title="Change Admin Password"
+            >
+              <KeyRound className="size-3.5 text-primary" />
+              <span className="hidden md:inline">Change Password</span>
+            </Button>
+
             {/* Direct Storefront Link */}
             <Button
               variant="outline"
@@ -137,6 +151,12 @@ function AdminLayout() {
             </Button>
           </div>
         </header>
+
+        {/* Change Password Dialog */}
+        <AdminChangePasswordDialog
+          open={changePasswordOpen}
+          onOpenChange={setChangePasswordOpen}
+        />
 
         {/* Dynamic Page Routes */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full">

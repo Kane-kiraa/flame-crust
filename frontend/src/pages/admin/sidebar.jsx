@@ -23,10 +23,12 @@ import {
   Warehouse,
   Carrot,
   Scale,
-  UtensilsCrossed
+  UtensilsCrossed,
+  KeyRound
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import AdminChangePasswordDialog from "./change-password-dialog.jsx";
 
 // Map keys to modern icons
 const iconMap = {
@@ -102,6 +104,7 @@ const navGroups = [
 ];
 
 function AdminSidebar({ onNavigate }) {
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const location = useLocation();
   const currentPath = location.pathname.replace("/admin/", "").replace("/admin", "") || "dashboard";
 
@@ -124,110 +127,134 @@ function AdminSidebar({ onNavigate }) {
   };
 
   return (
-    <aside className="w-64 border-r border-border/70 bg-card/95 backdrop-blur-xl flex-shrink-0 flex flex-col h-full select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
-      {/* Brand Header */}
-      <div className="p-4 border-b border-border/70">
-        <div className="flex items-center gap-3 mb-3">
-          <div className="size-10 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-primary/20">
-            🔥
-          </div>
-          <div className="min-w-0 flex-1">
-            <h2 className="font-serif text-base font-bold text-foreground truncate">Flame & Crust</h2>
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
-              <ShieldCheck className="size-3 text-primary" /> Admin Control
-            </p>
-          </div>
-        </div>
-
-        {/* View Customer Storefront Button */}
-        <Button
-          variant="outline"
-          size="sm"
-          asChild
-          className="rounded-xl border-border/80 hover:border-primary/50 hover:bg-primary/5 text-foreground hover:text-primary text-xs w-full justify-between font-semibold h-9 px-3 transition-all group"
-        >
-          <Link to="/" onClick={handleNav}>
-            <div className="flex items-center gap-2">
-              <Store className="size-3.5 text-primary group-hover:scale-110 transition-transform" />
-              <span>Customer Storefront</span>
-            </div>
-            <ChevronRight className="size-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
-          </Link>
-        </Button>
-      </div>
-
-      {/* Navigation Links Grouped */}
-      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto scrollbar-thin">
-        {navGroups.map((group) => (
-          <div key={group.title} className="space-y-1">
-            <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
-              {group.title}
-            </h3>
-            <div className="space-y-0.5">
-              {group.items.map(({ key, label }) => {
-                const IconComponent = iconMap[key] || LayoutDashboard;
-                const isActive = currentPath === key || currentPath.startsWith(key + "/");
-
-                return (
-                  <Link
-                    key={key}
-                    to={`/admin/${key}`}
-                    onClick={handleNav}
-                    className={cn(
-                      "flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 group",
-                      isActive
-                        ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
-                        : "text-foreground/75 hover:text-foreground hover:bg-secondary/70"
-                    )}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <IconComponent
-                        className={cn(
-                          "size-4 shrink-0 transition-colors",
-                          isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary"
-                        )}
-                      />
-                      <span className="truncate">{label}</span>
-                    </div>
-                    {isActive && (
-                      <div className="size-1.5 rounded-full bg-primary-foreground animate-pulse" />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-      </nav>
-
-      {/* Admin Profile & Sign Out footer */}
-      <div className="p-3 border-t border-border/70 bg-secondary/30">
-        <div className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/60 shadow-xs">
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs text-primary shrink-0 overflow-hidden">
-              {adminAuth?.name ? adminAuth.name.slice(0, 2).toUpperCase() : "AD"}
+    <>
+      <aside className="w-64 border-r border-border/70 bg-card/95 backdrop-blur-xl flex-shrink-0 flex flex-col h-full select-none pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+        {/* Brand Header */}
+        <div className="p-4 border-b border-border/70">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="size-10 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 text-white flex items-center justify-center font-bold text-lg shadow-md shadow-primary/20">
+              🔥
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-semibold text-foreground truncate">
-                {adminAuth?.name || "Administrator"}
-              </p>
-              <p className="text-[10px] text-muted-foreground truncate">
-                {adminAuth?.role || "ADMIN"}
+              <h2 className="font-serif text-base font-bold text-foreground truncate">Flame & Crust</h2>
+              <p className="text-[11px] text-muted-foreground flex items-center gap-1 font-medium">
+                <ShieldCheck className="size-3 text-primary" /> Admin Control
               </p>
             </div>
           </div>
+
+          {/* View Customer Storefront Button */}
           <Button
-            variant="ghost"
-            size="icon"
-            onClick={handleSignOut}
-            title="Sign Out"
-            className="size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+            variant="outline"
+            size="sm"
+            asChild
+            className="rounded-xl border-border/80 hover:border-primary/50 hover:bg-primary/5 text-foreground hover:text-primary text-xs w-full justify-between font-semibold h-9 px-3 transition-all group"
           >
-            <LogOut className="size-4" />
+            <Link to="/" onClick={handleNav}>
+              <div className="flex items-center gap-2">
+                <Store className="size-3.5 text-primary group-hover:scale-110 transition-transform" />
+                <span>Customer Storefront</span>
+              </div>
+              <ChevronRight className="size-3 text-muted-foreground group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </Button>
         </div>
-      </div>
-    </aside>
+
+        {/* Navigation Links Grouped */}
+        <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto scrollbar-thin">
+          {navGroups.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+                {group.title}
+              </h3>
+              <div className="space-y-0.5">
+                {group.items.map(({ key, label }) => {
+                  const IconComponent = iconMap[key] || LayoutDashboard;
+                  const isActive = currentPath === key || currentPath.startsWith(key + "/");
+
+                  return (
+                    <Link
+                      key={key}
+                      to={`/admin/${key}`}
+                      onClick={handleNav}
+                      className={cn(
+                        "flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 group",
+                        isActive
+                          ? "bg-primary text-primary-foreground shadow-sm shadow-primary/25"
+                          : "text-foreground/75 hover:text-foreground hover:bg-secondary/70"
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <IconComponent
+                          className={cn(
+                            "size-4 shrink-0 transition-colors",
+                            isActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-primary"
+                          )}
+                        />
+                        <span className="truncate">{label}</span>
+                      </div>
+                      {isActive && (
+                        <div className="size-1.5 rounded-full bg-primary-foreground animate-pulse" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </nav>
+
+        {/* Admin Profile & Change Password & Sign Out footer */}
+        <div className="p-3 border-t border-border/70 bg-secondary/30">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-card border border-border/60 shadow-xs">
+            <button
+              type="button"
+              onClick={() => setChangePasswordOpen(true)}
+              className="flex items-center gap-2.5 min-w-0 text-left hover:opacity-80 transition-opacity group cursor-pointer"
+              title="Click to Change Admin Password"
+            >
+              <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center font-bold text-xs text-primary shrink-0 overflow-hidden group-hover:ring-2 group-hover:ring-primary/40 transition-all">
+                {adminAuth?.name ? adminAuth.name.slice(0, 2).toUpperCase() : "AD"}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs font-semibold text-foreground truncate group-hover:text-primary transition-colors">
+                  {adminAuth?.name || "Administrator"}
+                </p>
+                <p className="text-[10px] text-muted-foreground truncate flex items-center gap-1">
+                  <KeyRound className="size-2.5 text-primary" /> {adminAuth?.role || "ADMIN"}
+                </p>
+              </div>
+            </button>
+
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setChangePasswordOpen(true)}
+                title="Change Password (ប្តូរលេខសម្ងាត់)"
+                className="size-8 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10"
+              >
+                <KeyRound className="size-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleSignOut}
+                title="Sign Out"
+                className="size-8 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+              >
+                <LogOut className="size-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <AdminChangePasswordDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+      />
+    </>
   );
 }
 
