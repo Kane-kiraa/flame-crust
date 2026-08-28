@@ -508,7 +508,7 @@ export function OrderChatModal({
                                 className="gap-2 text-xs font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer"
                               >
                                 <Trash2 className="size-3.5" />
-                                <span>Unsend / Remove</span>
+                                <span>Remove</span>
                               </DropdownMenuItem>
                             )}
                           </DropdownMenuContent>

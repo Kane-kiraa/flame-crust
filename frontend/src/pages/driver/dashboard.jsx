@@ -1068,12 +1068,30 @@ export default function DriverDashboardPage() {
   const updateOrderStatus = async (orderId, newStatus) => {
     if (actionLoadingId) return;
     setActionLoadingId(orderId);
+
+    // ⚡ Instant Optimistic Update
+    setMyOrders(prev => {
+      if (newStatus === "DELIVERED" || newStatus === "CANCELLED") {
+        return prev.filter(o => String(o.id) !== String(orderId));
+      }
+      return prev.map(o => String(o.id) === String(orderId) ? { ...o, status: newStatus } : o);
+    });
+
+    if (selectedOrderDetails && String(selectedOrderDetails.id) === String(orderId)) {
+      if (newStatus === "DELIVERED" || newStatus === "CANCELLED") {
+        setSelectedOrderDetails(null);
+      } else {
+        setSelectedOrderDetails(prev => ({ ...prev, status: newStatus }));
+      }
+    }
+
     try {
       await update("orders", orderId, { status: newStatus });
       toast.success(`Status updated: ${newStatus.replace(/_/g, " ")}`);
-      await fetchAllData();
+      fetchAllData();
     } catch (err) {
       toast.error("Failed to update status");
+      fetchAllData();
     } finally {
       setActionLoadingId(null);
     }
@@ -1082,13 +1100,30 @@ export default function DriverDashboardPage() {
   const acceptOrder = async (orderId) => {
     if (actionLoadingId) return;
     setActionLoadingId(orderId);
+
+    // ⚡ Instant Optimistic Update: Transfer from Available to My Deliveries immediately!
+    const targetOrder = availableOrders.find(o => String(o.id) === String(orderId)) || selectedOrderDetails;
+    if (targetOrder) {
+      const acceptedOrder = {
+        ...targetOrder,
+        driver_id: driver.id,
+        status: "READY"
+      };
+      setAvailableOrders(prev => prev.filter(o => String(o.id) !== String(orderId)));
+      setMyOrders(prev => [acceptedOrder, ...prev.filter(o => String(o.id) !== String(orderId))]);
+    }
+
+    // Switch view to My Deliveries immediately
+    setActiveTab("my_deliveries");
+    setSelectedOrderDetails(null);
+
     try {
       await update("orders", orderId, { driver_id: driver.id, status: "READY" });
       toast.success("Delivery accepted! Ready for pickup.");
-      setActiveTab("my_deliveries");
-      await fetchAllData();
+      fetchAllData();
     } catch (err) {
       toast.error("Failed to accept delivery");
+      fetchAllData();
     } finally {
       setActionLoadingId(null);
     }
