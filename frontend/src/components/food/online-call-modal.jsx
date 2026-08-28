@@ -17,7 +17,19 @@ import { startActiveCall, getActiveCall, answerActiveCall, endActiveCall } from 
 import { cn } from "@/lib/utils";
 
 // Tone synthesizers using Web Audio API for ringing & connect sounds
+let activeRingtoneInstance = null;
+
+function stopAllRingtones() {
+  if (activeRingtoneInstance) {
+    try {
+      activeRingtoneInstance();
+    } catch (e) {}
+    activeRingtoneInstance = null;
+  }
+}
+
 function startRingtone() {
+  stopAllRingtones();
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return () => {};
@@ -37,9 +49,9 @@ function startRingtone() {
         osc1.frequency.setValueAtTime(440, now);
         osc2.frequency.setValueAtTime(480, now);
 
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.setValueAtTime(0.15, now + 1.2);
-        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.25);
+        gain.gain.setValueAtTime(0.12, now);
+        gain.gain.setValueAtTime(0.12, now + 1.1);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
 
         osc1.connect(gain);
         osc2.connect(gain);
@@ -47,15 +59,15 @@ function startRingtone() {
 
         osc1.start(now);
         osc2.start(now);
-        osc1.stop(now + 1.25);
-        osc2.stop(now + 1.25);
+        osc1.stop(now + 1.2);
+        osc2.stop(now + 1.2);
       } catch (e) {}
     };
 
     playBeep();
     const interval = setInterval(playBeep, 3500);
 
-    return () => {
+    const stop = () => {
       isRunning = false;
       clearInterval(interval);
       try {
@@ -64,12 +76,16 @@ function startRingtone() {
         }
       } catch (e) {}
     };
+
+    activeRingtoneInstance = stop;
+    return stop;
   } catch (e) {
     return () => {};
   }
 }
 
 function playEndCallTone() {
+  stopAllRingtones();
   try {
     const AudioContext = window.AudioContext || window.webkitAudioContext;
     if (!AudioContext) return;
@@ -123,6 +139,7 @@ export function OnlineCallModal({
   // 1. Initiate or Join Call
   useEffect(() => {
     if (!open || !orderId) {
+      stopAllRingtones();
       if (stopRingRef.current) {
         stopRingRef.current();
         stopRingRef.current = null;
@@ -154,6 +171,13 @@ export function OnlineCallModal({
       });
     }
 
+    // Call Timeout after 32 seconds if no one answers (កំណត់ពេលដាច់ Call)
+    const timeoutTimer = setTimeout(() => {
+      if (callStatusRef.current === "ringing" || callStatusRef.current === "connecting") {
+        handleEndCall();
+      }
+    }, 32000);
+
     // Polling call status every 1.5s for real-time answer / end sync
     const pollInterval = setInterval(async () => {
       try {
@@ -165,6 +189,7 @@ export function OnlineCallModal({
           }
         } else if (res.call) {
           if (res.call.status === "ACCEPTED" && callStatusRef.current !== "connected") {
+            stopAllRingtones();
             if (stopRingRef.current) {
               stopRingRef.current();
               stopRingRef.current = null;
@@ -180,7 +205,9 @@ export function OnlineCallModal({
     }, 1500);
 
     return () => {
+      clearTimeout(timeoutTimer);
       clearInterval(pollInterval);
+      stopAllRingtones();
       if (stopRingRef.current) {
         stopRingRef.current();
         stopRingRef.current = null;
@@ -198,6 +225,7 @@ export function OnlineCallModal({
   }, [callStatus]);
 
   const handleLocalEnd = () => {
+    stopAllRingtones();
     if (stopRingRef.current) {
       stopRingRef.current();
       stopRingRef.current = null;
@@ -211,6 +239,7 @@ export function OnlineCallModal({
   };
 
   const handleEndCall = async () => {
+    stopAllRingtones();
     if (orderId) {
       endActiveCall(orderId).catch(() => {});
     }
@@ -218,6 +247,7 @@ export function OnlineCallModal({
   };
 
   const handleAnswerCall = async () => {
+    stopAllRingtones();
     if (stopRingRef.current) {
       stopRingRef.current();
       stopRingRef.current = null;
