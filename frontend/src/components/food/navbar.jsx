@@ -2,10 +2,12 @@
 import { useEffect, useState, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft } from "lucide-react";
+import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { OrderChatModal } from "@/components/food/order-chat-modal";
 import { useCart } from "@/lib/cart-store";
+import { list, get, getOrderMessages } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { SearchModal } from "./search-modal";
@@ -63,6 +65,49 @@ function Navbar() {
 
   const [activeOrders, setActiveOrders] = useState(cachedActiveOrders);
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
+  const [navbarChatOpen, setNavbarChatOpen] = useState(false);
+  const [chatDriver, setChatDriver] = useState(null);
+  const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const lastKnownNavbarMsgIdRef = useRef(null);
+
+  const latestActiveOrder = activeOrders.length > 0 ? activeOrders[0] : null;
+
+  useEffect(() => {
+    if (!latestActiveOrder) {
+      setChatDriver(null);
+      setUnreadChatCount(0);
+      return;
+    }
+
+    const loadDriverAndMessages = async () => {
+      try {
+        const driverId = latestActiveOrder.driverId || latestActiveOrder.driver_id;
+        if (driverId) {
+          const dData = await get("drivers", driverId).catch(() => null);
+          setChatDriver(dData);
+        } else {
+          const allDrivers = (await list("drivers").catch(() => [])) || [];
+          const activeD = allDrivers.find(d => d.status === "ACTIVE" || d.status === "DELIVERING") || allDrivers[0];
+          if (activeD) setChatDriver(activeD);
+        }
+
+        const msgs = await getOrderMessages(latestActiveOrder.id);
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          const lastMsg = msgs[msgs.length - 1];
+          if (lastKnownNavbarMsgIdRef.current !== null && lastMsg.id > lastKnownNavbarMsgIdRef.current) {
+            if (lastMsg.sender_type !== "CUSTOMER" && !navbarChatOpen) {
+              setUnreadChatCount(prev => prev + 1);
+            }
+          }
+          lastKnownNavbarMsgIdRef.current = lastMsg.id;
+        }
+      } catch (e) {}
+    };
+
+    loadDriverAndMessages();
+    const chatPoll = setInterval(loadDriverAndMessages, 4000);
+    return () => clearInterval(chatPoll);
+  }, [latestActiveOrder, navbarChatOpen]);
 
   useEffect(() => {
     const checkActiveOrders = async () => {
@@ -481,6 +526,31 @@ function Navbar() {
               </Button>
             ) : null}
 
+            {/* Compact Chat Button for Active Ongoing Order */}
+            {latestActiveOrder && (
+              <div className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNavbarChatOpen(true);
+                    setUnreadChatCount(0);
+                  }}
+                  className="relative size-full rounded-full bg-secondary/80 hover:bg-secondary border border-border/70 hover:border-primary text-foreground flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Chat with Delivery Partner"
+                  aria-label="Chat with Delivery Partner"
+                >
+                  <MessageSquare className="size-4 sm:size-5 text-primary" />
+                  {unreadChatCount > 0 ? (
+                    <span className="absolute -top-1 -right-1 min-w-4.5 sm:min-w-5 h-4.5 sm:h-5 px-1 rounded-full bg-red-600 text-white text-[10px] sm:text-[11px] font-black flex items-center justify-center ring-2 ring-background animate-bounce shadow-md">
+                      {unreadChatCount}
+                    </span>
+                  ) : (
+                    <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-emerald-500 ring-1.5 ring-background animate-pulse" />
+                  )}
+                </button>
+              </div>
+            )}
+
             <div id="cart-icon-wrapper" className={cn("relative items-center justify-center size-10 sm:size-11 shrink-0", location.pathname.startsWith("/product") ? "flex" : "hidden sm:flex")}>
               <motion.button
                 id="cart-icon"
@@ -699,6 +769,26 @@ function Navbar() {
       </Dialog>
 
       <SearchModal isOpen={searchOpen} onClose={setSearchOpen} />
+
+      {/* Global Navbar Live Order Chat Modal */}
+      {latestActiveOrder && (
+        <OrderChatModal
+          open={navbarChatOpen}
+          onOpenChange={setNavbarChatOpen}
+          orderId={latestActiveOrder.id}
+          orderNumber={latestActiveOrder.order_number || latestActiveOrder.id}
+          currentUser={{
+            type: "CUSTOMER",
+            name: customer?.name || customer?.phone || "Customer"
+          }}
+          recipient={{
+            name: chatDriver?.name || "Delivery Partner",
+            photo: chatDriver?.profilePhoto || chatDriver?.profile_photo,
+            role: chatDriver?.vehicleInfo || chatDriver?.vehicle_info || "Delivery Partner",
+            phone: chatDriver?.phone || "0965755963"
+          }}
+        />
+      )}
     </header>
   );
 }

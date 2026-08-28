@@ -4,7 +4,6 @@ import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/sonner.jsx";
 import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
 import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
-import { GlobalCustomerChatManager } from "@/components/food/global-chat-head-manager.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
 import { CartDrawer } from "@/components/food/cart-drawer.jsx";
@@ -161,7 +160,6 @@ export default function App() {
       <ScrollToTop />
       <Toaster position="top-center" richColors closeButton />
       {!isStaff && <ActiveOrderWidget />}
-      {!isStaff && <GlobalCustomerChatManager />}
       {!isStaff && <FlyToCart />}
       {!isStaff && <CartDrawer />}
       {!isStaff && <MobileBottomNav />}
