@@ -5,6 +5,9 @@ import {
   Phone, 
   PhoneCall,
   PhoneOff,
+  Image as ImageIcon,
+  ZoomIn,
+  Paperclip,
   X, 
   Loader2, 
   Bike, 
@@ -17,6 +20,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping } from "@/lib/api";
+import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -111,6 +115,12 @@ export function OrderChatModal({
   const prevCountRef = useRef(0);
   const typingTimeoutRef = useRef(null);
 
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [previewModalUrl, setPreviewModalUrl] = useState(null);
+  const fileInputRef = useRef(null);
+
   const cannedReplies = currentUser.type === "CUSTOMER" 
     ? [
         "👋 Hi! How long until delivery?",
@@ -189,11 +199,49 @@ export function OrderChatModal({
     }, 1200);
   };
 
+  const handleFileSelected = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Please select an image file (JPEG, PNG, WEBP)");
+      return;
+    }
+    setSelectedImageFile(file);
+    const localUrl = URL.createObjectURL(file);
+    setImagePreviewUrl(localUrl);
+  };
+
+  const clearSelectedImage = () => {
+    setSelectedImageFile(null);
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
   const handleSend = async (textToSend) => {
     const msg = (textToSend || inputMsg).trim();
-    if (!msg || !orderId || sending) return;
+    if ((!msg && !selectedImageFile) || !orderId || sending || uploadingImage) return;
 
     setSending(true);
+    let finalMsg = msg;
+
+    if (selectedImageFile) {
+      setUploadingImage(true);
+      try {
+        const imgUrl = await uploadImageToCloudinary(selectedImageFile);
+        finalMsg = finalMsg ? `[IMG]:${imgUrl}\n${finalMsg}` : `[IMG]:${imgUrl}`;
+      } catch (e) {
+        toast.error("Failed to upload image. Please try again.");
+        setSending(false);
+        setUploadingImage(false);
+        return;
+      }
+      clearSelectedImage();
+      setUploadingImage(false);
+    }
+
     setInputMsg("");
 
     // Optimistic UI update
@@ -202,7 +250,7 @@ export function OrderChatModal({
       order_id: orderId,
       sender_type: currentUser.type,
       sender_name: currentUser.name,
-      message: msg,
+      message: finalMsg,
       created_at: new Date().toISOString(),
       pending: true
     };
@@ -215,7 +263,7 @@ export function OrderChatModal({
         sender_type: currentUser.type,
         sender_name: currentUser.name,
         sender_id: currentUser.id || null,
-        message: msg
+        message: finalMsg
       });
       await fetchMessages();
     } catch (err) {
@@ -376,15 +424,46 @@ export function OrderChatModal({
                       </span>
                     </div>
 
+                    {/* Message Bubble Content (Photo + Caption or Text) */}
                     <div 
                       className={cn(
-                        "px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-xs",
+                        "rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-xs overflow-hidden",
                         isMe 
                           ? "bg-primary text-primary-foreground rounded-tr-xs" 
-                          : "bg-secondary text-foreground border border-border/50 rounded-tl-xs"
+                          : "bg-secondary text-foreground border border-border/50 rounded-tl-xs",
+                        m.message.startsWith("[IMG]:") ? "p-1.5" : "px-3.5 py-2.5"
                       )}
                     >
-                      {m.message}
+                      {m.message.startsWith("[IMG]:") ? (
+                        (() => {
+                          const parts = m.message.replace("[IMG]:", "").trim().split("\n");
+                          const imgUrl = parts[0];
+                          const caption = parts.slice(1).join("\n").trim();
+                          return (
+                            <div className="space-y-1.5">
+                              <div 
+                                className="relative group rounded-xl overflow-hidden cursor-pointer max-w-[240px] bg-black/10"
+                                onClick={() => setPreviewModalUrl(imgUrl)}
+                              >
+                                <img 
+                                  src={imgUrl} 
+                                  alt="Attached Photo" 
+                                  className="w-full max-h-56 object-cover rounded-xl transition-transform duration-200 group-hover:scale-103" 
+                                  loading="lazy"
+                                />
+                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                  <ZoomIn className="size-5" />
+                                </div>
+                              </div>
+                              {caption && (
+                                <p className="px-2 py-0.5 text-xs font-medium leading-normal">{caption}</p>
+                              )}
+                            </div>
+                          );
+                        })()
+                      ) : (
+                        m.message
+                      )}
                     </div>
                   </div>
                 </div>
@@ -423,13 +502,45 @@ export function OrderChatModal({
               key={i}
               type="button"
               onClick={() => handleSend(reply)}
-              disabled={sending}
+              disabled={sending || uploadingImage}
               className="text-[11px] whitespace-nowrap bg-secondary/80 hover:bg-secondary text-foreground px-3 py-1 rounded-full border border-border/60 font-medium transition-all active:scale-95 shrink-0 cursor-pointer"
             >
               {reply}
             </button>
           ))}
         </div>
+
+        {/* Selected Image Thumbnail Preview before send */}
+        {imagePreviewUrl && (
+          <div className="px-3.5 py-2 bg-secondary/40 border-t border-border/50 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 duration-150">
+            <div className="relative size-14 rounded-xl overflow-hidden border border-border/70 shadow-xs shrink-0 bg-background">
+              <img src={imagePreviewUrl} alt="Upload preview" className="size-full object-cover" />
+              {uploadingImage && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
+                  <Loader2 className="size-4 animate-spin text-white" />
+                </div>
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold text-foreground truncate">
+                {selectedImageFile?.name || "Photo attachment"}
+              </p>
+              <p className="text-[10px] text-muted-foreground">
+                {uploadingImage ? "Uploading photo..." : "Ready to send. Add a caption below."}
+              </p>
+            </div>
+            {!uploadingImage && (
+              <button
+                type="button"
+                onClick={clearSelectedImage}
+                className="size-7 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-foreground flex items-center justify-center transition-colors cursor-pointer"
+                title="Remove photo"
+              >
+                <X className="size-3.5" />
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Input Bar */}
         <form 
@@ -439,20 +550,60 @@ export function OrderChatModal({
           }} 
           className="p-3 border-t border-border/60 bg-card flex items-center gap-2 shrink-0"
         >
+          {/* Hidden File Input */}
+          <input 
+            type="file" 
+            accept="image/*" 
+            ref={fileInputRef} 
+            onChange={handleFileSelected} 
+            className="hidden" 
+          />
+
+          {/* Photo / Image Attachment Button */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={sending || uploadingImage}
+            className="size-10 rounded-full bg-secondary hover:bg-secondary/80 text-muted-foreground hover:text-primary flex items-center justify-center transition-colors shrink-0 cursor-pointer active:scale-95"
+            title="Attach Photo"
+          >
+            <ImageIcon className="size-4.5" />
+          </button>
+
           <Input 
             value={inputMsg}
             onChange={(e) => handleInputChange(e.target.value)}
-            placeholder="Type a message..."
+            placeholder={selectedImageFile ? "Add a caption (optional)..." : "Type a message..."}
             className="rounded-full bg-secondary/40 border-border/70 text-xs sm:text-sm h-11 px-4 flex-1 focus-visible:ring-primary"
           />
           <Button 
             type="submit" 
-            disabled={!inputMsg.trim() || sending}
+            disabled={(!inputMsg.trim() && !selectedImageFile) || sending || uploadingImage}
             className="size-11 rounded-full bg-primary hover:bg-primary/90 text-primary-foreground shrink-0 shadow-md shadow-primary/20 cursor-pointer active:scale-95"
           >
-            {sending ? <Loader2 className="size-4.5 animate-spin" /> : <Send className="size-4.5" />}
+            {sending || uploadingImage ? <Loader2 className="size-4.5 animate-spin" /> : <Send className="size-4.5" />}
           </Button>
         </form>
+
+        {/* Fullscreen Photo Lightbox Modal */}
+        <Dialog open={Boolean(previewModalUrl)} onOpenChange={(v) => !v && setPreviewModalUrl(null)}>
+          <DialogContent 
+            showCloseButton={true}
+            className="max-w-3xl p-2 bg-black/95 border-none text-white flex flex-col items-center justify-center rounded-2xl z-[120]"
+          >
+            <DialogHeader className="sr-only">
+              <DialogTitle>Photo Preview</DialogTitle>
+              <DialogDescription>Full Size Photo Attachment</DialogDescription>
+            </DialogHeader>
+            {previewModalUrl && (
+              <img 
+                src={previewModalUrl} 
+                alt="Full preview" 
+                className="max-h-[80vh] w-auto rounded-xl object-contain shadow-2xl" 
+              />
+            )}
+          </DialogContent>
+        </Dialog>
       </DialogContent>
     </Dialog>
   );
