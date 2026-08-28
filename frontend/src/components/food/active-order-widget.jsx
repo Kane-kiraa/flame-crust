@@ -13,7 +13,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { list } from "@/lib/api";
+import { list, API_URL } from "@/lib/api";
 import { cn, formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart-store";
 
@@ -60,15 +60,26 @@ export function ActiveOrderWidget() {
         const customer = JSON.parse(stored);
         if (!customer || !customer.id) return;
 
-        const orders = (await list("orders").catch(() => [])) || [];
+        let orders = [];
+        const res = await fetch(`${API_URL}/auth/customer-profile-data?customerId=${customer.id || ""}&phone=${encodeURIComponent(customer.phone || "")}&email=${encodeURIComponent(customer.email || "")}`).catch(() => null);
+        if (res && res.ok) {
+          const data = await res.json();
+          orders = data.orders || [];
+        }
+
+        if (orders.length === 0) {
+          const rawOrders = (await list("orders", { limit: 100, dir: "desc" }).catch(() => [])) || [];
+          orders = Array.isArray(rawOrders) ? rawOrders : (rawOrders.items || rawOrders.content || []);
+        }
+
         const activeList = orders
           .filter(
             (o) =>
-              (String(o.customer_id) === String(customer.id) || o.customer_phone === customer.phone) &&
+              (String(o.customer_id) === String(customer.id) || (customer.phone && o.customer_phone === customer.phone) || (customer.email && o.customer_email === customer.email)) &&
               o.status !== "DELIVERED" &&
               o.status !== "CANCELLED"
           )
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+          .sort((a, b) => new Date(String(b.created_at || "").replace(" ", "T")) - new Date(String(a.created_at || "").replace(" ", "T")));
 
         setActiveOrders(activeList);
       } catch (e) {

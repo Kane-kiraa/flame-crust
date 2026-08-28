@@ -105,9 +105,9 @@ public class AdminCrudController {
             return resp;
         }
 
-        int pageSize = size != null ? size : (limit != null ? limit : 10);
-        if (pageSize <= 0) pageSize = 10;
-        if (pageSize > 200) pageSize = 200;
+        int pageSize = size != null ? size : (limit != null ? limit : 500);
+        if (pageSize <= 0) pageSize = 500;
+        if (pageSize > 1000) pageSize = 1000;
 
         org.springframework.data.domain.Page<Object> pageResult = repo.findAll(PageRequest.of(page, pageSize, sortObj));
 
