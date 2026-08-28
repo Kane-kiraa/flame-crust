@@ -472,7 +472,7 @@ export function OrderChatModal({
                           <DropdownMenuTrigger asChild>
                             <button
                               type="button"
-                              className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 size-7 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-secondary flex items-center justify-center transition-all cursor-pointer shrink-0"
+                              className="size-7 rounded-full bg-secondary/60 hover:bg-secondary text-muted-foreground/80 hover:text-foreground border border-border/40 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-2xs active:scale-95"
                               title="More options"
                             >
                               <MoreVertical className="size-3.5" />
