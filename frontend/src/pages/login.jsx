@@ -84,6 +84,9 @@ export default function LoginPage() {
       }
       const customerAuth = localStorage.getItem("customerAuth");
       if (customerAuth) {
+        if (redirectPath && redirectPath.startsWith("/admin")) {
+          return;
+        }
         navigate(redirectPath || "/profile", { replace: true });
         return;
       }

@@ -37,29 +37,22 @@ function AdminLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const currentPath = location.pathname.replace("/admin/", "").replace("/admin", "") || "dashboard";
-
-  useEffect(() => {
+  const [adminAuth, setAdminAuth] = useState(() => {
     try {
       const auth = localStorage.getItem("adminAuth");
-      if (!auth) throw new Error("No auth");
-      const a = JSON.parse(auth);
-      if ((a.role || "").toUpperCase() !== "ADMIN") throw new Error("Not admin");
-    } catch (e) {
-      navigate(`/login?redirect=${encodeURIComponent(window.location.pathname)}`);
+      return auth ? JSON.parse(auth) : null;
+    } catch {
+      return null;
     }
-  }, [navigate]);
+  });
 
-  let isAuthorized = false;
-  try {
-    const authData = localStorage.getItem("adminAuth");
-    if (authData) {
-      const a = JSON.parse(authData);
-      if ((a.role || "").toUpperCase() === "ADMIN") isAuthorized = true;
-    }
-  } catch(e) {}
+  const isAuthorized = adminAuth && (adminAuth.role || "").toUpperCase() === "ADMIN";
 
-  if (!isAuthorized) return null;
+  const currentPath = location.pathname.replace("/admin/", "").replace("/admin", "") || "dashboard";
+
+  if (!isAuthorized) {
+    return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
+  }
 
   const getPageTitle = () => {
     if (currentPath === "dashboard") return "Dashboard Overview";
