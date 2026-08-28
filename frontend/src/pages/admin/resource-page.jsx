@@ -47,20 +47,31 @@ function AdminResourcePage({ resource }) {
         paginate: true,
       });
 
-      if (result && Array.isArray(result.items)) {
-        const items = result.items;
-        const total = result.total ?? items.length;
-        setData(items.map((item, index) => ({ ...item, _index: item.id || (total - (targetPage * (targetSize === "All" ? total : targetSize)) - index) })));
-        setTotalCount(total);
-      } else if (Array.isArray(result)) {
-        setData(result.map((item, index) => ({ ...item, _index: item.id || (result.length - index) })));
-        setTotalCount(result.length);
-      } else {
-        setData([]);
-        setTotalCount(0);
+      let items = [];
+      let total = 0;
+
+      if (Array.isArray(result)) {
+        items = result;
+        total = result.length;
+      } else if (result && Array.isArray(result.items)) {
+        items = result.items;
+        total = result.total ?? items.length;
+      } else if (result && Array.isArray(result.content)) {
+        items = result.content;
+        total = result.totalElements ?? items.length;
+      } else if (result && Array.isArray(result.data)) {
+        items = result.data;
+        total = result.total ?? items.length;
       }
+
+      const numericSize = targetSize === "All" ? Math.max(total, 1) : Number(targetSize || 10);
+      const baseIndex = total - (targetPage * numericSize);
+      setData(items.map((item, index) => ({ ...item, _index: item.id || (baseIndex - index) })));
+      setTotalCount(total);
     } catch (err) {
       setError(err.message || "Failed to load data");
+      setData([]);
+      setTotalCount(0);
     } finally {
       setLoading(false);
     }
