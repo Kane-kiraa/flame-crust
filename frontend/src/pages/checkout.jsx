@@ -373,16 +373,29 @@ function CheckoutPage() {
 
   const isAutoSubmittingRef = useRef(false);
 
-  // 100% Automatic Polling for KHQR / ABA_PAY when Modal is Open
+  const handleManualCheckPayment = async () => {
+    const isSuccess = await verifyPaymentWithBakong(true);
+    if (isSuccess && !isAutoSubmittingRef.current) {
+      isAutoSubmittingRef.current = true;
+      setIsPaymentVerified(true);
+      toast.success("🎉 ទទួលបានការផ្ទេរប្រាក់ជោគជ័យពី Bakong! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
+      setTimeout(() => {
+        setShowPaymentConfirmModal(false);
+        executeOrderCreation(true);
+      }, 1000);
+    }
+  };
+
+  // 100% Automatic Polling for KHQR / ABA_PAY when Modal is Open - 30s interval
   useEffect(() => {
     if (!showPaymentConfirmModal || isPaymentVerified || (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") || !qrCodeString) return;
 
     let pollCount = 0;
-    const maxPolls = 40;
+    const maxPolls = 20; // 20 * 30s = 10 minutes
 
-    // Poll every 10 seconds (10000ms) to conserve Bakong API quota
+    // Poll every 30 seconds (30000ms) to conserve Bakong API quota
     const pollTimer = setInterval(async () => {
-      if (isAutoSubmittingRef.current) return;
+      if (isAutoSubmittingRef.current || isPaymentVerified) return;
       pollCount++;
       if (pollCount > maxPolls) {
         clearInterval(pollTimer);
@@ -391,13 +404,14 @@ function CheckoutPage() {
       const isSuccess = await verifyPaymentWithBakong(false);
       if (isSuccess && !isAutoSubmittingRef.current) {
         isAutoSubmittingRef.current = true;
-        setShowPaymentConfirmModal(false);
+        setIsPaymentVerified(true);
         toast.success("🎉 ទទួលបានការផ្ទេរប្រាក់ជោគជ័យពី Bakong! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
         setTimeout(() => {
-          handleSubmit(onSubmit)();
-        }, 600);
+          setShowPaymentConfirmModal(false);
+          executeOrderCreation(true);
+        }, 1000);
       }
-    }, 10000);
+    }, 30000);
 
     return () => clearInterval(pollTimer);
   }, [showPaymentConfirmModal, qrCodeString, paymentMethod, isPaymentVerified]);
@@ -1526,23 +1540,49 @@ function CheckoutPage() {
             </div>
             
             <div className="w-full space-y-2 pt-2">
-              <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
-                <Loader2 className="size-4 animate-spin text-primary" />
-                <span>កំពុងរង់ចាំការបាញ់លុយពី Bakong...</span>
-              </div>
+              {isPaymentVerified ? (
+                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-green-500/10 border border-green-500/30 text-xs font-bold text-green-600 w-full justify-center animate-bounce">
+                  <CheckCircle2 className="size-4 text-green-600" />
+                  <span>✅ ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ! កំពុងបញ្ចប់...</span>
+                </div>
+              ) : (
+                <>
+                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
+                    <Loader2 className="size-3.5 animate-spin text-primary" />
+                    <span>កំពុងរង់ចាំការបាញ់លុយពី Bakong (30s)...</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={isCheckingPayment}
+                    onClick={handleManualCheckPayment}
+                    className="w-full rounded-full border-primary/30 text-primary hover:bg-primary/10 text-xs h-8 font-semibold"
+                  >
+                    {isCheckingPayment ? (
+                      <Loader2 className="size-3.5 animate-spin mr-1.5" />
+                    ) : (
+                      <RefreshCw className="size-3.5 mr-1.5" />
+                    )}
+                    ពិនិត្យការទូទាត់ឥឡូវនេះ (Check Now)
+                  </Button>
+                </>
+              )}
             </div>
             
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full rounded-full border-border/60 text-xs h-9"
-              onClick={() => {
-                setShowPaymentConfirmModal(false);
-                setSubmitting(false);
-              }}
-            >
-              Cancel / Pay Later
-            </Button>
+            {!isPaymentVerified && (
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full rounded-full border-border/60 text-xs h-9"
+                onClick={() => {
+                  setShowPaymentConfirmModal(false);
+                  setSubmitting(false);
+                }}
+              >
+                Cancel / Pay Later
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
