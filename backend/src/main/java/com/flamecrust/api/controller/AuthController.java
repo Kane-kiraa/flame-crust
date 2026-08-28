@@ -125,6 +125,85 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("customer", customer, "token", token));
     }
     
+    private static final int MAX_FAILED_ATTEMPTS = 3;
+    private static final int LOCKOUT_MINUTES = 15;
+
+    /**
+     * Check if the account is currently locked out.
+     * Returns a 429 Too Many Requests response if locked, or null if account is accessible.
+     */
+    private ResponseEntity<?> checkAccountLockout(Map<String, Object> account) {
+        if (account == null) return null;
+        Object lockedUntilObj = account.get("locked_until");
+        if (lockedUntilObj instanceof Timestamp lockedUntil) {
+            Instant lockExpiry = lockedUntil.toInstant();
+            Instant now = Instant.now();
+            if (lockExpiry.isAfter(now)) {
+                long minutesLeft = Duration.between(now, lockExpiry).toMinutes() + 1;
+                return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                        "error", "គណនីត្រូវបានចាក់សោរបណ្ដោះអាសន្ន ដោយសារបញ្ចូលលេខសម្ងាត់ខុស " + MAX_FAILED_ATTEMPTS + " ដង។ សូមព្យាយាមម្តងទៀតក្នុងរយៈពេល " + minutesLeft + " នាទី។ (Account locked. Please try again in " + minutesLeft + " minutes.)",
+                        "locked", true,
+                        "minutesRemaining", minutesLeft
+                ));
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Handles a failed login attempt for a known account in a table.
+     * Increments failed_attempts, and if threshold reached, sets locked_until to 15 minutes from now.
+     */
+    private ResponseEntity<?> handleFailedLogin(String table, Map<String, Object> account) {
+        if (account == null || !account.containsKey("id")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
+        }
+        Object id = account.get("id");
+        int currentAttempts = 0;
+        if (account.get("failed_attempts") != null) {
+            currentAttempts = ((Number) account.get("failed_attempts")).intValue();
+        }
+        int newAttempts = currentAttempts + 1;
+
+        if (newAttempts >= MAX_FAILED_ATTEMPTS) {
+            Timestamp lockTime = Timestamp.from(Instant.now().plus(Duration.ofMinutes(LOCKOUT_MINUTES)));
+            try {
+                jdbc.update("UPDATE " + table + " SET failed_attempts = ?, locked_until = ? WHERE id = ?",
+                        newAttempts, lockTime, id);
+            } catch (Exception e) {
+                log.warn("Could not update lockout status for {} id {}: {}", table, id, e.getMessage());
+            }
+            return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of(
+                    "error", "អ្នកបានបញ្ចូលលេខសម្ងាត់ខុស " + MAX_FAILED_ATTEMPTS + " ដង! គណនីរបស់អ្នកត្រូវបានចាក់សោរបណ្ដោះអាសន្នរយៈពេល " + LOCKOUT_MINUTES + " នាទី។ (Account locked for " + LOCKOUT_MINUTES + " minutes due to multiple failed attempts.)",
+                    "locked", true,
+                    "minutesRemaining", LOCKOUT_MINUTES
+            ));
+        } else {
+            try {
+                jdbc.update("UPDATE " + table + " SET failed_attempts = ? WHERE id = ?", newAttempts, id);
+            } catch (Exception e) {
+                log.warn("Could not update failed_attempts for {} id {}: {}", table, id, e.getMessage());
+            }
+            int remaining = MAX_FAILED_ATTEMPTS - newAttempts;
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of(
+                    "error", "លេខសម្ងាត់មិនត្រឹមត្រូវ! អ្នកនៅសល់ឱកាស " + remaining + " ដងទៀត មុនពេលគណនីត្រូវបានចាក់សោរ។ (Invalid password. You have " + remaining + " attempt(s) remaining.)",
+                    "attemptsRemaining", remaining
+            ));
+        }
+    }
+
+    /**
+     * Resets failed_attempts and locked_until upon successful login.
+     */
+    private void resetAccountLockout(String table, Object id) {
+        if (id == null) return;
+        try {
+            jdbc.update("UPDATE " + table + " SET failed_attempts = 0, locked_until = NULL WHERE id = ?", id);
+        } catch (Exception e) {
+            log.warn("Could not reset lockout status for {} id {}: {}", table, id, e.getMessage());
+        }
+    }
+    
     @PostMapping("/customer-login")
     public ResponseEntity<?> customerLogin(@RequestBody Map<String, String> body) {
         String email = body.get("email");
@@ -147,31 +226,27 @@ public class AuthController {
         }
 
         Map<String, Object> customer = customers.getFirst();
+
+        ResponseEntity<?> lockoutResp = checkAccountLockout(customer);
+        if (lockoutResp != null) {
+            return lockoutResp;
+        }
+
         String passwordHash = (String) customer.get("password_hash");
 
         if (passwordHash == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Password not set. Please use OTP to login first."));
         }
 
-        // Support both old SHA-256 (temporarily) and new BCrypt. 
-        // We will just verify using BCrypt, or if it matches the sha-256 for backward compatibility during migration.
-        boolean isMatch = passwordEncoder.matches(password, passwordHash);
-        
-        // Backward compatibility for old unsalted sha256
-        if (!isMatch && passwordHash.length() == 64) {
-            String sha256Hex = hashPasswordSha256(password);
-            if (passwordHash.equals(sha256Hex)) {
-                isMatch = true;
-                // Upgrade hash
-                jdbc.update("UPDATE customers SET password_hash = ? WHERE id = ?", passwordEncoder.encode(password), customer.get("id"));
-            }
+        boolean isMatch = verifyPassword(password, passwordHash, "customers", customer.get("id"));
+        if (!isMatch) {
+            return handleFailedLogin("customers", customer);
         }
 
-        if (!isMatch) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
-        }
+        resetAccountLockout("customers", customer.get("id"));
 
         String token = jwtUtil.generateToken(email, "CUSTOMER");
+        customer.remove("password_hash");
         return ResponseEntity.ok(Map.of("customer", customer, "token", token));
     }
 
@@ -232,16 +307,23 @@ public class AuthController {
 
         // 1. Check users (Staff / Admin / Manager)
         List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT u.id, u.name, u.email, u.status, u.password_hash, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.status = 'ACTIVE' LIMIT 1",
+                "SELECT u.id, u.name, u.email, u.status, u.password_hash, u.failed_attempts, u.locked_until, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.status = 'ACTIVE' LIMIT 1",
                 email);
         System.out.println("users found: " + users.size());
 
         if (!users.isEmpty()) {
             Map<String, Object> user = users.getFirst();
+            ResponseEntity<?> lockoutResp = checkAccountLockout(user);
+            if (lockoutResp != null) {
+                return lockoutResp;
+            }
+
             String passwordHash = (String) user.get("password_hash");
             if (verifyPassword(password, passwordHash, "users", user.get("id"))) {
+                resetAccountLockout("users", user.get("id"));
                 String role = (String) user.get("role");
                 String token = jwtUtil.generateToken(email, role != null ? role.toUpperCase() : "ADMIN");
+                user.remove("password_hash");
                 return ResponseEntity.ok(Map.of(
                         "type", "ADMIN",
                         "role", role != null ? role.toUpperCase() : "ADMIN",
@@ -250,6 +332,7 @@ public class AuthController {
                 ));
             }
             System.out.println("verifyPassword failed for user");
+            return handleFailedLogin("users", user);
         }
 
         // 2. Check customers
@@ -259,9 +342,16 @@ public class AuthController {
 
         if (!customers.isEmpty()) {
             Map<String, Object> customer = customers.getFirst();
+            ResponseEntity<?> lockoutResp = checkAccountLockout(customer);
+            if (lockoutResp != null) {
+                return lockoutResp;
+            }
+
             String passwordHash = (String) customer.get("password_hash");
             if (verifyPassword(password, passwordHash, "customers", customer.get("id"))) {
+                resetAccountLockout("customers", customer.get("id"));
                 String token = jwtUtil.generateToken(email, "CUSTOMER");
+                customer.remove("password_hash");
                 return ResponseEntity.ok(Map.of(
                         "type", "CUSTOMER",
                         "role", "CUSTOMER",
@@ -270,6 +360,7 @@ public class AuthController {
                 ));
             }
             System.out.println("verifyPassword failed for customer");
+            return handleFailedLogin("customers", customer);
         }
 
         // 3. Check drivers
@@ -279,7 +370,13 @@ public class AuthController {
 
         if (!drivers.isEmpty()) {
             Map<String, Object> driver = drivers.getFirst();
+            ResponseEntity<?> lockoutResp = checkAccountLockout(driver);
+            if (lockoutResp != null) {
+                return lockoutResp;
+            }
+
             if (verifyPassword(password, (String) driver.get("password_hash"), "drivers", driver.get("id"))) {
+                resetAccountLockout("drivers", driver.get("id"));
                 String token = jwtUtil.generateToken(email, "DRIVER");
                 driver.remove("password_hash");
                 return ResponseEntity.ok(Map.of(
@@ -290,6 +387,7 @@ public class AuthController {
                 ));
             }
             System.out.println("verifyPassword failed for driver");
+            return handleFailedLogin("drivers", driver);
         }
 
         // 4. Check kitchen staff
@@ -299,7 +397,13 @@ public class AuthController {
 
         if (!kitchenStaffList.isEmpty()) {
             Map<String, Object> staff = kitchenStaffList.getFirst();
+            ResponseEntity<?> lockoutResp = checkAccountLockout(staff);
+            if (lockoutResp != null) {
+                return lockoutResp;
+            }
+
             if (verifyPassword(password, (String) staff.get("password_hash"), "kitchen_staff", staff.get("id"))) {
+                resetAccountLockout("kitchen_staff", staff.get("id"));
                 String token = jwtUtil.generateToken(email, "KITCHEN_STAFF");
                 staff.remove("password_hash");
                 return ResponseEntity.ok(Map.of(
@@ -310,6 +414,7 @@ public class AuthController {
                 ));
             }
             System.out.println("verifyPassword failed for kitchen staff");
+            return handleFailedLogin("kitchen_staff", staff);
         }
 
         System.out.println("Returning 401 Unauthorized");
@@ -347,6 +452,7 @@ public class AuthController {
             }
         }
 
+        resetAccountLockout("customers", customer.get("id"));
         customer.remove("password_hash");
         String token = jwtUtil.generateToken(email, "CUSTOMER");
         return ResponseEntity.ok(Map.of(
@@ -373,7 +479,7 @@ public class AuthController {
         }
 
         List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT u.id, u.name, u.email, u.status, u.password_hash, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.status = 'ACTIVE' LIMIT 1",
+                "SELECT u.id, u.name, u.email, u.status, u.password_hash, u.failed_attempts, u.locked_until, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.status = 'ACTIVE' LIMIT 1",
                 email);
 
         if (users.isEmpty()) {
@@ -381,14 +487,22 @@ public class AuthController {
         }
 
         Map<String, Object> user = users.getFirst();
+        ResponseEntity<?> lockoutResp = checkAccountLockout(user);
+        if (lockoutResp != null) {
+            return lockoutResp;
+        }
+
         String passwordHash = (String) user.get("password_hash");
         
         if (!verifyPassword(password, passwordHash, "users", user.get("id"))) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid credentials"));
+            return handleFailedLogin("users", user);
         }
+
+        resetAccountLockout("users", user.get("id"));
 
         String role = (String) user.get("role");
         String token = jwtUtil.generateToken(email, role.toUpperCase());
+        user.remove("password_hash");
         return ResponseEntity.ok(Map.of("user", user, "token", token));
     }
     
@@ -414,6 +528,11 @@ public class AuthController {
         }
 
         Map<String, Object> driver = drivers.getFirst();
+        ResponseEntity<?> lockoutResp = checkAccountLockout(driver);
+        if (lockoutResp != null) {
+            return lockoutResp;
+        }
+
         String passwordHash = (String) driver.get("password_hash");
 
         if (passwordHash == null) {
@@ -421,8 +540,10 @@ public class AuthController {
         }
 
         if (!verifyPassword(password, passwordHash, "drivers", driver.get("id"))) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email or password"));
+            return handleFailedLogin("drivers", driver);
         }
+
+        resetAccountLockout("drivers", driver.get("id"));
 
         String token = jwtUtil.generateToken(email, "DRIVER");
         // Remove password_hash from response
@@ -452,6 +573,11 @@ public class AuthController {
         }
 
         Map<String, Object> staff = staffList.getFirst();
+        ResponseEntity<?> lockoutResp = checkAccountLockout(staff);
+        if (lockoutResp != null) {
+            return lockoutResp;
+        }
+
         String passwordHash = (String) staff.get("password_hash");
 
         if (passwordHash == null) {
@@ -459,8 +585,10 @@ public class AuthController {
         }
 
         if (!verifyPassword(password, passwordHash, "kitchen_staff", staff.get("id"))) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email or password"));
+            return handleFailedLogin("kitchen_staff", staff);
         }
+
+        resetAccountLockout("kitchen_staff", staff.get("id"));
 
         String token = jwtUtil.generateToken(email, "KITCHEN_STAFF");
         staff.remove("password_hash");
