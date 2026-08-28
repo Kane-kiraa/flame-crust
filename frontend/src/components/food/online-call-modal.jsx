@@ -24,29 +24,31 @@ function startRingtone() {
     let isRunning = true;
 
     const playBeep = () => {
-      if (!isRunning) return;
-      const now = ctx.currentTime;
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gain = ctx.createGain();
+      if (!isRunning || ctx.state === "closed") return;
+      try {
+        const now = ctx.currentTime;
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
 
-      osc1.type = "sine";
-      osc2.type = "sine";
-      osc1.frequency.setValueAtTime(440, now);
-      osc2.frequency.setValueAtTime(480, now);
+        osc1.type = "sine";
+        osc2.type = "sine";
+        osc1.frequency.setValueAtTime(440, now);
+        osc2.frequency.setValueAtTime(480, now);
 
-      gain.gain.setValueAtTime(0.15, now);
-      gain.gain.setValueAtTime(0.15, now + 1.2);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.25);
+        gain.gain.setValueAtTime(0.15, now);
+        gain.gain.setValueAtTime(0.15, now + 1.2);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.25);
 
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(ctx.destination);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
 
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 1.25);
-      osc2.stop(now + 1.25);
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 1.25);
+        osc2.stop(now + 1.25);
+      } catch (e) {}
     };
 
     playBeep();
@@ -55,7 +57,11 @@ function startRingtone() {
     return () => {
       isRunning = false;
       clearInterval(interval);
-      try { ctx.close(); } catch (e) {}
+      try {
+        if (ctx && ctx.state !== "closed") {
+          ctx.close().catch(() => {});
+        }
+      } catch (e) {}
     };
   } catch (e) {
     return () => {};
@@ -81,6 +87,14 @@ function playEndCallTone() {
     gain.connect(ctx.destination);
     osc.start(now);
     osc.stop(now + 0.4);
+
+    setTimeout(() => {
+      try {
+        if (ctx && ctx.state !== "closed") {
+          ctx.close().catch(() => {});
+        }
+      } catch (e) {}
+    }, 500);
   } catch (e) {}
 }
 
@@ -98,29 +112,27 @@ export function OnlineCallModal({
 
   useEffect(() => {
     if (!open) {
-      if (stopRingRef.current) stopRingRef.current();
+      if (stopRingRef.current) {
+        stopRingRef.current();
+        stopRingRef.current = null;
+      }
       setCallStatus("connecting");
       setSecondsElapsed(0);
       return;
     }
 
-    // 1. Initial Connecting (1.5s)
+    // 1. Initial Connecting (1.2s)
     const connectTimer = setTimeout(() => {
       setCallStatus("ringing");
       stopRingRef.current = startRingtone();
-
-      // 2. Simulate pickup / answer (3.5s)
-      const answerTimer = setTimeout(() => {
-        if (stopRingRef.current) stopRingRef.current();
-        setCallStatus("connected");
-      }, 3500);
-
-      return () => clearTimeout(answerTimer);
-    }, 1500);
+    }, 1200);
 
     return () => {
       clearTimeout(connectTimer);
-      if (stopRingRef.current) stopRingRef.current();
+      if (stopRingRef.current) {
+        stopRingRef.current();
+        stopRingRef.current = null;
+      }
     };
   }, [open]);
 
@@ -134,12 +146,23 @@ export function OnlineCallModal({
   }, [callStatus]);
 
   const handleEndCall = () => {
-    if (stopRingRef.current) stopRingRef.current();
+    if (stopRingRef.current) {
+      stopRingRef.current();
+      stopRingRef.current = null;
+    }
     playEndCallTone();
     setCallStatus("ended");
     setTimeout(() => {
       onOpenChange(false);
-    }, 800);
+    }, 600);
+  };
+
+  const handleAnswerCall = () => {
+    if (stopRingRef.current) {
+      stopRingRef.current();
+      stopRingRef.current = null;
+    }
+    setCallStatus("connected");
   };
 
   const formatTimer = (totalSeconds) => {
@@ -218,47 +241,61 @@ export function OnlineCallModal({
           </div>
 
           {/* Call Controls Toolbar */}
-          <div className="w-full space-y-5">
-            <div className="flex items-center justify-center gap-6">
-              {/* Mute Mic */}
-              <button
-                type="button"
-                onClick={() => setIsMuted(!isMuted)}
-                className={cn(
-                  "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
-                  isMuted 
-                    ? "bg-red-500/20 text-red-400 border border-red-500/50" 
-                    : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                )}
-                title={isMuted ? "Unmute" : "Mute"}
-              >
-                {isMuted ? <MicOff className="size-5.5" /> : <Mic className="size-5.5" />}
-              </button>
+          <div className="w-full space-y-4">
+            {callStatus === "connected" && (
+              <div className="flex items-center justify-center gap-6">
+                {/* Mute Mic */}
+                <button
+                  type="button"
+                  onClick={() => setIsMuted(!isMuted)}
+                  className={cn(
+                    "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
+                    isMuted 
+                      ? "bg-red-500/20 text-red-400 border border-red-500/50" 
+                      : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                  )}
+                  title={isMuted ? "Unmute" : "Mute"}
+                >
+                  {isMuted ? <MicOff className="size-5.5" /> : <Mic className="size-5.5" />}
+                </button>
 
-              {/* Speaker */}
+                {/* Speaker */}
+                <button
+                  type="button"
+                  onClick={() => setIsSpeaker(!isSpeaker)}
+                  className={cn(
+                    "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
+                    isSpeaker 
+                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" 
+                      : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                  )}
+                  title={isSpeaker ? "Speaker On" : "Speaker Off"}
+                >
+                  {isSpeaker ? <Volume2 className="size-5.5" /> : <VolumeX className="size-5.5" />}
+                </button>
+              </div>
+            )}
+
+            {/* Answer Button (during ringing) */}
+            {callStatus === "ringing" && (
               <button
                 type="button"
-                onClick={() => setIsSpeaker(!isSpeaker)}
-                className={cn(
-                  "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
-                  isSpeaker 
-                    ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" 
-                    : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                )}
-                title={isSpeaker ? "Speaker On" : "Speaker Off"}
+                onClick={handleAnswerCall}
+                className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer animate-pulse"
               >
-                {isSpeaker ? <Volume2 className="size-5.5" /> : <VolumeX className="size-5.5" />}
+                <Phone className="size-4.5" />
+                <span>Accept / Answer Call</span>
               </button>
-            </div>
+            )}
 
             {/* End Call Button */}
             <button
               type="button"
               onClick={handleEndCall}
-              className="w-full h-13 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-black text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+              className="w-full h-12 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
             >
-              <PhoneOff className="size-5" />
-              <span>End Call</span>
+              <PhoneOff className="size-4.5" />
+              <span>{callStatus === "ringing" ? "Cancel Call" : "End Call"}</span>
             </button>
           </div>
         </div>

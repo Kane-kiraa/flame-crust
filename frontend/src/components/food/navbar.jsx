@@ -146,6 +146,7 @@ function Navbar() {
   }, [activeOrders]);
 
   const totalUnreadChats = orderConversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
+  const latestActiveOrder = activeOrders.length > 0 ? activeOrders[0] : null;
 
   useEffect(() => {
     const checkActiveOrders = async () => {
