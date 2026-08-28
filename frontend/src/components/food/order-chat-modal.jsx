@@ -61,33 +61,34 @@ export function showChatNotificationToast({ senderName, message, photo, onReply 
         toast.dismiss(t);
         if (onReply) onReply();
       }}
-      className="w-full max-w-sm bg-card/95 backdrop-blur-md border-2 border-primary/50 shadow-2xl rounded-2xl p-3.5 flex items-center gap-3 cursor-pointer hover:bg-card transition-all animate-in slide-in-from-top-3 duration-300"
+      className="w-[330px] sm:w-[360px] max-w-[92vw] bg-white dark:bg-zinc-900 border-2 border-red-500/40 dark:border-red-500/30 shadow-2xl rounded-2xl p-3.5 flex items-center gap-3.5 cursor-pointer hover:bg-slate-50 dark:hover:bg-zinc-800/80 transition-all select-none"
     >
       <div className="relative shrink-0">
         {photo ? (
-          <img src={photo} alt={senderName} className="size-11 rounded-full object-cover border-2 border-primary" />
+          <img src={photo} alt={senderName} className="size-11 rounded-full object-cover border-2 border-red-500/60 shadow-xs" />
         ) : (
-          <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold">
+          <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-red-600 text-white flex items-center justify-center font-bold shadow-xs">
             <MessageSquare className="size-5" />
           </div>
         )}
-        <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background animate-ping" />
-        <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+        <span className="absolute -bottom-0.5 -right-0.5 size-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
       </div>
 
       <div className="flex-1 min-w-0">
-        <div className="flex items-center justify-between gap-1">
-          <h5 className="font-bold text-xs sm:text-sm text-foreground truncate">{senderName || "New Message"}</h5>
-          <span className="text-[10px] text-primary font-bold">Just now</span>
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <h5 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 truncate">{senderName || "Customer"}</h5>
+          <span className="text-[10px] text-red-600 dark:text-red-400 font-bold whitespace-nowrap shrink-0">Just now</span>
         </div>
-        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{message}</p>
+        <p className="text-xs text-slate-600 dark:text-zinc-300 truncate font-medium">{message}</p>
       </div>
 
-      <div className="shrink-0 bg-primary text-primary-foreground font-bold text-xs px-3 py-1.5 rounded-full shadow-xs">
-        Reply
+      <div className="shrink-0">
+        <span className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-3.5 py-1.5 rounded-full shadow-xs whitespace-nowrap inline-block">
+          Reply
+        </span>
       </div>
     </div>
-  ), { duration: 5000 });
+  ), { duration: 5000, position: "top-center" });
 }
 
 export function OrderChatModal({ 
