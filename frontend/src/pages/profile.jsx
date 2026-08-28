@@ -85,11 +85,12 @@ export default function ProfilePage() {
 
   const [coverPhoto, setCoverPhoto] = useState(() => {
     try {
-      const savedCover = localStorage.getItem("flame_customer_cover");
-      if (savedCover) return savedCover;
       const auth = localStorage.getItem("customerAuth");
       const c = auth ? JSON.parse(auth) : null;
-      return c?.cover_photo || DEFAULT_COVER_PHOTO;
+      if (c?.cover_photo) return c.cover_photo;
+      const savedCover = localStorage.getItem("flame_customer_cover");
+      if (savedCover) return savedCover;
+      return DEFAULT_COVER_PHOTO;
     } catch (e) {
       return DEFAULT_COVER_PHOTO;
     }
@@ -221,6 +222,13 @@ export default function ProfilePage() {
           setCoverPhoto(data.customer.cover_photo);
           try {
             localStorage.setItem("flame_customer_cover", data.customer.cover_photo);
+            const authStr = localStorage.getItem("customerAuth");
+            if (authStr) {
+              const parsed = JSON.parse(authStr);
+              parsed.cover_photo = data.customer.cover_photo;
+              localStorage.setItem("customerAuth", JSON.stringify(parsed));
+              setCustomer(parsed);
+            }
           } catch (e) {}
         }
       }
@@ -325,30 +333,46 @@ export default function ProfilePage() {
       const { uploadImageToCloudinary } = await import("@/lib/cloudinary");
       const uploadedUrl = await uploadImageToCloudinary(file);
       setCoverPhoto(uploadedUrl);
-      localStorage.setItem("flame_customer_cover", uploadedUrl);
+      try {
+        localStorage.setItem("flame_customer_cover", uploadedUrl);
+      } catch (e) {}
 
       // Persist cover photo to backend database immediately
-      if (customer && customer.email) {
+      if (customer) {
         try {
-          await fetch(`${API_URL}/auth/customer-update-profile`, {
+          const res = await fetch(`${API_URL}/auth/customer-update-profile`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              id: customer.id,
               email: customer.email,
+              phone: customer.phone,
               cover_photo: uploadedUrl
             }),
           });
+          if (res.ok) {
+            const dbData = await res.json();
+            const updatedCustomer = { ...customer, ...dbData, cover_photo: uploadedUrl };
+            delete updatedCustomer.password;
+            localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+            setCustomer(updatedCustomer);
+            window.dispatchEvent(new Event("authChanged"));
+          } else {
+            const updatedCustomer = { ...customer, cover_photo: uploadedUrl };
+            localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+            setCustomer(updatedCustomer);
+            window.dispatchEvent(new Event("authChanged"));
+          }
         } catch (e) {
           console.warn("Could not sync cover photo to backend:", e);
+          const updatedCustomer = { ...customer, cover_photo: uploadedUrl };
+          localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+          setCustomer(updatedCustomer);
+          window.dispatchEvent(new Event("authChanged"));
         }
-        const updatedCustomer = { ...customer, cover_photo: uploadedUrl };
-        delete updatedCustomer.password;
-        localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
-        setCustomer(updatedCustomer);
-        window.dispatchEvent(new Event("authChanged"));
       }
 
-      toast.success("Cover photo updated and saved to Cloud & Database!");
+      toast.success("Cover photo updated and saved!");
     } catch (err) {
       console.error(err);
       toast.error("Failed to upload cover photo. Please try again.");
@@ -367,26 +391,41 @@ export default function ProfilePage() {
       const uploadedUrl = await uploadImageToCloudinary(file);
       setSettingsForm((prev) => ({ ...prev, avatar: uploadedUrl }));
       
-      if (customer && customer.email) {
+      if (customer) {
         try {
-          await fetch(`${API_URL}/auth/customer-update-profile`, {
+          const res = await fetch(`${API_URL}/auth/customer-update-profile`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              id: customer.id,
               email: customer.email,
-              name: settingsForm.name || customer.name,
               phone: settingsForm.phone || customer.phone,
+              name: settingsForm.name || customer.name,
               avatar: uploadedUrl
             }),
           });
+          if (res.ok) {
+            const dbData = await res.json();
+            const updatedCustomer = { ...customer, ...dbData, avatar: uploadedUrl };
+            delete updatedCustomer.password;
+            localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+            setCustomer(updatedCustomer);
+            window.dispatchEvent(new Event("authChanged"));
+          } else {
+            const updatedCustomer = { ...customer, avatar: uploadedUrl };
+            delete updatedCustomer.password;
+            localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+            setCustomer(updatedCustomer);
+            window.dispatchEvent(new Event("authChanged"));
+          }
         } catch (e) {
           console.warn("Could not sync avatar to backend:", e);
+          const updatedCustomer = { ...customer, avatar: uploadedUrl };
+          delete updatedCustomer.password;
+          localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+          setCustomer(updatedCustomer);
+          window.dispatchEvent(new Event("authChanged"));
         }
-        const updatedCustomer = { ...customer, avatar: uploadedUrl };
-        delete updatedCustomer.password;
-        localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
-        setCustomer(updatedCustomer);
-        window.dispatchEvent(new Event("authChanged"));
       }
       toast.success("Profile picture updated and saved!");
     } catch (err) {
@@ -457,9 +496,10 @@ export default function ProfilePage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: customer.email,
-          name: settingsForm.name,
+          id: customer?.id,
+          email: customer?.email,
           phone: settingsForm.phone,
+          name: settingsForm.name,
           avatar: settingsForm.avatar,
         }),
       });
@@ -469,7 +509,8 @@ export default function ProfilePage() {
       }
       
       const updatedCustomer = { 
-        ...customer, 
+        ...customer,
+        ...data,
         name: settingsForm.name, 
         phone: settingsForm.phone,
         avatar: settingsForm.avatar

@@ -777,33 +777,46 @@ public class AuthController {
 
     @PostMapping("/customer-update-profile")
     public ResponseEntity<?> customerUpdateProfile(@RequestBody Map<String, Object> body) {
+        Object idObj = body.get("id");
         String email = (String) body.get("email");
-        if (email == null || email.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
-        }
-        String name = (String) body.get("name");
         String phone = (String) body.get("phone");
+        String name = (String) body.get("name");
         String avatar = (String) body.get("avatar");
         String coverPhoto = (String) body.get("cover_photo");
         String password = (String) body.get("password");
 
-        List<Map<String, Object>> customers = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email);
+        List<Map<String, Object>> customers = List.of();
+        if (idObj != null) {
+            try {
+                long cId = ((Number) idObj).longValue();
+                if (cId > 0) {
+                    customers = jdbc.queryForList("SELECT id FROM customers WHERE id = ? LIMIT 1", cId);
+                }
+            } catch (Exception ignored) {}
+        }
+        if (customers.isEmpty() && email != null && !email.isBlank()) {
+            customers = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email.trim());
+        }
+        if (customers.isEmpty() && phone != null && !phone.isBlank()) {
+            customers = jdbc.queryForList("SELECT id FROM customers WHERE phone = ? LIMIT 1", phone.trim());
+        }
+
         if (customers.isEmpty()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Customer not found"));
         }
         long customerId = ((Number) customers.getFirst().get("id")).longValue();
 
-        if (name != null) {
-            jdbc.update("UPDATE customers SET name = ? WHERE id = ?", name, customerId);
+        if (name != null && !name.isBlank()) {
+            jdbc.update("UPDATE customers SET name = ? WHERE id = ?", name.trim(), customerId);
         }
-        if (phone != null) {
-            jdbc.update("UPDATE customers SET phone = ? WHERE id = ?", phone, customerId);
+        if (phone != null && !phone.isBlank()) {
+            jdbc.update("UPDATE customers SET phone = ? WHERE id = ?", phone.trim(), customerId);
         }
-        if (avatar != null) {
-            jdbc.update("UPDATE customers SET avatar = ? WHERE id = ?", avatar, customerId);
+        if (avatar != null && !avatar.isBlank()) {
+            jdbc.update("UPDATE customers SET avatar = ? WHERE id = ?", avatar.trim(), customerId);
         }
-        if (coverPhoto != null) {
-            jdbc.update("UPDATE customers SET cover_photo = ? WHERE id = ?", coverPhoto, customerId);
+        if (coverPhoto != null && !coverPhoto.isBlank()) {
+            jdbc.update("UPDATE customers SET cover_photo = ? WHERE id = ?", coverPhoto.trim(), customerId);
         }
         if (password != null && !password.isBlank() && password.length() >= 6) {
             jdbc.update("UPDATE customers SET password_hash = ? WHERE id = ?", passwordEncoder.encode(password), customerId);
