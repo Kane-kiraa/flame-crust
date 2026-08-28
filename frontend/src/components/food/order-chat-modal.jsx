@@ -10,6 +10,9 @@ import {
   Paperclip,
   Trash2,
   Ban,
+  MoreVertical,
+  Copy,
+  Eye,
   X, 
   Loader2, 
   Bike, 
@@ -19,6 +22,12 @@ import {
   Wifi
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { 
+  DropdownMenu, 
+  DropdownMenuTrigger, 
+  DropdownMenuContent, 
+  DropdownMenuItem 
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping, deleteOrderMessage } from "@/lib/api";
@@ -288,6 +297,13 @@ export function OrderChatModal({
     }
   };
 
+  const handleCopyMessage = (text) => {
+    if (!text) return;
+    const cleanText = text.startsWith("[IMG]:") ? text.replace("[IMG]:", "").trim() : text;
+    navigator.clipboard?.writeText(cleanText);
+    toast.success("Copied to clipboard");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
@@ -438,7 +454,7 @@ export function OrderChatModal({
                       </span>
                     </div>
 
-                    {/* Message Bubble Content (Unsent / Photo / Text) */}
+                    {/* Message Bubble Content (Unsent / Photo / Text with 3-Dots Menu) */}
                     {m.message === "[DELETED]" ? (
                       <div 
                         className={cn(
@@ -450,17 +466,53 @@ export function OrderChatModal({
                         <span>This message was removed</span>
                       </div>
                     ) : (
-                      <div className="relative group/msg flex items-center gap-1.5">
-                        {isMe && (
-                          <button
-                            type="button"
-                            onClick={() => handleUnsendMessage(m.id)}
-                            className="opacity-0 group-hover/msg:opacity-100 p-1.5 rounded-full text-muted-foreground/50 hover:text-red-500 hover:bg-secondary transition-all cursor-pointer"
-                            title="Unsend message"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        )}
+                      <div className={cn("relative group/msg flex items-center gap-1", isMe ? "flex-row" : "flex-row-reverse")}>
+                        {/* 3-Dots Action Menu (ត្រេ៣ / ចុច៣) */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className="opacity-0 group-hover/msg:opacity-100 focus:opacity-100 size-7 rounded-full text-muted-foreground/60 hover:text-foreground hover:bg-secondary flex items-center justify-center transition-all cursor-pointer shrink-0"
+                              title="More options"
+                            >
+                              <MoreVertical className="size-3.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align={isMe ? "end" : "start"} className="min-w-[140px] rounded-xl z-[120] bg-card border border-border shadow-xl">
+                            {!m.message.startsWith("[IMG]:") && (
+                              <DropdownMenuItem 
+                                onClick={() => handleCopyMessage(m.message)}
+                                className="gap-2 text-xs font-medium cursor-pointer"
+                              >
+                                <Copy className="size-3.5 text-muted-foreground" />
+                                <span>Copy Text</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {m.message.startsWith("[IMG]:") && (
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  const imgUrl = m.message.replace("[IMG]:", "").trim().split("\n")[0];
+                                  setPreviewModalUrl(imgUrl);
+                                }}
+                                className="gap-2 text-xs font-medium cursor-pointer"
+                              >
+                                <Eye className="size-3.5 text-muted-foreground" />
+                                <span>View Photo</span>
+                              </DropdownMenuItem>
+                            )}
+
+                            {isMe && (
+                              <DropdownMenuItem 
+                                onClick={() => handleUnsendMessage(m.id)}
+                                className="gap-2 text-xs font-medium text-red-500 focus:text-red-500 focus:bg-red-500/10 cursor-pointer"
+                              >
+                                <Trash2 className="size-3.5" />
+                                <span>Unsend / Remove</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
 
                         <div 
                           className={cn(
