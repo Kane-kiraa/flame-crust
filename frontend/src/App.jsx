@@ -45,6 +45,34 @@ function PageLoader() {
   );
 }
 
+function RoleRedirectGuard({ children }) {
+  const location = useLocation();
+  const driverAuth = localStorage.getItem("driverAuth");
+  const adminAuth = localStorage.getItem("adminAuth");
+  const kitchenAuth = localStorage.getItem("kitchenAuth");
+
+  // If driver is logged in, strictly enforce driver dashboard / profile only
+  if (driverAuth) {
+    if (!location.pathname.startsWith("/driver")) {
+      return <Navigate to="/driver/dashboard" replace />;
+    }
+  }
+
+  // If admin is logged in and visits /login, redirect to admin dashboard
+  if (adminAuth && location.pathname === "/login") {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
+
+  // If kitchen staff is logged in, strictly enforce kitchen dashboard
+  if (kitchenAuth) {
+    if (!location.pathname.startsWith("/kitchen") && !location.pathname.startsWith("/admin/kitchen-dashboard")) {
+      return <Navigate to="/kitchen/dashboard" replace />;
+    }
+  }
+
+  return children;
+}
+
 function RequireAuth({ children }) {
   const customerAuth = localStorage.getItem("customerAuth");
   const adminAuth = localStorage.getItem("adminAuth");
@@ -83,9 +111,8 @@ export default function App() {
             let changed = false;
 
             const updatedAuth = { ...c };
-            if (dbCustomer.cover_photo && dbCustomer.cover_photo !== c.cover_photo) {
-              updatedAuth.cover_photo = dbCustomer.cover_photo;
-              localStorage.setItem("flame_customer_cover", dbCustomer.cover_photo);
+            if (dbCustomer.cover_photo !== undefined && dbCustomer.cover_photo !== c.cover_photo) {
+              updatedAuth.cover_photo = dbCustomer.cover_photo || undefined;
               changed = true;
             }
             if (dbCustomer.avatar && dbCustomer.avatar !== c.avatar) {
@@ -123,34 +150,41 @@ export default function App() {
     };
   }, []);
 
+  const isDriver = Boolean(localStorage.getItem("driverAuth"));
+  const isAdmin = Boolean(localStorage.getItem("adminAuth"));
+  const isKitchen = Boolean(localStorage.getItem("kitchenAuth"));
+  const isStaff = isDriver || isAdmin || isKitchen;
+
   return (
     <Suspense fallback={<PageLoader />}>
       <ScrollToTop />
       <Toaster position="top-center" richColors closeButton />
-      <ActiveOrderWidget />
-      <FlyToCart />
-      <CartDrawer />
-      <MobileBottomNav />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/menu" element={<MenuPage />} />
-        <Route path="/product/:id" element={<ProductDetailPage />} />
-        <Route path="/cart" element={<CartPage />} />
-        <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
-        <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
-        <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
-        <Route path="/track/:orderId" element={<OrderTrackingPage />} />
-        <Route path="/review/:productId" element={<RequireAuth><LeaveReviewPage /></RequireAuth>} />
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
-        <Route path="/admin/login" element={<Navigate to="/login" replace />} />
-        <Route path="/admin/*" element={<AdminLayout />} />
-        <Route path="/driver/login" element={<Navigate to="/login" replace />} />
-        <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
-        <Route path="/driver/profile" element={<DriverProfilePage />} />
-        <Route path="/kitchen/login" element={<Navigate to="/login" replace />} />
-        <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
-      </Routes>
+      {!isStaff && <ActiveOrderWidget />}
+      {!isStaff && <FlyToCart />}
+      {!isStaff && <CartDrawer />}
+      {!isStaff && <MobileBottomNav />}
+      <RoleRedirectGuard>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/menu" element={<MenuPage />} />
+          <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
+          <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
+          <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
+          <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+          <Route path="/track/:orderId" element={<OrderTrackingPage />} />
+          <Route path="/review/:productId" element={<RequireAuth><LeaveReviewPage /></RequireAuth>} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
+          <Route path="/admin/login" element={<Navigate to="/login" replace />} />
+          <Route path="/admin/*" element={<AdminLayout />} />
+          <Route path="/driver/login" element={<Navigate to="/driver/dashboard" replace />} />
+          <Route path="/driver/dashboard" element={<DriverDashboardPage />} />
+          <Route path="/driver/profile" element={<DriverProfilePage />} />
+          <Route path="/kitchen/login" element={<Navigate to="/kitchen/dashboard" replace />} />
+          <Route path="/kitchen/dashboard" element={<KitchenDashboardPage />} />
+        </Routes>
+      </RoleRedirectGuard>
     </Suspense>
   );
 }

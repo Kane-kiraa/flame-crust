@@ -122,21 +122,17 @@ export default function LoginPage() {
     localStorage.removeItem("adminAuth");
     localStorage.removeItem("driverAuth");
     localStorage.removeItem("kitchenAuth");
+    localStorage.removeItem("flame_customer_cover"); // remove stale shared key
 
     const authObject = {
       ...customerData,
       avatar: avatarUrl,
-      cover_photo: customerData.cover_photo || localStorage.getItem("flame_customer_cover") || undefined,
+      cover_photo: customerData.cover_photo || undefined,
       token: token || customerData.token,
       authenticated: true,
     };
 
     localStorage.setItem("customerAuth", JSON.stringify(authObject));
-    if (customerData.cover_photo) {
-      try {
-        localStorage.setItem("flame_customer_cover", customerData.cover_photo);
-      } catch (e) {}
-    }
     window.dispatchEvent(new Event("authChanged"));
     toast.success(`Welcome, ${customerData.name || seedName}!`);
 

@@ -87,10 +87,7 @@ export default function ProfilePage() {
     try {
       const auth = localStorage.getItem("customerAuth");
       const c = auth ? JSON.parse(auth) : null;
-      if (c?.cover_photo) return c.cover_photo;
-      const savedCover = localStorage.getItem("flame_customer_cover");
-      if (savedCover) return savedCover;
-      return DEFAULT_COVER_PHOTO;
+      return c?.cover_photo || DEFAULT_COVER_PHOTO;
     } catch (e) {
       return DEFAULT_COVER_PHOTO;
     }
@@ -224,20 +221,15 @@ export default function ProfilePage() {
         activeCoupons = data.coupons || [];
         isPwdSet = Boolean(data.hasPassword);
         if (data.customer) {
-          const dbCover = data.customer.cover_photo;
-          if (dbCover) {
-            setCoverPhoto(dbCover);
-            try {
-              localStorage.setItem("flame_customer_cover", dbCover);
-            } catch (e) {}
-          }
+          const dbCover = data.customer.cover_photo || DEFAULT_COVER_PHOTO;
+          setCoverPhoto(dbCover);
           const authStr = localStorage.getItem("customerAuth");
           const parsed = authStr ? JSON.parse(authStr) : {};
           const merged = {
             ...parsed,
             ...data.customer,
             avatar: data.customer.avatar || parsed.avatar,
-            cover_photo: dbCover || parsed.cover_photo,
+            cover_photo: data.customer.cover_photo || undefined,
           };
           delete merged.password;
           delete merged.password_hash;
@@ -355,9 +347,6 @@ export default function ProfilePage() {
       const { uploadImageToCloudinary } = await import("@/lib/cloudinary");
       const uploadedUrl = await uploadImageToCloudinary(file);
       setCoverPhoto(uploadedUrl);
-      try {
-        localStorage.setItem("flame_customer_cover", uploadedUrl);
-      } catch (e) {}
 
       // Persist cover photo to backend database immediately
       if (customer) {
@@ -657,6 +646,9 @@ export default function ProfilePage() {
   const handleLogout = () => {
     localStorage.removeItem("customerAuth");
     localStorage.removeItem("adminAuth");
+    localStorage.removeItem("driverAuth");
+    localStorage.removeItem("kitchenAuth");
+    localStorage.removeItem("flame_customer_cover");
     window.dispatchEvent(new Event("authChanged"));
     navigate("/");
   };
