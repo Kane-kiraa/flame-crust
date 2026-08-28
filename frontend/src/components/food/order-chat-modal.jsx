@@ -17,6 +17,79 @@ import { getOrderMessages, sendOrderMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+export function playChatChimeSound() {
+  try {
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContext) return;
+    const ctx = new AudioContext();
+    const now = ctx.currentTime;
+    
+    // Pleasant dual-tone chime (F#5 to B5)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.type = "sine";
+    osc1.frequency.setValueAtTime(739.99, now);
+    gain1.gain.setValueAtTime(0.2, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.type = "sine";
+    osc2.frequency.setValueAtTime(987.77, now + 0.12);
+    gain2.gain.setValueAtTime(0.25, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.5);
+  } catch (e) {}
+}
+
+export function showChatNotificationToast({ senderName, message, photo, onReply }) {
+  playChatChimeSound();
+  try {
+    if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
+  } catch (e) {}
+
+  toast.custom((t) => (
+    <div 
+      onClick={() => {
+        toast.dismiss(t);
+        if (onReply) onReply();
+      }}
+      className="w-full max-w-sm bg-card/95 backdrop-blur-md border-2 border-primary/50 shadow-2xl rounded-2xl p-3.5 flex items-center gap-3 cursor-pointer hover:bg-card transition-all animate-in slide-in-from-top-3 duration-300"
+    >
+      <div className="relative shrink-0">
+        {photo ? (
+          <img src={photo} alt={senderName} className="size-11 rounded-full object-cover border-2 border-primary" />
+        ) : (
+          <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center font-bold">
+            <MessageSquare className="size-5" />
+          </div>
+        )}
+        <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background animate-ping" />
+        <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-1">
+          <h5 className="font-bold text-xs sm:text-sm text-foreground truncate">{senderName || "New Message"}</h5>
+          <span className="text-[10px] text-primary font-bold">Just now</span>
+        </div>
+        <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{message}</p>
+      </div>
+
+      <div className="shrink-0 bg-primary text-primary-foreground font-bold text-xs px-3 py-1.5 rounded-full shadow-xs">
+        Reply
+      </div>
+    </div>
+  ), { duration: 5000 });
+}
+
 export function OrderChatModal({ 
   open, 
   onOpenChange, 
@@ -58,7 +131,7 @@ export function OrderChatModal({
         if (prevCountRef.current > 0) {
           const lastMsg = list[list.length - 1];
           if (lastMsg.sender_type !== currentUser.type) {
-            // Incoming message
+            playChatChimeSound();
             try {
               if ("vibrate" in navigator) navigator.vibrate(100);
             } catch (e) {}

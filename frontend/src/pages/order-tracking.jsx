@@ -25,8 +25,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
 import { PageTransition } from "@/components/shared/page-transition";
-import { OrderChatModal } from "@/components/food/order-chat-modal";
-import { list, get } from "@/lib/api";
+import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
+import { list, get, getOrderMessages } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -156,6 +156,43 @@ export default function OrderTrackingPage() {
   const [copied, setCopied] = useState(false);
   const [recenterCounter, setRecenterCounter] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const lastKnownMsgIdRef = useRef(null);
+
+  // Background message monitoring for incoming notifications & sound chime
+  useEffect(() => {
+    if (!orderId) return;
+    const checkIncomingMessages = async () => {
+      try {
+        const msgs = await getOrderMessages(orderId);
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          const lastMsg = msgs[msgs.length - 1];
+          if (lastKnownMsgIdRef.current !== null && lastMsg.id > lastKnownMsgIdRef.current) {
+            if (lastMsg.sender_type !== "CUSTOMER") {
+              // Incoming message from Driver!
+              if (!chatOpen) {
+                setUnreadCount(prev => prev + 1);
+              }
+              showChatNotificationToast({
+                senderName: driver?.name || lastMsg.sender_name || "Delivery Partner",
+                message: lastMsg.message,
+                photo: driver?.profilePhoto || driver?.profile_photo,
+                onReply: () => {
+                  setChatOpen(true);
+                  setUnreadCount(0);
+                }
+              });
+            }
+          }
+          lastKnownMsgIdRef.current = lastMsg.id;
+        }
+      } catch (e) {}
+    };
+
+    checkIncomingMessages();
+    const chatPollInterval = setInterval(checkIncomingMessages, 3000);
+    return () => clearInterval(chatPollInterval);
+  }, [orderId, driver, chatOpen]);
 
   // Real turn-by-turn road route geometry from OSRM
   const [roadRoute, setRoadRoute] = useState([]);
@@ -699,12 +736,20 @@ export default function OrderTrackingPage() {
                           <div className="flex items-center gap-2 shrink-0">
                             <button
                               type="button"
-                              onClick={() => setChatOpen(true)}
-                              className="flex items-center gap-1.5 bg-secondary/80 hover:bg-secondary text-foreground font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-full border border-border/70 shadow-xs transition-all active:scale-95 cursor-pointer"
+                              onClick={() => {
+                                setChatOpen(true);
+                                setUnreadCount(0);
+                              }}
+                              className="relative flex items-center gap-1.5 bg-secondary/80 hover:bg-secondary text-foreground font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-full border border-border/70 shadow-xs transition-all active:scale-95 cursor-pointer"
                               title="Chat with Driver"
                             >
                               <MessageSquare className="size-4 text-primary" />
                               <span>Chat</span>
+                              {unreadCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 size-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-bounce shadow-md">
+                                  {unreadCount}
+                                </span>
+                              )}
                             </button>
                             <a 
                               href={`tel:${driver.phone || "0965755963"}`} 

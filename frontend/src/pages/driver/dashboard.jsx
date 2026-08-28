@@ -8,8 +8,8 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { list, get, update, getDriverMe, updateDriverLocation } from "@/lib/api";
-import { OrderChatModal } from "@/components/food/order-chat-modal";
+import { list, get, update, getDriverMe, updateDriverLocation, getOrderMessages } from "@/lib/api";
+import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -331,7 +331,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
 }
 
 // ----------------- SCREEN 2 & 3: ACTIVE DELIVERY / PASSENGER & ORDER DETAILS -----------------
-function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat, isActionLoading }) {
+function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat, unreadCount = 0, isActionLoading }) {
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
   const customerName = order.customer?.name || "Customer";
   const customerPhone = order.customer?.phone || order.customer_phone || "";
@@ -383,10 +383,15 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat
           <button
             type="button"
             onClick={() => onOpenChat(order)}
-            className="size-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-sm active:scale-95 transition-transform cursor-pointer"
+            className="relative size-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-sm active:scale-95 transition-transform cursor-pointer"
             title="Chat with Customer"
           >
             <MessageSquare className="size-4.5 stroke-[2.5]" />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 size-5 bg-red-500 text-white rounded-full text-[10px] font-black flex items-center justify-center animate-bounce shadow-md ring-2 ring-white dark:ring-zinc-900">
+                {unreadCount}
+              </span>
+            )}
           </button>
           {customerPhone && (
             <a 
@@ -854,6 +859,44 @@ export default function DriverDashboardPage() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [selectedChatOrder, setSelectedChatOrder] = useState(null);
+  const [unreadMap, setUnreadMap] = useState({});
+  const lastKnownDriverMsgsRef = useRef({});
+
+  // Background monitoring for incoming customer messages
+  useEffect(() => {
+    if (!driver || myOrders.length === 0) return;
+    const checkDriverIncomingMessages = async () => {
+      for (const ord of myOrders) {
+        try {
+          const msgs = await getOrderMessages(ord.id);
+          if (Array.isArray(msgs) && msgs.length > 0) {
+            const lastMsg = msgs[msgs.length - 1];
+            const prevLastId = lastKnownDriverMsgsRef.current[ord.id];
+            if (prevLastId !== undefined && lastMsg.id > prevLastId) {
+              if (lastMsg.sender_type !== "DRIVER") {
+                // Incoming message from Customer!
+                setUnreadMap(prev => ({ ...prev, [ord.id]: (prev[ord.id] || 0) + 1 }));
+                showChatNotificationToast({
+                  senderName: ord.customer?.name || lastMsg.sender_name || "Customer",
+                  message: lastMsg.message,
+                  photo: ord.customer?.avatar,
+                  onReply: () => {
+                    setSelectedChatOrder(ord);
+                    setUnreadMap(prev => ({ ...prev, [ord.id]: 0 }));
+                  }
+                });
+              }
+            }
+            lastKnownDriverMsgsRef.current[ord.id] = lastMsg.id;
+          }
+        } catch (e) {}
+      }
+    };
+
+    checkDriverIncomingMessages();
+    const chatInterval = setInterval(checkDriverIncomingMessages, 3000);
+    return () => clearInterval(chatInterval);
+  }, [driver, myOrders]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1088,7 +1131,11 @@ export default function DriverDashboardPage() {
                       order={order} 
                       onUpdateStatus={updateOrderStatus}
                       onSelectDetails={(o) => setSelectedOrderDetails(o)}
-                      onOpenChat={(o) => setSelectedChatOrder(o)}
+                      onOpenChat={(o) => {
+                        setSelectedChatOrder(o);
+                        setUnreadMap(prev => ({ ...prev, [o.id]: 0 }));
+                      }}
+                      unreadCount={unreadMap[order.id] || 0}
                       isActionLoading={actionLoadingId === order.id}
                     />
                   )
