@@ -69,7 +69,7 @@ function Navbar() {
   const [selectedChatOrder, setSelectedChatOrder] = useState(null);
   const [orderConversations, setOrderConversations] = useState([]);
 
-  // Fetch drivers & last messages for all active orders
+  // Fetch drivers & last messages for all active orders, grouped by Driver
   useEffect(() => {
     if (activeOrders.length === 0) {
       setOrderConversations([]);
@@ -80,14 +80,14 @@ function Navbar() {
       try {
         const allDrivers = (await list("drivers").catch(() => [])) || [];
         
-        const convos = await Promise.all(
+        const rawConvos = await Promise.all(
           activeOrders.map(async (ord) => {
             const driverId = ord.driverId || ord.driver_id;
             let driver = null;
             if (driverId) {
               driver = allDrivers.find(d => String(d.id) === String(driverId)) || (await get("drivers", driverId).catch(() => null));
             }
-            if (!driver) {
+            if (!driver && (ord.status === "ON_DELIVERY" || ord.status === "OUT_FOR_DELIVERY")) {
               driver = allDrivers.find(d => d.status === "ACTIVE" || d.status === "DELIVERING") || allDrivers[0] || null;
             }
 
@@ -103,14 +103,40 @@ function Navbar() {
 
             return {
               order: ord,
-              driver,
+              driver: driver || { id: "store", name: "Flame & Crust Courier", vehicleInfo: "Delivery Partner" },
               lastMessage: lastMsg,
               unreadCount
             };
           })
         );
 
-        setOrderConversations(convos);
+        // Group by unique Driver so 1 person has 1 conversation card (មនុស្សម្នាក់ដាក់តែមួយ)
+        const driverMap = new Map();
+        for (const item of rawConvos) {
+          const driverKey = item.driver?.id ? String(item.driver.id) : (item.driver?.name || "driver");
+          if (!driverMap.has(driverKey)) {
+            driverMap.set(driverKey, {
+              driver: item.driver,
+              order: item.order,
+              orders: [item.order],
+              lastMessage: item.lastMessage,
+              unreadCount: item.unreadCount || 0
+            });
+          } else {
+            const existing = driverMap.get(driverKey);
+            existing.orders.push(item.order);
+            existing.unreadCount += (item.unreadCount || 0);
+            if (item.lastMessage) {
+              if (!existing.lastMessage || new Date(item.lastMessage.created_at || 0) > new Date(existing.lastMessage.created_at || 0)) {
+                existing.lastMessage = item.lastMessage;
+                existing.order = item.order;
+              }
+            }
+          }
+        }
+
+        const uniqueConvos = Array.from(driverMap.values());
+        setOrderConversations(uniqueConvos);
       } catch (e) {}
     };
 
@@ -835,7 +861,7 @@ function Navbar() {
                           {driverName}
                         </h4>
                         <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-primary border border-border/60 shrink-0">
-                          #{orderNum}
+                          #{orderNum}{convo.orders?.length > 1 ? ` (+${convo.orders.length - 1} more)` : ""}
                         </span>
                       </div>
                       <p className="text-xs text-muted-foreground truncate">
@@ -845,7 +871,7 @@ function Navbar() {
                             {convo.lastMessage.message}
                           </span>
                         ) : (
-                          <span className="italic text-muted-foreground/80">Tap to start chatting with courier</span>
+                          <span className="italic text-muted-foreground/80">Tap to start chatting with {driverName.split(" ")[0]}</span>
                         )}
                       </p>
                     </div>
