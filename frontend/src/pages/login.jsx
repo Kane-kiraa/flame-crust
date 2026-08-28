@@ -73,6 +73,24 @@ export default function LoginPage() {
   const passwordStrength = getPasswordStrength(password);
 
   useEffect(() => {
+    try {
+      const adminAuth = localStorage.getItem("adminAuth");
+      if (adminAuth) {
+        const a = JSON.parse(adminAuth);
+        if ((a.role || "").toUpperCase() === "ADMIN") {
+          navigate(redirectPath || "/admin/dashboard", { replace: true });
+          return;
+        }
+      }
+      const customerAuth = localStorage.getItem("customerAuth");
+      if (customerAuth) {
+        navigate(redirectPath || "/profile", { replace: true });
+        return;
+      }
+    } catch (e) {}
+  }, [navigate, redirectPath]);
+
+  useEffect(() => {
     const lockedUntil = localStorage.getItem("otpLockTime");
     if (lockedUntil && new Date().getTime() < parseInt(lockedUntil)) {
       setOtpLockTime(parseInt(lockedUntil));
