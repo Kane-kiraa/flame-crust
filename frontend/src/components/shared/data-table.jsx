@@ -24,7 +24,11 @@ export function DataTable({
   searchPlaceholder = "Search...",
   searchKeys = [],
   pageSize: controlledPageSize,
+  serverSide = false,
+  page: controlledPage,
+  totalCount,
   onPageChange,
+  onPageSizeChange,
   onSearchChange,
   actions,
   emptyTitle = "No items found",
@@ -34,20 +38,37 @@ export function DataTable({
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState(columns[0]?.key || "id");
   const [sortDir, setSortDir] = useState("asc");
-  const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(controlledPageSize || 5);
+  const [localPage, setLocalPage] = useState(0);
+  const [pageSize, setPageSize] = useState(controlledPageSize || 10);
 
-  // Sync pageSize when controlledPageSize changes (e.g. products -> 5)
+  const currentPage = serverSide ? (controlledPage ?? 0) : localPage;
+
   useEffect(() => {
-    if (controlledPageSize) {
+    if (controlledPageSize !== undefined) {
       setPageSize(controlledPageSize);
-      setPage(0);
     }
   }, [controlledPageSize]);
 
+  const handlePageChange = (newPage) => {
+    if (serverSide) {
+      onPageChange?.(newPage);
+    } else {
+      setLocalPage(newPage);
+    }
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    if (serverSide) {
+      onPageSizeChange?.(newSize);
+    } else {
+      setLocalPage(0);
+    }
+  };
+
   const handleSearch = (value) => {
     setSearch(value);
-    setPage(0);
+    if (!serverSide) setLocalPage(0);
     onSearchChange?.(value);
   };
 
@@ -61,7 +82,7 @@ export function DataTable({
   };
 
   const filteredData = useMemo(() => {
-    if (!search || searchKeys.length === 0) return data;
+    if (serverSide || !search || searchKeys.length === 0) return data;
     const lower = search.toLowerCase();
     return data.filter((row) =>
       searchKeys.some((key) => {
@@ -69,10 +90,10 @@ export function DataTable({
         return val != null && String(val).toLowerCase().includes(lower);
       })
     );
-  }, [data, search, searchKeys]);
+  }, [data, search, searchKeys, serverSide]);
 
   const sortedData = useMemo(() => {
-    if (!sortKey) return filteredData;
+    if (serverSide || !sortKey) return filteredData;
     return [...filteredData].sort((a, b) => {
       const aVal = a[sortKey];
       const bVal = b[sortKey];
@@ -83,14 +104,15 @@ export function DataTable({
         : String(aVal).localeCompare(String(bVal));
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [filteredData, sortKey, sortDir]);
+  }, [filteredData, sortKey, sortDir, serverSide]);
 
-  const actualPageSize = pageSize === "All" ? Math.max(sortedData.length, 1) : Number(pageSize || 5);
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / actualPageSize));
-  const safePage = Math.min(page, totalPages - 1);
-  const pagedData = sortedData.slice(safePage * actualPageSize, (safePage + 1) * actualPageSize);
+  const totalItems = serverSide ? (totalCount ?? data.length) : sortedData.length;
+  const actualPageSize = pageSize === "All" ? Math.max(totalItems, 1) : Number(pageSize || 10);
+  const totalPages = Math.max(1, Math.ceil(totalItems / actualPageSize));
+  const safePage = Math.min(currentPage, totalPages - 1);
+  const pagedData = serverSide ? data : sortedData.slice(safePage * actualPageSize, (safePage + 1) * actualPageSize);
 
-  if (loading) {
+  if (loading && pagedData.length === 0) {
     return <TableSkeleton rows={5} cols={columns.length} className={className} />;
   }
 
@@ -108,30 +130,42 @@ export function DataTable({
         {actions && <div className="flex items-center gap-2 ml-auto">{actions}</div>}
       </div>
 
-      {pagedData.length === 0 ? (
-        <EmptyState title={emptyTitle} description={emptyDescription} className="py-10" />
+      {pagedData.length === 0 && !loading ? (
+        <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <>
-          <div className="rounded-xl border border-border/60 overflow-hidden">
+          <div className="rounded-2xl border border-border/60 overflow-hidden bg-card relative">
+            {loading && (
+              <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+                <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              </div>
+            )}
             <Table>
               <TableHeader>
-                <TableRow className="bg-muted/50 hover:bg-muted/50">
+                <TableRow className="bg-secondary/40 hover:bg-secondary/40 border-border/60">
                   {columns.map((col) => (
-                    <TableHead key={col.key} className={cn(col.className)}>
-                      {col.sortable ? (
+                    <TableHead
+                      key={col.key}
+                      className={cn(
+                        "text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3",
+                        col.className
+                      )}
+                    >
+                      {col.sortable && !serverSide ? (
                         <button
+                          type="button"
                           onClick={() => handleSort(col.key)}
-                          className="inline-flex items-center gap-1 hover:text-foreground transition-colors"
+                          className="flex items-center gap-1.5 hover:text-foreground transition-colors font-semibold"
                         >
                           {col.label}
                           {sortKey === col.key ? (
                             sortDir === "asc" ? (
-                              <ArrowUp className="size-3.5" />
+                              <ArrowUp className="size-3 text-primary" />
                             ) : (
-                              <ArrowDown className="size-3.5" />
+                              <ArrowDown className="size-3 text-primary" />
                             )
                           ) : (
-                            <ArrowUpDown className="size-3.5 opacity-40" />
+                            <ArrowUpDown className="size-3 opacity-40" />
                           )}
                         </button>
                       ) : (
@@ -142,11 +176,14 @@ export function DataTable({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pagedData.map((row, i) => (
-                  <TableRow key={row.id ?? i}>
+                {pagedData.map((row, idx) => (
+                  <TableRow
+                    key={row.id ?? idx}
+                    className="border-border/40 hover:bg-secondary/20 transition-colors"
+                  >
                     {columns.map((col) => (
-                      <TableCell key={col.key} className={cn(col.className, col.cellClassName)}>
-                        {col.render ? col.render(row[col.key], row) : row[col.key]}
+                      <TableCell key={col.key} className={cn("py-3 text-sm", col.className)}>
+                        {col.render ? col.render(row[col.key], row) : (row[col.key] ?? "—")}
                       </TableCell>
                     ))}
                   </TableRow>
@@ -162,8 +199,7 @@ export function DataTable({
                 value={pageSize}
                 onChange={(e) => {
                   const val = e.target.value === "All" ? "All" : Number(e.target.value);
-                  setPageSize(val);
-                  setPage(0);
+                  handlePageSizeChange(val);
                 }}
                 className="rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
               >
@@ -174,14 +210,14 @@ export function DataTable({
             </div>
             <div className="flex items-center gap-1">
               <span className="mr-2">
-                {sortedData.length === 0 ? "0 of 0" : `${safePage * actualPageSize + 1}–${Math.min((safePage + 1) * actualPageSize, sortedData.length)} of ${sortedData.length}`}
+                {totalItems === 0 ? "0 of 0" : `${safePage * actualPageSize + 1}–${Math.min((safePage + 1) * actualPageSize, totalItems)} of ${totalItems}`}
               </span>
               <Button
                 variant="outline"
                 size="icon"
                 className="size-8 rounded-lg"
                 disabled={safePage === 0}
-                onClick={() => setPage(0)}
+                onClick={() => handlePageChange(0)}
               >
                 <ChevronsLeft className="size-4" />
               </Button>
@@ -190,7 +226,7 @@ export function DataTable({
                 size="icon"
                 className="size-8 rounded-lg"
                 disabled={safePage === 0}
-                onClick={() => setPage((p) => p - 1)}
+                onClick={() => handlePageChange(safePage - 1)}
               >
                 <ChevronLeft className="size-4" />
               </Button>
@@ -199,7 +235,7 @@ export function DataTable({
                 size="icon"
                 className="size-8 rounded-lg"
                 disabled={safePage >= totalPages - 1}
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => handlePageChange(safePage + 1)}
               >
                 <ChevronRight className="size-4" />
               </Button>
@@ -208,7 +244,7 @@ export function DataTable({
                 size="icon"
                 className="size-8 rounded-lg"
                 disabled={safePage >= totalPages - 1}
-                onClick={() => setPage(totalPages - 1)}
+                onClick={() => handlePageChange(totalPages - 1)}
               >
                 <ChevronsRight className="size-4" />
               </Button>

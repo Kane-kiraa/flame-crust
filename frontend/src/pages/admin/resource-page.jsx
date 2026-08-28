@@ -20,6 +20,9 @@ function AdminResourcePage({ resource }) {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [page, setPage] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [dynamicOptions, setDynamicOptions] = useState({});
 
   // Form state
@@ -34,26 +37,39 @@ function AdminResourcePage({ resource }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (targetPage = page, targetSize = pageSize) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await list(resource);
-      if (Array.isArray(result)) {
-        setData(result.map((item, index) => ({ ...item, _index: result.length - index })));
+      const result = await list(resource, {
+        page: targetPage,
+        limit: targetSize === "All" ? -1 : targetSize,
+        paginate: true,
+      });
+
+      if (result && Array.isArray(result.items)) {
+        const items = result.items;
+        const total = result.total ?? items.length;
+        setData(items.map((item, index) => ({ ...item, _index: item.id || (total - (targetPage * (targetSize === "All" ? total : targetSize)) - index) })));
+        setTotalCount(total);
+      } else if (Array.isArray(result)) {
+        setData(result.map((item, index) => ({ ...item, _index: item.id || (result.length - index) })));
+        setTotalCount(result.length);
       } else {
         setData([]);
+        setTotalCount(0);
       }
     } catch (err) {
       setError(err.message || "Failed to load data");
     } finally {
       setLoading(false);
     }
-  }, [resource]);
+  }, [resource, page, pageSize]);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    setPage(0);
+    fetchData(0, pageSize);
+  }, [resource]);
 
   useEffect(() => {
     async function loadDynamicOptions() {
@@ -145,7 +161,7 @@ function AdminResourcePage({ resource }) {
         toast.success(`${config.label.slice(0, -1)} created successfully`);
       }
       setFormOpen(false);
-      fetchData();
+      fetchData(page, pageSize);
     } catch (err) {
       toast.error(err.message || "Failed to save");
     } finally {
@@ -159,7 +175,7 @@ function AdminResourcePage({ resource }) {
       await remove(resource, deleteId);
       toast.success(`${config.label.slice(0, -1)} deleted`);
       setDeleteOpen(false);
-      fetchData();
+      fetchData(page, pageSize);
     } catch (err) {
       toast.error(err.message || "Failed to delete");
     } finally {
@@ -184,7 +200,7 @@ function AdminResourcePage({ resource }) {
           // Only send the fields that are being updated
           await update(resource, row.id, updates);
           toast.success("Updated successfully");
-          fetchData();
+          fetchData(page, pageSize);
         } catch(err) {
           toast.error("Failed to update: " + err.message);
         }
@@ -226,7 +242,7 @@ function AdminResourcePage({ resource }) {
               {config.label}
             </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
-              {data.length} {data.length === 1 ? "item" : "items"}
+              {totalCount} {totalCount === 1 ? "item" : "items"}
             </span>
           </div>
           <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
@@ -241,14 +257,26 @@ function AdminResourcePage({ resource }) {
           <ErrorState
             title="Failed to load data"
             description={error}
-            onRetry={fetchData}
+            onRetry={() => fetchData(page, pageSize)}
           />
         ) : (
           <DataTable
             columns={columnsWithActions}
             data={data}
             loading={loading}
-            pageSize={config.pageSize || (resource === "products" ? 5 : 10)}
+            serverSide={true}
+            page={page}
+            pageSize={pageSize}
+            totalCount={totalCount}
+            onPageChange={(newPage) => {
+              setPage(newPage);
+              fetchData(newPage, pageSize);
+            }}
+            onPageSizeChange={(newSize) => {
+              setPageSize(newSize);
+              setPage(0);
+              fetchData(0, newSize);
+            }}
             searchKeys={config.searchKeys}
             searchPlaceholder={`Search ${config.label.toLowerCase()}...`}
             emptyTitle={`No ${config.label.toLowerCase()} found`}

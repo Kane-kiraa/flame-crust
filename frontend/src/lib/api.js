@@ -109,10 +109,12 @@ export function getDashboard(options = {}) {
 
 export function list(resource, params = {}, options = {}) {
   let query = "";
+  let isPaginate = false;
   if (params && typeof params === "object") {
     if (params.headers || params.signal || params.method) {
       options = params;
     } else {
+      isPaginate = Boolean(params.paginate);
       const searchParams = new URLSearchParams();
       Object.entries(params).forEach(([k, v]) => {
         if (v !== undefined && v !== null && v !== "") {
@@ -123,7 +125,11 @@ export function list(resource, params = {}, options = {}) {
       if (qs) query = `?${qs}`;
     }
   }
-  return request(`/admin/${encodeURIComponent(resource)}${query}`, options);
+  return request(`/admin/${encodeURIComponent(resource)}${query}`, options).then((res) => {
+    if (isPaginate) return res;
+    if (res && Array.isArray(res.items)) return res.items;
+    return res;
+  });
 }
 
 export function get(resource, id, options = {}) {

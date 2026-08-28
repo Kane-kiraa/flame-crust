@@ -78,20 +78,37 @@ public class AdminCrudController {
     }
 
     @GetMapping("/{resource}")
-    public List<?> all(
+    public Map<String, Object> all(
             @PathVariable String resource,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) Integer limit,
             @RequestParam(required = false) Integer size) {
-        if (limit != null && limit == -1) {
-            JpaRepository<Object, Long> repo = getRepository(resource);
-            return repo.findAll(Sort.by(Sort.Direction.DESC, "id"));
-        }
-        int pageSize = size != null ? size : (limit != null ? limit : 500);
-        if (pageSize <= 0) pageSize = 500;
-        if (pageSize > 1000) pageSize = 1000;
         JpaRepository<Object, Long> repo = getRepository(resource);
-        return repo.findAll(PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "id"))).getContent();
+        
+        if (limit != null && limit == -1) {
+            List<Object> allItems = repo.findAll(Sort.by(Sort.Direction.DESC, "id"));
+            Map<String, Object> resp = new LinkedHashMap<>();
+            resp.put("items", allItems);
+            resp.put("total", allItems.size());
+            resp.put("page", 0);
+            resp.put("size", allItems.size());
+            resp.put("totalPages", 1);
+            return resp;
+        }
+
+        int pageSize = size != null ? size : (limit != null ? limit : 10);
+        if (pageSize <= 0) pageSize = 10;
+        if (pageSize > 200) pageSize = 200;
+
+        org.springframework.data.domain.Page<Object> pageResult = repo.findAll(PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+
+        Map<String, Object> resp = new LinkedHashMap<>();
+        resp.put("items", pageResult.getContent());
+        resp.put("total", pageResult.getTotalElements());
+        resp.put("page", pageResult.getNumber());
+        resp.put("size", pageResult.getSize());
+        resp.put("totalPages", pageResult.getTotalPages());
+        return resp;
     }
 
     @GetMapping("/{resource}/{id}")
