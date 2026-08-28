@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { getDashboard, list } from "@/lib/api";
+import { getDashboard } from "@/lib/api";
 import {
   DollarSign,
   ShoppingBag,
@@ -15,80 +15,216 @@ import {
   Users,
   Ticket,
   Clock,
-  CheckCircle2,
-  AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// SWR-style in-memory cache for instant dashboard rendering
+let memoryDashboardCache = null;
+try {
+  const stored = localStorage.getItem("flame_admin_dashboard_cache");
+  if (stored) {
+    memoryDashboardCache = JSON.parse(stored);
+  }
+} catch (e) {}
+
+function AdminDashboardSkeleton() {
+  return (
+    <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto animate-pulse">
+      {/* Welcome Banner Skeleton */}
+      <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2.5">
+          <div className="h-4 w-28 bg-secondary/80 rounded-md" />
+          <div className="h-7 w-56 sm:w-72 bg-secondary rounded-xl" />
+          <div className="h-3.5 w-44 sm:w-60 bg-secondary/60 rounded-md" />
+        </div>
+        <div className="h-10 w-32 bg-secondary rounded-xl" />
+      </div>
+
+      {/* 4 KPI Cards Grid Skeleton */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {[1, 2, 3, 4].map((i) => (
+          <div key={i} className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-xs space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="h-3.5 w-20 bg-secondary/80 rounded-md" />
+              <div className="size-8 rounded-xl bg-secondary/60" />
+            </div>
+            <div className="h-7 sm:h-8 w-24 bg-secondary rounded-xl" />
+            <div className="h-3 w-16 bg-secondary/60 rounded-md" />
+          </div>
+        ))}
+      </div>
+
+      {/* Chart Skeleton */}
+      <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-6 shadow-sm space-y-4">
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-3.5 bg-secondary rounded-full" />
+          <div className="h-4 w-44 bg-secondary rounded-md" />
+        </div>
+        <div className="h-[250px] sm:h-[300px] w-full bg-secondary/40 rounded-xl flex items-center justify-center">
+          <div className="h-2 w-3/4 bg-secondary/60 rounded-full" />
+        </div>
+      </div>
+
+      {/* Quick Actions & Recent Orders Skeleton */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="lg:col-span-1 space-y-3">
+          <div className="h-4 w-32 bg-secondary rounded-md" />
+          <div className="grid grid-cols-2 lg:grid-cols-1 gap-2.5">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-3.5 rounded-2xl border border-border/60 bg-card flex items-center gap-3">
+                <div className="size-8 rounded-xl bg-secondary shrink-0" />
+                <div className="space-y-1.5 flex-1">
+                  <div className="h-3 w-24 bg-secondary rounded-md" />
+                  <div className="h-2.5 w-16 bg-secondary/60 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="lg:col-span-2 space-y-3">
+          <div className="h-4 w-32 bg-secondary rounded-md" />
+          <div className="rounded-2xl border border-border/60 bg-card divide-y divide-border/50 overflow-hidden">
+            {[1, 2, 3, 4].map((i) => (
+              <div key={i} className="p-3.5 sm:p-4 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="size-8 sm:size-9 rounded-xl bg-secondary shrink-0" />
+                  <div className="space-y-1.5">
+                    <div className="h-3.5 w-28 bg-secondary rounded-md" />
+                    <div className="h-2.5 w-20 bg-secondary/60 rounded-md" />
+                  </div>
+                </div>
+                <div className="space-y-1.5 flex flex-col items-end">
+                  <div className="h-3.5 w-14 bg-secondary rounded-md" />
+                  <div className="h-3 w-16 bg-secondary/60 rounded-md" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDashboard() {
-  const [data, setData] = useState(null);
-  const [recentOrders, setRecentOrders] = useState([]);
-  const [chartData, setChartData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState(() => memoryDashboardCache);
+  const [recentOrders, setRecentOrders] = useState(() => memoryDashboardCache?.recentOrders || []);
+  const [chartData, setChartData] = useState(() => memoryDashboardCache?.chartDataProcessed || []);
+  const [loading, setLoading] = useState(!memoryDashboardCache);
   const [error, setError] = useState(null);
 
   const adminAuth = (() => {
     try {
       return JSON.parse(localStorage.getItem("adminAuth") || "null");
-    } catch (e) {
+    } catch {
       return null;
     }
   })();
 
+  const processChartData = (dashData) => {
+    if (dashData?.chartData && Array.isArray(dashData.chartData) && dashData.chartData.length > 0) {
+      return dashData.chartData.map((pt) => {
+        const d = new Date(pt.order_date);
+        return {
+          date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+          revenue: Number(pt.daily_revenue || 0),
+        };
+      });
+    }
+
+    // Default 7-day points
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (6 - i));
+      return {
+        date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+        revenue: 0,
+      };
+    });
+
+    const ordersList = dashData?.recentOrders || dashData?.orders || [];
+    ordersList.forEach((order) => {
+      if (order.status !== "CANCELLED" && order.created_at && order.total) {
+        const orderDate = new Date(order.created_at);
+        const dayStr = orderDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+        const point = last7Days.find((p) => p.date === dayStr);
+        if (point) {
+          point.revenue += Number(order.total);
+        }
+      }
+    });
+
+    return last7Days;
+  };
+
   useEffect(() => {
-    Promise.all([
-      getDashboard().catch(() => null),
-      list("orders").catch(() => [])
-    ])
-      .then(([dashData, ordersData]) => {
+    let isMounted = true;
+
+    getDashboard()
+      .then((dashData) => {
+        if (!isMounted || !dashData) return;
+        
+        const processedChart = processChartData(dashData);
+        const orders = dashData.recentOrders || dashData.orders || [];
+
         setData(dashData);
-        if (Array.isArray(ordersData)) {
-          setRecentOrders(ordersData.slice(0, 5));
-          
-          // Process chart data: group revenue by date (last 7 days)
-          const last7Days = Array.from({ length: 7 }, (_, i) => {
-            const d = new Date();
-            d.setDate(d.getDate() - (6 - i));
-            return {
-              date: d.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-              revenue: 0,
-              fullDate: d
-            };
-          });
+        setRecentOrders(orders);
+        setChartData(processedChart);
+        setError(null);
 
-          ordersData.forEach(order => {
-            if (order.status !== "CANCELLED" && order.created_at && order.total) {
-              const orderDate = new Date(order.created_at);
-              const dayStr = orderDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-              const point = last7Days.find(p => p.date === dayStr);
-              if (point) {
-                point.revenue += Number(order.total);
-              }
-            }
-          });
-
-          setChartData(last7Days);
+        // Cache response for instant loads on next visit
+        const cachePayload = {
+          ...dashData,
+          recentOrders: orders,
+          chartDataProcessed: processedChart,
+        };
+        memoryDashboardCache = cachePayload;
+        try {
+          localStorage.setItem("flame_admin_dashboard_cache", JSON.stringify(cachePayload));
+        } catch (e) {}
+      })
+      .catch((err) => {
+        if (isMounted && !data) {
+          setError(err.message || "Failed to load dashboard data");
         }
       })
-      .catch((err) => setError(err.message || "Failed to load dashboard data"))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[350px]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="size-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-          <p className="text-sm text-muted-foreground font-medium">Loading Dashboard...</p>
-        </div>
-      </div>
-    );
+  if (loading && !data) {
+    return <AdminDashboardSkeleton />;
   }
 
-  if (error) {
+  if (error && !data) {
     return (
-      <div className="p-8 text-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 max-w-md mx-auto my-8">
+      <div className="p-8 text-center rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 max-w-md mx-auto my-8 space-y-3">
         <p className="font-semibold">{error}</p>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => {
+            setLoading(true);
+            setError(null);
+            getDashboard()
+              .then((dashData) => {
+                setData(dashData);
+                setRecentOrders(dashData.recentOrders || []);
+                setChartData(processChartData(dashData));
+              })
+              .catch((err) => setError(err.message))
+              .finally(() => setLoading(false));
+          }}
+          className="rounded-xl border-destructive/30 hover:bg-destructive/10 text-xs font-semibold"
+        >
+          ព្យាយាមម្តងទៀត (Retry)
+        </Button>
       </div>
     );
   }
@@ -150,10 +286,9 @@ export default function AdminDashboard() {
     <div className="space-y-4 sm:space-y-6 max-w-7xl mx-auto">
       {/* Welcome Banner */}
       <div className="rounded-2xl border border-border/70 bg-gradient-to-r from-card via-card to-secondary/40 p-4 sm:p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 relative overflow-hidden">
-        {/* Layer aesthetics */}
         <div className="absolute -right-10 -top-10 w-40 h-40 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
         <div className="absolute right-20 -bottom-10 w-32 h-32 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
-        
+
         <div className="relative z-10">
           <div className="flex items-center gap-2 mb-1.5">
             <span className="text-[9px] sm:text-[10px] font-bold text-primary uppercase tracking-widest bg-primary/10 px-2 py-0.5 rounded-md">
@@ -169,7 +304,10 @@ export default function AdminDashboard() {
         </div>
 
         <div className="flex items-center gap-2 shrink-0 relative z-10 mt-2 sm:mt-0">
-          <Button asChild className="w-full sm:w-auto rounded-xl bg-primary text-primary-foreground font-bold shadow-sm h-10 px-5 text-[11px] sm:text-xs transition-transform active:scale-[0.98]">
+          <Button
+            asChild
+            className="w-full sm:w-auto rounded-xl bg-primary text-primary-foreground font-bold shadow-sm h-10 px-5 text-[11px] sm:text-xs transition-transform active:scale-[0.98]"
+          >
             <Link to="/">
               <Store className="size-3.5 mr-2" />
               View Frontend
@@ -185,9 +323,10 @@ export default function AdminDashboard() {
             key={idx}
             className="rounded-2xl border border-border/70 bg-card p-3.5 sm:p-5 shadow-xs hover:shadow-sm transition-all duration-300 flex flex-col justify-between relative overflow-hidden group hover:border-border"
           >
-            {/* Subtle background layer */}
-            <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${stat.color} rounded-bl-[100px] opacity-40 pointer-events-none group-hover:scale-110 group-hover:opacity-60 transition-all duration-500`} />
-            
+            <div
+              className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl ${stat.color} rounded-bl-[100px] opacity-40 pointer-events-none group-hover:scale-110 group-hover:opacity-60 transition-all duration-500`}
+            />
+
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 relative z-10">
               <span className="text-[10px] sm:text-[11px] font-bold text-muted-foreground uppercase tracking-wider">
                 {stat.label}
@@ -228,15 +367,38 @@ export default function AdminDashboard() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
-              <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} dy={10} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} tickFormatter={(val) => `$${val}`} />
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                dy={10}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }}
+                tickFormatter={(val) => `$${val}`}
+              />
               <Tooltip
-                contentStyle={{ borderRadius: "12px", border: "1px solid hsl(var(--border))", backgroundColor: "hsl(var(--card))", boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                contentStyle={{
+                  borderRadius: "12px",
+                  border: "1px solid hsl(var(--border))",
+                  backgroundColor: "hsl(var(--card))",
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                }}
                 itemStyle={{ color: "hsl(var(--foreground))", fontWeight: "bold" }}
                 formatter={(value) => [`$${Number(value).toFixed(2)}`, "Revenue"]}
                 labelStyle={{ color: "hsl(var(--muted-foreground))", fontSize: "12px", marginBottom: "4px" }}
               />
-              <Area type="monotone" dataKey="revenue" stroke="var(--primary, #f97316)" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+              <Area
+                type="monotone"
+                dataKey="revenue"
+                stroke="var(--primary, #f97316)"
+                strokeWidth={3}
+                fillOpacity={1}
+                fill="url(#colorRevenue)"
+              />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -308,7 +470,7 @@ export default function AdminDashboard() {
                   >
                     <div className="flex items-center gap-3">
                       <div className="size-8 sm:size-9 rounded-xl bg-secondary flex items-center justify-center font-mono text-[9px] sm:text-[10px] font-bold text-foreground/80 border border-border/40 group-hover:border-primary/20 transition-colors">
-                        #{order.id}
+                        #{order.order_number || order.id}
                       </div>
                       <div>
                         <p className="text-[11px] sm:text-xs font-bold text-foreground">
@@ -316,9 +478,7 @@ export default function AdminDashboard() {
                         </p>
                         <p className="text-[9px] sm:text-[10px] text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
                           <Clock className="size-2.5" />
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Recently"} 
-                          <span className="text-border mx-0.5">•</span> 
-                          {order.items_count || 1} items
+                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently"}
                         </p>
                       </div>
                     </div>
