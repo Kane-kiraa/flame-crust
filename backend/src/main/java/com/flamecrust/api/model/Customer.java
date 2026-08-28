@@ -39,6 +39,12 @@ public class Customer {
     @Column(name = "deleted_at")
     private LocalDateTime deletedAt;
 
+    @Column(name = "avatar")
+    private String avatar;
+
+    @Column(name = "cover_photo")
+    private String coverPhoto;
+
     @Column(name = "device_token")
     private String deviceToken;
 
