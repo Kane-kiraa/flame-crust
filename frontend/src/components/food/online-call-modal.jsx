@@ -112,6 +112,7 @@ export function OnlineCallModal({
   const [isMuted, setIsMuted] = useState(false);
   const [isSpeaker, setIsSpeaker] = useState(true);
   const [secondsElapsed, setSecondsElapsed] = useState(0);
+  const [isMinimized, setIsMinimized] = useState(false);
   const stopRingRef = useRef(null);
 
   // 1. Initiate or Join Call
@@ -123,6 +124,7 @@ export function OnlineCallModal({
       }
       setCallStatus("connecting");
       setSecondsElapsed(0);
+      setIsMinimized(false);
       return;
     }
 
@@ -195,6 +197,7 @@ export function OnlineCallModal({
     }
     playEndCallTone();
     setCallStatus("ended");
+    setIsMinimized(false);
     setTimeout(() => {
       onOpenChange(false);
     }, 600);
@@ -224,135 +227,239 @@ export function OnlineCallModal({
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
   };
 
+  const isCallActive = (callStatus === "connected" || callStatus === "ringing" || callStatus === "connecting");
+
   return (
-    <Dialog open={open} onOpenChange={(val) => {
-      if (!val) handleEndCall();
-      else onOpenChange(val);
-    }}>
-      <DialogContent 
-        showCloseButton={false}
-        className="w-[92vw] max-w-sm p-0 overflow-hidden rounded-[36px] bg-zinc-950 text-white border border-white/15 shadow-2xl z-[120]"
-      >
-        <DialogHeader className="sr-only">
-          <DialogTitle>Online Call with {recipient.name}</DialogTitle>
-          <DialogDescription>Flame & Crust High Quality In-App Voice Call</DialogDescription>
-        </DialogHeader>
-
-        {/* Ambient Top Glow */}
-        <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-red-600/30 via-orange-600/10 to-transparent pointer-events-none" />
-
-        <div className="relative z-10 p-6 flex flex-col items-center justify-between min-h-[460px] select-none">
-          {/* Top Status */}
-          <div className="text-center space-y-1.5 pt-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[11px] font-bold text-amber-400">
-              <Wifi className="size-3.5 animate-pulse text-emerald-400" />
-              <span>Flame Voice HD • End-to-End</span>
-            </div>
-            <h3 className="text-xl font-black tracking-tight text-white pt-2">
-              {recipient.name || "Delivery Partner"}
-            </h3>
-            <p className="text-xs text-zinc-400 font-semibold">
-              {callStatus === "connecting" && "Connecting..."}
-              {callStatus === "ringing" && (isIncoming ? "Incoming Call..." : "Ringing...")}
-              {callStatus === "connected" && (
-                <span className="text-emerald-400 font-mono font-bold text-sm tracking-wider">
-                  {formatTimer(secondsElapsed)}
-                </span>
-              )}
-              {callStatus === "ended" && "Call Ended"}
-            </p>
-          </div>
-
-          {/* Central Pulsating Avatar */}
-          <div className="relative my-6 flex items-center justify-center">
-            {callStatus === "connected" && (
-              <>
-                <span className="absolute size-36 rounded-full bg-emerald-500/20 animate-ping opacity-75" />
-                <span className="absolute size-44 rounded-full bg-emerald-500/10 animate-pulse" />
-              </>
-            )}
-            {callStatus === "ringing" && (
-              <>
-                <span className="absolute size-36 rounded-full bg-emerald-500/20 animate-ping opacity-75" />
-                <span className="absolute size-44 rounded-full bg-amber-500/15 animate-pulse" />
-              </>
-            )}
-
-            <div className="relative size-28 rounded-full ring-4 ring-white/20 p-1 bg-gradient-to-tr from-red-600 to-amber-500 shadow-2xl">
-              {recipient.photo ? (
-                <img 
-                  src={recipient.photo} 
-                  alt={recipient.name} 
-                  className="size-full rounded-full object-cover shadow-inner" 
-                />
-              ) : (
-                <div className="size-full rounded-full bg-zinc-900 text-white flex items-center justify-center">
-                  <User className="size-12 text-zinc-400" />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Call Controls Toolbar */}
-          <div className="w-full space-y-4">
-            {callStatus === "connected" && (
-              <div className="flex items-center justify-center gap-6">
-                {/* Mute Mic */}
-                <button
-                  type="button"
-                  onClick={() => setIsMuted(!isMuted)}
-                  className={cn(
-                    "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
-                    isMuted 
-                      ? "bg-red-500/20 text-red-400 border border-red-500/50" 
-                      : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                  )}
-                  title={isMuted ? "Unmute" : "Mute"}
-                >
-                  {isMuted ? <MicOff className="size-5.5" /> : <Mic className="size-5.5" />}
-                </button>
-
-                {/* Speaker */}
-                <button
-                  type="button"
-                  onClick={() => setIsSpeaker(!isSpeaker)}
-                  className={cn(
-                    "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
-                    isSpeaker 
-                      ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" 
-                      : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
-                  )}
-                  title={isSpeaker ? "Speaker On" : "Speaker Off"}
-                >
-                  {isSpeaker ? <Volume2 className="size-5.5" /> : <VolumeX className="size-5.5" />}
-                </button>
+    <>
+      {/* 🟢 TOP FLOATING DYNAMIC ISLAND ACTIVE CALL BAR (When Minimized) */}
+      {open && isMinimized && isCallActive && (
+        <div 
+          onClick={() => setIsMinimized(false)}
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-[99999] w-[94vw] max-w-md p-2.5 pl-3 rounded-full bg-zinc-950/95 backdrop-blur-xl border border-emerald-500/40 text-white shadow-2xl shadow-emerald-950/50 flex items-center justify-between gap-3 cursor-pointer hover:border-emerald-400 transition-all active:scale-98 animate-in slide-in-from-top-4 duration-300"
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Avatar with live pulsating ring */}
+            <div className="relative shrink-0">
+              <div className="size-9 rounded-full ring-2 ring-emerald-500/70 p-0.5 bg-gradient-to-tr from-emerald-500 to-amber-500 overflow-hidden">
+                {recipient.photo ? (
+                  <img src={recipient.photo} alt={recipient.name} className="size-full rounded-full object-cover" />
+                ) : (
+                  <div className="size-full rounded-full bg-zinc-800 flex items-center justify-center font-bold text-xs text-white">
+                    {recipient.name ? recipient.name.slice(0, 1) : "P"}
+                  </div>
+                )}
               </div>
-            )}
+              <span className="absolute bottom-0 right-0 size-2.5 rounded-full bg-emerald-500 ring-2 ring-zinc-950 animate-ping" />
+            </div>
 
-            {/* Answer Button (during ringing for incoming call or testing) */}
-            {callStatus === "ringing" && (
+            {/* Caller Name & Live Timer */}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5">
+                <h4 className="font-bold text-xs text-white truncate max-w-[130px] sm:max-w-[180px]">
+                  {recipient.name || "Partner"}
+                </h4>
+                <span className="text-[10px] text-emerald-400 font-bold px-1.5 py-0.2 rounded-full bg-emerald-500/20 border border-emerald-500/30">
+                  HD
+                </span>
+              </div>
+              <p className="text-[11px] font-mono text-emerald-400 font-semibold flex items-center gap-1">
+                <Wifi className="size-3 animate-pulse" />
+                {callStatus === "connected" ? formatTimer(secondsElapsed) : "Ringing..."}
+              </p>
+            </div>
+          </div>
+
+          {/* Action buttons on pill */}
+          <div className="flex items-center gap-2 shrink-0" onClick={(e) => e.stopPropagation()}>
+            {/* Mute toggle */}
+            {callStatus === "connected" && (
               <button
                 type="button"
-                onClick={handleAnswerCall}
-                className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer animate-pulse"
+                onClick={() => setIsMuted(!isMuted)}
+                className={cn(
+                  "size-8.5 rounded-full flex items-center justify-center transition-all cursor-pointer",
+                  isMuted ? "bg-red-500 text-white" : "bg-white/10 hover:bg-white/20 text-white"
+                )}
+                title={isMuted ? "Unmute" : "Mute"}
               >
-                <Phone className="size-4.5" />
-                <span>Accept / Answer Call</span>
+                {isMuted ? <MicOff className="size-4" /> : <Mic className="size-4" />}
               </button>
             )}
 
-            {/* End Call Button */}
+            {/* End / Cancel Call */}
             <button
               type="button"
               onClick={handleEndCall}
-              className="w-full h-12 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+              className="size-8.5 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95"
+              title="End Call"
             >
-              <PhoneOff className="size-4.5" />
-              <span>{callStatus === "ringing" ? "Cancel Call" : "End Call"}</span>
+              <PhoneOff className="size-4" />
+            </button>
+
+            {/* Expand button */}
+            <button
+              type="button"
+              onClick={() => setIsMinimized(false)}
+              className="size-8.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center transition-all cursor-pointer shadow-md"
+              title="View Full Call"
+            >
+              Full
             </button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      )}
+
+      {/* 📱 FULL SCREEN ONLINE CALL MODAL */}
+      <Dialog 
+        open={open && !isMinimized} 
+        onOpenChange={(val) => {
+          if (!val) {
+            // When closing dialog while call is active, minimize to top island instead of hanging up
+            if (isCallActive) {
+              setIsMinimized(true);
+            } else {
+              handleEndCall();
+            }
+          } else {
+            onOpenChange(val);
+          }
+        }}
+      >
+        <DialogContent 
+          showCloseButton={false}
+          className="w-[92vw] max-w-sm p-0 overflow-hidden rounded-[36px] bg-zinc-950 text-white border border-white/15 shadow-2xl z-[120]"
+        >
+          <DialogHeader className="sr-only">
+            <DialogTitle>Online Call with {recipient.name}</DialogTitle>
+            <DialogDescription>Flame & Crust High Quality In-App Voice Call</DialogDescription>
+          </DialogHeader>
+
+          {/* Ambient Top Glow */}
+          <div className="absolute top-0 inset-x-0 h-40 bg-gradient-to-b from-red-600/30 via-orange-600/10 to-transparent pointer-events-none" />
+
+          {/* Minimize Button in Top-Left */}
+          <button
+            type="button"
+            onClick={() => setIsMinimized(true)}
+            className="absolute top-4 left-4 z-20 size-8 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+            title="Minimize Call to Top Banner"
+          >
+            <span className="text-xs font-bold">−</span>
+          </button>
+
+          <div className="relative z-10 p-6 flex flex-col items-center justify-between min-h-[460px] select-none">
+            {/* Top Status */}
+            <div className="text-center space-y-1.5 pt-2">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/10 text-[11px] font-bold text-amber-400">
+                <Wifi className="size-3.5 animate-pulse text-emerald-400" />
+                <span>Flame Voice HD • End-to-End</span>
+              </div>
+              <h3 className="text-xl font-black tracking-tight text-white pt-2">
+                {recipient.name || "Delivery Partner"}
+              </h3>
+              <p className="text-xs text-zinc-400 font-semibold">
+                {callStatus === "connecting" && "Connecting..."}
+                {callStatus === "ringing" && (isIncoming ? "Incoming Call..." : "Ringing...")}
+                {callStatus === "connected" && (
+                  <span className="text-emerald-400 font-mono font-bold text-sm tracking-wider">
+                    {formatTimer(secondsElapsed)}
+                  </span>
+                )}
+                {callStatus === "ended" && "Call Ended"}
+              </p>
+            </div>
+
+            {/* Central Pulsating Avatar */}
+            <div className="relative my-6 flex items-center justify-center">
+              {callStatus === "connected" && (
+                <>
+                  <span className="absolute size-36 rounded-full bg-emerald-500/20 animate-ping opacity-75" />
+                  <span className="absolute size-44 rounded-full bg-emerald-500/10 animate-pulse" />
+                </>
+              )}
+              {callStatus === "ringing" && (
+                <>
+                  <span className="absolute size-36 rounded-full bg-emerald-500/20 animate-ping opacity-75" />
+                  <span className="absolute size-44 rounded-full bg-amber-500/15 animate-pulse" />
+                </>
+              )}
+
+              <div className="relative size-28 rounded-full ring-4 ring-white/20 p-1 bg-gradient-to-tr from-red-600 to-amber-500 shadow-2xl">
+                {recipient.photo ? (
+                  <img 
+                    src={recipient.photo} 
+                    alt={recipient.name} 
+                    className="size-full rounded-full object-cover shadow-inner" 
+                  />
+                ) : (
+                  <div className="size-full rounded-full bg-zinc-900 text-white flex items-center justify-center">
+                    <User className="size-12 text-zinc-400" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Call Controls Toolbar */}
+            <div className="w-full space-y-4">
+              {callStatus === "connected" && (
+                <div className="flex items-center justify-center gap-6">
+                  {/* Mute Mic */}
+                  <button
+                    type="button"
+                    onClick={() => setIsMuted(!isMuted)}
+                    className={cn(
+                      "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
+                      isMuted 
+                        ? "bg-red-500/20 text-red-400 border border-red-500/50" 
+                        : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                    )}
+                    title={isMuted ? "Unmute" : "Mute"}
+                  >
+                    {isMuted ? <MicOff className="size-5.5" /> : <Mic className="size-5.5" />}
+                  </button>
+
+                  {/* Speaker */}
+                  <button
+                    type="button"
+                    onClick={() => setIsSpeaker(!isSpeaker)}
+                    className={cn(
+                      "size-13 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md",
+                      isSpeaker 
+                        ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/50" 
+                        : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                    )}
+                    title={isSpeaker ? "Speaker On" : "Speaker Off"}
+                  >
+                    {isSpeaker ? <Volume2 className="size-5.5" /> : <VolumeX className="size-5.5" />}
+                  </button>
+                </div>
+              )}
+
+              {/* Answer Button (during ringing for incoming call or testing) */}
+              {callStatus === "ringing" && (
+                <button
+                  type="button"
+                  onClick={handleAnswerCall}
+                  className="w-full h-12 rounded-2xl bg-emerald-600 hover:bg-emerald-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all cursor-pointer animate-pulse"
+                >
+                  <Phone className="size-4.5" />
+                  <span>Accept / Answer Call</span>
+                </button>
+              )}
+
+              {/* End Call Button */}
+              <button
+                type="button"
+                onClick={handleEndCall}
+                className="w-full h-12 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
+              >
+                <PhoneOff className="size-4.5" />
+                <span>{callStatus === "ringing" ? "Cancel Call" : "End Call"}</span>
+              </button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { OrderChatModal } from "@/components/food/order-chat-modal";
 import { useCart } from "@/lib/cart-store";
-import { list, get, getOrderMessages } from "@/lib/api";
+import { list, get, getOrderMessages, getActiveCall } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { SearchModal } from "./search-modal";
@@ -137,11 +137,23 @@ function Navbar() {
 
         const uniqueConvos = Array.from(driverMap.values());
         setOrderConversations(uniqueConvos);
+
+        // Auto-detect incoming call from driver for any active order
+        for (const convo of uniqueConvos) {
+          try {
+            const callRes = await getActiveCall(convo.order.id);
+            if (callRes.active && callRes.call?.status === "RINGING" && callRes.call?.receiver_type === "CUSTOMER") {
+              if (!selectedChatOrder || String(selectedChatOrder.order.id) !== String(convo.order.id)) {
+                setSelectedChatOrder(convo);
+              }
+            }
+          } catch (e) {}
+        }
       } catch (e) {}
     };
 
     loadAllConversations();
-    const chatPoll = setInterval(loadAllConversations, 4000);
+    const chatPoll = setInterval(loadAllConversations, 3000);
     return () => clearInterval(chatPoll);
   }, [activeOrders]);
 
