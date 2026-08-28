@@ -17,6 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 // SWR-style in-memory cache for instant dashboard rendering
 let memoryDashboardCache = null;
@@ -466,28 +467,42 @@ export default function AdminDashboard() {
                 {recentOrders.map((order) => (
                   <div
                     key={order.id}
-                    className="p-3 sm:p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors group"
+                    className="p-3 sm:p-4 flex items-center justify-between hover:bg-secondary/40 transition-colors group gap-3"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="size-8 sm:size-9 rounded-xl bg-secondary flex items-center justify-center font-mono text-[9px] sm:text-[10px] font-bold text-foreground/80 border border-border/40 group-hover:border-primary/20 transition-colors">
-                        #{order.order_number || order.id}
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="size-9 sm:size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20 group-hover:scale-105 transition-transform">
+                        <ShoppingBag className="size-4 text-primary" />
                       </div>
-                      <div>
-                        <p className="text-[11px] sm:text-xs font-bold text-foreground">
-                          {order.customer_name || order.customer_phone || `Customer #${order.customer_id || "Guest"}`}
-                        </p>
-                        <p className="text-[9px] sm:text-[10px] text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
-                          <Clock className="size-2.5" />
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <p className="text-xs sm:text-sm font-bold text-foreground truncate max-w-[160px] sm:max-w-[240px]">
+                            {order.customer_name || order.customer_phone || `Customer #${order.customer_id || "Guest"}`}
+                          </p>
+                          <span className="font-mono text-[9px] sm:text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded border border-border/50">
+                            #{order.order_number ? (order.order_number.length > 8 ? order.order_number.slice(-6) : order.order_number) : order.id}
+                          </span>
+                        </div>
+                        <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
+                          <Clock className="size-3 text-muted-foreground/70" />
                           {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently"}
                         </p>
                       </div>
                     </div>
 
-                    <div className="flex flex-col items-end gap-1.5">
-                      <span className="text-[11px] sm:text-xs font-black text-foreground font-sans">
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className="text-xs sm:text-sm font-black text-foreground font-sans">
                         ${Number(order.total_price || order.total || 0).toFixed(2)}
                       </span>
-                      <span className="px-2 py-0.5 rounded-md text-[8px] sm:text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/10">
+                      <span className={cn(
+                        "px-2 py-0.5 rounded-full text-[8px] sm:text-[9px] font-bold uppercase tracking-wider border",
+                        (order.status === "DELIVERED" || order.status === "COMPLETED")
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                          : (order.status === "OUT_FOR_DELIVERY" || order.status === "ON_THE_WAY")
+                          ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                          : (order.status === "PREPARING" || order.status === "COOKING")
+                          ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                          : "bg-primary/10 text-primary border-primary/20"
+                      )}>
                         {order.status || "PENDING"}
                       </span>
                     </div>
