@@ -25,21 +25,18 @@ import {
   X,
   LayoutDashboard,
   ShieldCheck,
-  ArrowRight,
   Camera,
   Sun,
   Moon,
   Sparkles,
   Flame,
-  Award,
+  Star,
+  Crown,
   Loader2,
   Pencil,
-  Star,
   Building2,
-  Navigation2,
-  ExternalLink
+  CheckCircle2
 } from "lucide-react";
-import ImageUpload from "@/components/ImageUpload";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
@@ -47,13 +44,14 @@ import { CartDrawer } from "@/components/food/cart-drawer";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
-import { list, create, update, get, remove, API_URL } from "@/lib/api";
-import { fetchDashboard, getImageUrl } from "@/lib/food-api";
+import { list, create, update, remove, API_URL } from "@/lib/api";
+import { getImageUrl } from "@/lib/food-api";
 import { useCart } from "@/lib/cart-store";
 import { useTheme } from "@/components/theme-provider.jsx";
 import { toast } from "sonner";
 import { cn, formatDate } from "@/lib/utils";
-import { ProfileSkeleton } from "@/components/shared/loading-skeleton";
+
+const DEFAULT_COVER_PHOTO = "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=2000&auto=format&fit=crop";
 
 let profileMemoryCache = {
   orders: [],
@@ -77,6 +75,7 @@ export default function ProfilePage() {
   const location = useLocation();
   const { addItem, toggleCart } = useCart();
   const { theme, setTheme } = useTheme();
+
   const [customer, setCustomer] = useState(() => {
     try {
       const auth = localStorage.getItem("customerAuth");
@@ -85,6 +84,19 @@ export default function ProfilePage() {
       return null;
     }
   });
+
+  const [coverPhoto, setCoverPhoto] = useState(() => {
+    try {
+      const savedCover = localStorage.getItem("flame_customer_cover");
+      if (savedCover) return savedCover;
+      const auth = localStorage.getItem("customerAuth");
+      const c = auth ? JSON.parse(auth) : null;
+      return c?.cover_photo || DEFAULT_COVER_PHOTO;
+    } catch (e) {
+      return DEFAULT_COVER_PHOTO;
+    }
+  });
+
   const [orders, setOrders] = useState(() => profileMemoryCache.orders || []);
   const [addresses, setAddresses] = useState(() => profileMemoryCache.addresses || []);
   const [favorites, setFavorites] = useState(() => profileMemoryCache.favorites || []);
@@ -93,7 +105,7 @@ export default function ProfilePage() {
   
   const searchParams = new URLSearchParams(location.search);
   const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "MENU");
+  const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "OVERVIEW");
   
   // Settings & Coupons state
   const [coupons, setCoupons] = useState(() => profileMemoryCache.coupons || []);
@@ -116,6 +128,7 @@ export default function ProfilePage() {
   });
   const [isUpdatingSettings, setIsUpdatingSettings] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
   const [hasPassword, setHasPassword] = useState(false);
   
   // OTP Reset fields in profile
@@ -206,6 +219,12 @@ export default function ProfilePage() {
         userAddresses = data.addresses || [];
         activeCoupons = data.coupons || [];
         isPwdSet = Boolean(data.hasPassword);
+        if (data.customer?.cover_photo) {
+          setCoverPhoto(data.customer.cover_photo);
+          try {
+            localStorage.setItem("flame_customer_cover", data.customer.cover_photo);
+          } catch (e) {}
+        }
       }
 
       // If endpoint returned empty or failed, fallback to list() queries
@@ -268,6 +287,9 @@ export default function ProfilePage() {
     }
     const c = JSON.parse(auth);
     setCustomer(c);
+    if (c.cover_photo) {
+      setCoverPhoto(c.cover_photo);
+    }
     setSettingsForm({ name: c.name || "", email: c.email || "", phone: c.phone || "", avatar: c.avatar || c.profile_image || c.image_url || "", password: "", confirmPassword: "", oldPassword: "" });
     fetchProfileData(c);
     loadFavorites();
@@ -281,66 +303,62 @@ export default function ProfilePage() {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     if (tabParam) {
-      setActiveTab(tabParam.toUpperCase());
-    } else {
-      setActiveTab("MENU");
+      const normalized = tabParam.toUpperCase();
+      setActiveTab(normalized === "MENU" ? "OVERVIEW" : normalized);
     }
   }, [location.search]);
 
-  // Send OTP for Forgot Password inside Profile Settings
-  const handleSendForgotOTP = async () => {
-    if (!settingsForm.email) {
-      toast.error("Email is required to send OTP.");
-      return;
-    }
-    setIsSendingOTP(true);
-    try {
-      const { API_URL } = await import("@/lib/api");
-      const response = await fetch(`${API_URL}/auth/send-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: settingsForm.email }),
-      });
-      if (!response.ok) {
-        throw new Error("Failed to send OTP");
-      }
-      toast.success("OTP sent to your email!");
-      setShowOTPDialog(true);
-    } catch (err) {
-      toast.error(err.message || "Failed to send OTP.");
-    } finally {
-      setIsSendingOTP(false);
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    if (newTab === "OVERVIEW") {
+      navigate("/profile");
+    } else {
+      navigate(`/profile?tab=${newTab.toLowerCase()}`);
     }
   };
 
-  // Verify OTP for Forgot Password inside Profile Settings
-  const handleVerifyForgotOTP = async () => {
-    if (otpCode.length < 6) {
-      toast.error("Please enter a 6-digit OTP.");
-      return;
-    }
-    setIsVerifyingOTP(true);
+  // Cover photo upload handler - Uploads to Cloudinary and saves to Backend DB
+  const handleCoverFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingCover(true);
     try {
-      const { API_URL } = await import("@/lib/api");
-      const response = await fetch(`${API_URL}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: settingsForm.email, otp: otpCode }),
-      });
-      if (!response.ok) {
-        throw new Error("Invalid or expired OTP");
+      const { uploadImageToCloudinary } = await import("@/lib/cloudinary");
+      const uploadedUrl = await uploadImageToCloudinary(file);
+      setCoverPhoto(uploadedUrl);
+      localStorage.setItem("flame_customer_cover", uploadedUrl);
+
+      // Persist cover photo to backend database immediately
+      if (customer && customer.email) {
+        try {
+          await fetch(`${API_URL}/auth/customer-update-profile`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              email: customer.email,
+              cover_photo: uploadedUrl
+            }),
+          });
+        } catch (e) {
+          console.warn("Could not sync cover photo to backend:", e);
+        }
+        const updatedCustomer = { ...customer, cover_photo: uploadedUrl };
+        delete updatedCustomer.password;
+        localStorage.setItem("customerAuth", JSON.stringify(updatedCustomer));
+        setCustomer(updatedCustomer);
+        window.dispatchEvent(new Event("authChanged"));
       }
-      toast.success("OTP verified! You can now create your new password without typing the current one.");
-      setHasPassword(false); // Reset hasPassword locally so they don't have to fill oldPassword
-      setShowOTPDialog(false);
-      setOtpCode("");
+
+      toast.success("Cover photo updated and saved to Cloud & Database!");
     } catch (err) {
-      toast.error(err.message || "Verification failed.");
+      console.error(err);
+      toast.error("Failed to upload cover photo. Please try again.");
     } finally {
-      setIsVerifyingOTP(false);
+      setIsUploadingCover(false);
     }
   };
 
+  // Avatar upload handler
   const handleAvatarFileChange = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -350,7 +368,6 @@ export default function ProfilePage() {
       const uploadedUrl = await uploadImageToCloudinary(file);
       setSettingsForm((prev) => ({ ...prev, avatar: uploadedUrl }));
       
-      // Auto-save to customer profile immediately via backend API
       if (customer && customer.email) {
         try {
           await fetch(`${API_URL}/auth/customer-update-profile`, {
@@ -378,6 +395,58 @@ export default function ProfilePage() {
       toast.error("Failed to upload image. Please try again.");
     } finally {
       setIsUploadingAvatar(false);
+    }
+  };
+
+  // Send OTP for Forgot Password inside Profile Settings
+  const handleSendForgotOTP = async () => {
+    if (!settingsForm.email) {
+      toast.error("Email is required to send OTP.");
+      return;
+    }
+    setIsSendingOTP(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: settingsForm.email }),
+      });
+      if (!response.ok) {
+        throw new Error("Failed to send OTP");
+      }
+      toast.success("OTP sent to your email!");
+      setShowOTPDialog(true);
+    } catch (err) {
+      toast.error(err.message || "Failed to send OTP.");
+    } finally {
+      setIsSendingOTP(false);
+    }
+  };
+
+  // Verify OTP for Forgot Password inside Profile Settings
+  const handleVerifyForgotOTP = async () => {
+    if (otpCode.length < 6) {
+      toast.error("Please enter a 6-digit OTP.");
+      return;
+    }
+    setIsVerifyingOTP(true);
+    try {
+      const response = await fetch(`${API_URL}/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: settingsForm.email, otp: otpCode }),
+      });
+      if (!response.ok) {
+        throw new Error("Invalid or expired OTP");
+      }
+      toast.success("OTP verified! You can now create your new password without typing the current one.");
+      setHasPassword(false);
+      setShowOTPDialog(false);
+      setOtpCode("");
+    } catch (err) {
+      toast.error(err.message || "Verification failed.");
+    } finally {
+      setIsVerifyingOTP(false);
     }
   };
 
@@ -425,7 +494,6 @@ export default function ProfilePage() {
       return;
     }
     
-    // Require double-check verification password validation
     if (settingsForm.password !== settingsForm.confirmPassword) {
       toast.error("New password and confirm password do not match.");
       return;
@@ -555,7 +623,7 @@ export default function ProfilePage() {
           name: item.product_name,
           price: item.unit_price,
           qty: item.quantity,
-          image: "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=600&auto=format&fit=crop", // placeholder
+          image: DEFAULT_COVER_PHOTO,
           selectedOptions: item.options ? JSON.parse(item.options) : null
         });
       });
@@ -581,232 +649,363 @@ export default function ProfilePage() {
     (customer && ["ADMIN", "MANAGER", "STAFF"].includes((customer.role || "").toUpperCase()))
   );
 
+  const getMemberTier = () => {
+    if (orders.length >= 30) {
+      return { label: "VIP Member", icon: Flame, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/15 border-red-500/30" };
+    }
+    if (orders.length >= 15) {
+      return { label: "Gold Member", icon: Crown, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15 border-amber-500/30" };
+    }
+    if (orders.length >= 5) {
+      return { label: "Silver Member", icon: Star, color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-500/15 border-slate-500/30" };
+    }
+    return { label: "Member", icon: User, color: "text-primary", bg: "bg-primary/10 border-primary/20" };
+  };
+
+  const memberTier = getMemberTier();
+  const TierIcon = memberTier.icon;
+
+  const tabsConfig = [
+    { id: "OVERVIEW", label: "Overview", icon: LayoutDashboard },
+    { id: "ORDERS", label: "Orders", icon: ShoppingBag, count: orders.length },
+    { id: "COUPONS", label: "Coupons", icon: Ticket, count: coupons.length },
+    { id: "FAVORITES", label: "Favorites", icon: Heart, count: favorites.length },
+    { id: "ADDRESSES", label: "Addresses", icon: MapPin, count: addresses.length },
+    { id: "SETTINGS", label: "Settings", icon: Settings },
+  ];
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Navbar />
-      <main className="flex-1 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:pt-28 lg:pt-32 pb-[calc(5rem+env(safe-area-inset-bottom))] sm:pb-16">
+      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-18 lg:pt-20 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-14">
         <PageTransition>
-          <div className={cn(
-            "mx-auto px-4 sm:px-6 lg:px-8 transition-all",
-            activeTab === "MENU" ? "max-w-5xl" : "max-w-4xl"
-          )}>
-            {activeTab === "MENU" ? (
-              /* Profile Hub Menu View */
-              <div className="space-y-6">
-                {/* 1. VIP Profile Hero Header Card (Responsive: 2-column on desktop, centered on mobile) */}
-                <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-card via-card/95 to-secondary/40 border border-border/70 p-6 sm:p-8 shadow-warm-lg">
-                  {/* Decorative ambient glows */}
-                  <div className="absolute -top-12 -right-12 size-48 rounded-full bg-primary/10 blur-3xl pointer-events-none" />
-                  <div className="absolute -bottom-12 -left-12 size-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+            
+            {/* ========================================================================= */}
+            {/* 1. FACEBOOK-STYLE PROFILE HEADER CARD (COVER + AVATAR + STATS + NAV TABS) */}
+            {/* ========================================================================= */}
+            <div className="bg-card border border-border/70 rounded-[28px] overflow-hidden shadow-warm-lg transition-all duration-300">
+              
+              {/* LARGE PIZZA COVER PHOTO */}
+              <div className="relative w-full h-44 sm:h-64 md:h-76 lg:h-80 bg-muted overflow-hidden group">
+                <img 
+                  src={coverPhoto} 
+                  alt="Profile Cover" 
+                  className="w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-700 ease-out" 
+                />
+                
+                {/* Dark/Light Gradient Overlay for Depth and Contrast */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10 pointer-events-none" />
 
-                  <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-                    {/* User Avatar & Info */}
-                    <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
-                      {/* Avatar with Ring */}
-                      <div className="relative size-24 sm:size-28 shrink-0 group">
-                        <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background/80 shadow-md">
-                          <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
-                            {customer.avatar ? (
-                              <img src={customer.avatar} alt="Profile" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                            ) : (
-                              <User className="size-12 text-primary" />
-                            )}
-                            {isUploadingAvatar && (
-                              <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
-                                <Loader2 className="size-5 animate-spin text-primary" />
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <label
-                          className="absolute bottom-0 right-0 size-8 rounded-full bg-primary text-white flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                          title="Change Photo"
-                        >
-                          <Camera className="size-4" />
-                          <input 
-                            type="file" 
-                            accept="image/*" 
-                            className="hidden" 
-                            onChange={handleAvatarFileChange} 
-                            disabled={isUploadingAvatar}
-                          />
-                        </label>
-                      </div>
+                {/* Floating "Edit Cover Photo" Pill Button */}
+                <label 
+                  className="absolute bottom-3 right-3 sm:bottom-5 sm:right-6 inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold backdrop-blur-md bg-white/90 dark:bg-black/70 text-foreground dark:text-white border border-white/40 dark:border-white/15 shadow-md hover:bg-white dark:hover:bg-black/90 hover:scale-105 active:scale-95 transition-all cursor-pointer z-10"
+                  title="Change Cover Photo"
+                >
+                  {isUploadingCover ? (
+                    <Loader2 className="size-3.5 sm:size-4 animate-spin text-primary" />
+                  ) : (
+                    <Camera className="size-3.5 sm:size-4" />
+                  )}
+                  <span className="hidden sm:inline">{isUploadingCover ? "Uploading Cover..." : "Edit Cover Photo"}</span>
+                  <span className="sm:hidden">{isUploadingCover ? "..." : "Edit Cover"}</span>
+                  <input 
+                    type="file" 
+                    accept="image/*" 
+                    className="hidden" 
+                    onChange={handleCoverFileChange} 
+                    disabled={isUploadingCover}
+                  />
+                </label>
+              </div>
 
-                      {/* Name, Phone, Badges */}
-                      <div className="space-y-1.5">
-                        <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                          <h2 className="font-serif text-2xl sm:text-3xl font-bold text-foreground tracking-tight">
-                            {customer.name || "Flame Foodie"}
-                          </h2>
-                          <span className="inline-flex items-center text-amber-500" title="Flame VIP Member">
-                            <Sparkles className="size-5 fill-amber-500" />
-                          </span>
-                        </div>
-                        <p className="text-muted-foreground text-xs sm:text-sm font-medium">
-                          {customer.phone || customer.email}
-                        </p>
-
-                        <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-secondary text-foreground/85 border border-border/60 shadow-2xs">
-                            {orders.length >= 30 ? (
-                              <>
-                                <Flame className="size-3.5 fill-red-500 text-red-500" />
-                                <span className="text-red-600 dark:text-red-400 font-bold">VIP Member</span>
-                              </>
-                            ) : orders.length >= 15 ? (
-                              <>
-                                <Sparkles className="size-3.5 fill-amber-500 text-amber-500" />
-                                <span className="text-amber-600 dark:text-amber-400 font-bold">Gold Member</span>
-                              </>
-                            ) : orders.length >= 5 ? (
-                              <>
-                                <Star className="size-3.5 fill-slate-400 text-slate-400" />
-                                <span className="font-semibold">Silver Member</span>
-                              </>
-                            ) : (
-                              <>
-                                <User className="size-3.5 text-primary" />
-                                <span className="font-medium text-foreground/80">Member</span>
-                              </>
-                            )}
-                          </span>
-                          {customer.phone && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                              <Check className="size-3" /> Verified
-                            </span>
+              {/* PROFILE AVATAR, USER INFO & STATISTICS ROW */}
+              <div className="px-5 sm:px-8 pb-5 pt-0">
+                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                  
+                  {/* Left: Overlapping Avatar + Name, Phone, Badges */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 text-center sm:text-left">
+                    
+                    {/* Overlapping Circular Avatar */}
+                    <div className="-mt-14 sm:-mt-20 md:-mt-24 relative shrink-0 z-20 group">
+                      <div className="size-28 sm:size-36 md:size-40 rounded-full p-1 sm:p-1.5 bg-background shadow-2xl ring-4 ring-background">
+                        <div className="size-full rounded-full overflow-hidden bg-primary/10 relative flex items-center justify-center border border-border/40">
+                          {customer.avatar ? (
+                            <img 
+                              src={customer.avatar} 
+                              alt="Profile Avatar" 
+                              className="w-full h-full object-cover" 
+                              referrerPolicy="no-referrer" 
+                            />
+                          ) : (
+                            <User className="size-12 sm:size-16 text-primary" />
                           )}
-                          {isAdmin && (
-                            <button
-                              type="button"
-                              onClick={() => navigate("/admin/dashboard")}
-                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer shadow-2xs"
-                            >
-                              <ShieldCheck className="size-3.5" />
-                              Admin Panel →
-                            </button>
+                          {isUploadingAvatar && (
+                            <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center text-white backdrop-blur-xs">
+                              <Loader2 className="size-6 animate-spin text-primary" />
+                              <span className="text-[10px] mt-1 font-semibold">Updating...</span>
+                            </div>
                           )}
                         </div>
                       </div>
+
+                      {/* Camera Button on Avatar */}
+                      <label 
+                        className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 size-8 sm:size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                        title="Change Profile Avatar"
+                      >
+                        <Camera className="size-3.5 sm:size-4" />
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={handleAvatarFileChange} 
+                          disabled={isUploadingAvatar}
+                        />
+                      </label>
                     </div>
 
-                    {/* 4 Interactive Quick Stat Tiles (Grid on desktop) */}
-                    <div className="grid grid-cols-4 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 w-full sm:w-auto pt-4 sm:pt-0 border-t sm:border-t-0 sm:border-l border-border/60 sm:pl-6">
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("ORDERS")}
-                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-primary/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
-                      >
-                        <span className="font-serif text-xl font-bold text-foreground group-hover/stat:text-primary transition-colors">
-                          {orders.length}
+                    {/* Profile Information: Name, Phone, Badges */}
+                    <div className="space-y-1.5 sm:pb-1">
+                      <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
+                        <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
+                          {customer.name || "Flame Foodie"}
+                        </h1>
+                        <span className="inline-flex items-center text-amber-500" title="Flame VIP Member">
+                          <Sparkles className="size-5 fill-amber-500" />
                         </span>
-                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Orders</span>
-                      </button>
+                      </div>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("COUPONS")}
-                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-emerald-500/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
-                      >
-                        <span className="font-serif text-xl font-bold text-emerald-600 dark:text-emerald-400 group-hover/stat:text-emerald-500 transition-colors">
-                          {coupons.length}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Coupons</span>
-                      </button>
+                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">
+                        {customer.phone || customer.email}
+                      </p>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("FAVORITES")}
-                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-rose-500/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
-                      >
-                        <span className="font-serif text-xl font-bold text-rose-500 group-hover/stat:text-rose-600 transition-colors">
-                          {favorites.length}
+                      {/* Badges: Member Tier + Verified + Admin */}
+                      <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
+                        {/* Member Tier Badge */}
+                        <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs", memberTier.bg, memberTier.color)}>
+                          <TierIcon className="size-3.5" />
+                          <span>{memberTier.label}</span>
                         </span>
-                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Favorites</span>
-                      </button>
 
-                      <button
-                        type="button"
-                        onClick={() => setActiveTab("ADDRESSES")}
-                        className="flex flex-col items-center p-3 rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/40 hover:border-sky-500/40 transition-all cursor-pointer group/stat active:scale-95 min-w-[70px]"
-                      >
-                        <span className="font-serif text-xl font-bold text-sky-500 group-hover/stat:text-sky-600 transition-colors">
-                          {addresses.length}
+                        {/* Verified Badge */}
+                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-2xs">
+                          <Check className="size-3.5" /> Verified
                         </span>
-                        <span className="text-[11px] text-muted-foreground font-medium mt-0.5">Saved</span>
-                      </button>
+
+                        {/* Admin Badge */}
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            onClick={() => navigate("/admin/dashboard")}
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer shadow-2xs"
+                          >
+                            <ShieldCheck className="size-3.5" />
+                            Admin Panel →
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* Right: Profile Statistics (Horizontal on Desktop, 2x2 on Mobile) */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 w-full lg:w-auto lg:shrink-0 pt-2 lg:pt-0 sm:pb-1">
+                    
+                    {/* Stat: Orders */}
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("ORDERS")}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
+                        activeTab === "ORDERS" 
+                          ? "bg-primary/10 border-primary/50 text-primary shadow-warm" 
+                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-primary/40 text-foreground"
+                      )}
+                    >
+                      <span className="font-serif text-xl sm:text-2xl font-bold">
+                        {orders.length}
+                      </span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Orders</span>
+                    </button>
+
+                    {/* Stat: Coupons */}
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("COUPONS")}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
+                        activeTab === "COUPONS" 
+                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 shadow-warm" 
+                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-emerald-500/40 text-foreground"
+                      )}
+                    >
+                      <span className="font-serif text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
+                        {coupons.length}
+                      </span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Coupons</span>
+                    </button>
+
+                    {/* Stat: Favorites */}
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("FAVORITES")}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
+                        activeTab === "FAVORITES" 
+                          ? "bg-rose-500/15 border-rose-500/50 text-rose-500 shadow-warm" 
+                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-rose-500/40 text-foreground"
+                      )}
+                    >
+                      <span className="font-serif text-xl sm:text-2xl font-bold text-rose-500">
+                        {favorites.length}
+                      </span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Favorites</span>
+                    </button>
+
+                    {/* Stat: Saved Addresses */}
+                    <button
+                      type="button"
+                      onClick={() => handleTabChange("ADDRESSES")}
+                      className={cn(
+                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
+                        activeTab === "ADDRESSES" 
+                          ? "bg-sky-500/15 border-sky-500/50 text-sky-500 shadow-warm" 
+                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-sky-500/40 text-foreground"
+                      )}
+                    >
+                      <span className="font-serif text-xl sm:text-2xl font-bold text-sky-500">
+                        {addresses.length}
+                      </span>
+                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Saved</span>
+                    </button>
+                  </div>
                 </div>
+              </div>
 
-                {/* 2. Curated Menu Groups in a Beautiful 2-Column Grid on Laptop */}
-                <div className="grid sm:grid-cols-2 gap-4 lg:gap-6">
-                  {/* COLUMN 1: Activities & Orders */}
-                  <div className="rounded-3xl bg-card border border-border/70 p-3 sm:p-4 shadow-warm space-y-1.5 h-fit">
-                    <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Activities &amp; Orders
-                    </p>
+              {/* FACEBOOK-STYLE PROFILE NAVIGATION TABS */}
+              <div className="border-t border-border/70 px-4 sm:px-8 bg-card/70 backdrop-blur-xs flex items-center justify-between overflow-hidden">
+                <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1.5 w-full">
+                  {tabsConfig.map((tab) => {
+                    const Icon = tab.icon;
+                    const isActive = activeTab === tab.id;
 
+                    return (
+                      <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => handleTabChange(tab.id)}
+                        className={cn(
+                          "relative px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer shrink-0",
+                          isActive
+                            ? "text-primary bg-primary/10 dark:bg-primary/15"
+                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                        )}
+                      >
+                        <Icon className={cn("size-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                        <span>{tab.label}</span>
+                        {typeof tab.count === "number" && tab.count > 0 && (
+                          <span className={cn(
+                            "px-1.5 py-0.2 rounded-full text-[10px] font-bold leading-tight",
+                            isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
+                          )}>
+                            {tab.count}
+                          </span>
+                        )}
+                        {/* Active Indicator Bar */}
+                        {isActive && (
+                          <motion.div 
+                            layoutId="activeProfileTabIndicator" 
+                            className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" 
+                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                          />
+                        )}
+                      </button>
+                    );
+                  })}
+                </nav>
+              </div>
+            </div>
+
+            {/* ========================================================================= */}
+            {/* 2. PROFILE CONTENT SECTION (RESPONSIVE 2-COLUMN GRID IN OVERVIEW) */}
+            {/* ========================================================================= */}
+            
+            {activeTab === "OVERVIEW" ? (
+              /* OVERVIEW HUB: 2-COLUMN BALANCED GRID (55% / 45%) */
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start animate-fade-in">
+                
+                {/* COLUMN 1: Activities & Orders (~58% on Desktop) */}
+                <div className="lg:col-span-7 space-y-4">
+                  <div className="rounded-[24px] bg-card border border-border/70 p-4 sm:p-5 shadow-warm space-y-2">
+                    <div className="flex items-center justify-between px-2 pt-1 pb-1">
+                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <ShoppingBag className="size-3.5 text-primary" /> Activities &amp; Orders
+                      </p>
+                    </div>
+
+                    {/* Order History Item */}
                     <button 
                       type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
-                      onClick={() => setActiveTab("ORDERS")}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleTabChange("ORDERS")}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="size-11 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                           <ShoppingBag className="size-5" />
                         </div>
                         <div className="text-left min-w-0">
                           <span className="font-semibold text-foreground text-sm block truncate">Order History</span>
-                          <span className="text-xs text-muted-foreground">Track and re-order meals</span>
+                          <span className="text-xs text-muted-foreground">Track and re-order previous meals</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {orders.length > 0 && (
                           <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                            {orders.length}
+                            {orders.length} orders
                           </span>
                         )}
-                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </button>
 
+                    {/* My Coupons Item */}
                     <button 
                       type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
-                      onClick={() => setActiveTab("COUPONS")}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleTabChange("COUPONS")}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="size-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                           <Ticket className="size-5" />
                         </div>
                         <div className="text-left min-w-0">
                           <span className="font-semibold text-foreground text-sm block truncate">My Coupons &amp; Rewards</span>
-                          <span className="text-xs text-muted-foreground">Save on your pizza orders</span>
+                          <span className="text-xs text-muted-foreground">Discounts and promotions ready to use</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         {coupons.length > 0 && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
                             {coupons.length} Available
                           </span>
                         )}
-                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </button>
 
+                    {/* Favorite Pizzas Item */}
                     <button 
                       type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
-                      onClick={() => setActiveTab("FAVORITES")}
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleTabChange("FAVORITES")}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs">
+                        <div className="size-11 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
                           <Heart className="size-5" />
                         </div>
                         <div className="text-left min-w-0">
                           <span className="font-semibold text-foreground text-sm block truncate">Favorite Pizzas</span>
-                          <span className="text-xs text-muted-foreground">Your most loved dishes</span>
+                          <span className="text-xs text-muted-foreground">Your most loved dishes &amp; sides</span>
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
@@ -815,165 +1014,159 @@ export default function ProfilePage() {
                             {favorites.length}
                           </span>
                         )}
-                        <ChevronRight className="size-4 text-muted-foreground/60" />
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* COLUMN 2: Account & Details + Preferences (~42% on Desktop) */}
+                <div className="lg:col-span-5 space-y-4">
+                  
+                  {/* Account & Details Card */}
+                  <div className="rounded-[24px] bg-card border border-border/70 p-4 sm:p-5 shadow-warm space-y-2">
+                    <p className="px-2 pt-1 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <User className="size-3.5 text-primary" /> Account &amp; Details
+                    </p>
+
+                    {/* Profile Settings */}
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleTabChange("SETTINGS")}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Settings className="size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-sm block truncate">Profile Settings</span>
+                          <span className="text-xs text-muted-foreground">Name, phone, avatar &amp; password</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                    </button>
+
+                    {/* Saved Addresses */}
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleTabChange("ADDRESSES")}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <MapPin className="size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-sm block truncate">Saved Addresses</span>
+                          <span className="text-xs text-muted-foreground">Delivery drop-off locations</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {addresses.length > 0 && (
+                          <span className="text-xs font-medium text-muted-foreground">
+                            {addresses.length} saved
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
                       </div>
                     </button>
                   </div>
 
-                  {/* COLUMN 2: Account & Details + Preferences */}
-                  <div className="space-y-4">
-                    {/* GROUP 2: Account & Settings */}
-                    <div className="rounded-3xl bg-card border border-border/70 p-3 sm:p-4 shadow-warm space-y-1.5">
-                      <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Account &amp; Details
-                      </p>
+                  {/* Preferences Card */}
+                  <div className="rounded-[24px] bg-card border border-border/70 p-4 sm:p-5 shadow-warm space-y-2">
+                    <p className="px-2 pt-1 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <Sparkles className="size-3.5 text-primary" /> Preferences
+                    </p>
 
-                      <button 
-                        type="button"
-                        className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
-                        onClick={() => setActiveTab("SETTINGS")}
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="size-11 rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs">
-                            <Settings className="size-5" />
-                          </div>
-                          <div className="text-left min-w-0">
-                            <span className="font-semibold text-foreground text-sm block truncate">Profile Settings</span>
-                            <span className="text-xs text-muted-foreground">Name, phone, avatar &amp; password</span>
-                          </div>
+                    {/* Appearance Theme Switcher */}
+                    <div className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm">
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                          {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
                         </div>
-                        <ChevronRight className="size-4 text-muted-foreground/60 shrink-0" />
-                      </button>
-
-                      <button 
-                        type="button"
-                        className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60"
-                        onClick={() => setActiveTab("ADDRESSES")}
-                      >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="size-11 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs">
-                            <MapPin className="size-5" />
-                          </div>
-                          <div className="text-left min-w-0">
-                            <span className="font-semibold text-foreground text-sm block truncate">Saved Addresses</span>
-                            <span className="text-xs text-muted-foreground">Delivery drop-off locations</span>
-                          </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-sm block">Appearance</span>
+                          <span className="text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
                         </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {addresses.length > 0 && (
-                            <span className="text-xs font-medium text-muted-foreground">
-                              {addresses.length} saved
-                            </span>
-                          )}
-                          <ChevronRight className="size-4 text-muted-foreground/60" />
-                        </div>
-                      </button>
-                    </div>
-
-                    {/* GROUP 3: Preferences & Actions */}
-                    <div className="rounded-3xl bg-card border border-border/70 p-3 sm:p-4 shadow-warm space-y-1.5">
-                      <p className="px-3 pt-1 pb-1 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Preferences
-                      </p>
-
-                      {/* Theme Switcher */}
-                      <div className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm">
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="size-11 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
-                            {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
-                          </div>
-                          <div className="text-left min-w-0">
-                            <span className="font-semibold text-foreground text-sm block">Appearance</span>
-                            <span className="text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                          className="h-8 px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
-                        >
-                          {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
-                          <span>{theme === "dark" ? "Dark" : "Light"}</span>
-                        </button>
                       </div>
-
-                      {/* Sign Out */}
-                      <button 
+                      <button
                         type="button"
-                        className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20"
-                        onClick={handleLogout}
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                        className="h-8 px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
                       >
-                        <div className="flex items-center gap-3.5 min-w-0">
-                          <div className="size-11 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs">
-                            <LogOut className="size-5" />
-                          </div>
-                          <div className="text-left min-w-0">
-                            <span className="font-semibold text-destructive text-sm block">Sign Out</span>
-                            <span className="text-xs text-destructive/70">Log out from this device</span>
-                          </div>
-                        </div>
-                        <ChevronRight className="size-4 text-destructive/40 shrink-0" />
+                        {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
+                        <span>{theme === "dark" ? "Dark" : "Light"}</span>
                       </button>
                     </div>
+
+                    {/* Sign Out Button */}
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20 group"
+                      onClick={handleLogout}
+                    >
+                      <div className="flex items-center gap-3.5 min-w-0">
+                        <div className="size-11 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <LogOut className="size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-destructive text-sm block">Sign Out</span>
+                          <span className="text-xs text-destructive/70">Log out from this device</span>
+                        </div>
+                      </div>
+                      <ChevronRight className="size-4 text-destructive/40 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                    </button>
                   </div>
                 </div>
               </div>
             ) : (
-              /* Detail Sub-page View (when clicked from Menu Hub) */
-              <div className="space-y-6">
-                <div className="mb-4">
+              /* SUB-PAGE TAB VIEWS (ORDERS, COUPONS, FAVORITES, ADDRESSES, SETTINGS) */
+              <div className="space-y-6 animate-fade-in">
+                
+                {/* Back to Overview Breadcrumb */}
+                <div className="flex items-center justify-between">
                   <button 
                     type="button"
-                    onClick={() => { navigate("/profile"); setActiveTab("MENU"); }} 
+                    onClick={() => handleTabChange("OVERVIEW")} 
                     className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/80 hover:bg-secondary border border-border/60 text-sm font-semibold text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs"
                   >
                     <ArrowLeft className="size-4" />
-                    Back to Profile
+                    Back to Overview
                   </button>
                 </div>
 
+                {/* ---------------- SETTINGS TAB ---------------- */}
                 {activeTab === "SETTINGS" && (
-                  <>
-                    <div className="mb-6">
-                      <h3 className="font-serif text-3xl font-bold text-foreground">Profile Settings</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="font-serif text-3xl font-bold text-foreground">Profile Settings</h2>
                       <p className="text-sm text-muted-foreground mt-1">Manage your account credentials, avatar, and personal details</p>
                     </div>
 
-                    <div className="space-y-6">
-                      {/* Card 1: Profile Information */}
-                      <div className="bg-card border border-border/70 rounded-3xl p-6 sm:p-8 shadow-warm">
-                        <form onSubmit={handleUpdateProfile} className="space-y-6">
-                          {/* Sleek Single Circular Avatar Upload */}
-                          <div className="flex flex-col items-center justify-center text-center pb-6 border-b border-border/60">
-                            <div className="relative size-28 sm:size-32 group mb-3">
-                              <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background shadow-lg overflow-hidden">
-                                <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
-                                  {settingsForm.avatar ? (
-                                    <img src={settingsForm.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                                  ) : (
-                                    <User className="size-14 text-primary" />
-                                  )}
-                                  {isUploadingAvatar && (
-                                    <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
-                                      <Loader2 className="size-6 animate-spin text-primary" />
-                                      <span className="text-[10px] mt-1 font-semibold">Uploading...</span>
-                                    </div>
-                                  )}
-                                </div>
+                    {/* Card 1: Profile Information */}
+                    <div className="bg-card border border-border/70 rounded-[24px] p-6 sm:p-8 shadow-warm">
+                      <form onSubmit={handleUpdateProfile} className="space-y-6">
+                        {/* Circular Avatar Upload */}
+                        <div className="flex flex-col items-center justify-center text-center pb-6 border-b border-border/60">
+                          <div className="relative size-28 sm:size-32 group mb-3">
+                            <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background shadow-lg overflow-hidden">
+                              <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
+                                {settingsForm.avatar ? (
+                                  <img src={settingsForm.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="size-14 text-primary" />
+                                )}
+                                {isUploadingAvatar && (
+                                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                                    <Loader2 className="size-6 animate-spin text-primary" />
+                                    <span className="text-[10px] mt-1 font-semibold">Uploading...</span>
+                                  </div>
+                                )}
                               </div>
-                              <label className="absolute bottom-0 right-0 size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                                <Camera className="size-4.5" />
-                                <input 
-                                  type="file" 
-                                  accept="image/*" 
-                                  className="hidden" 
-                                  onChange={handleAvatarFileChange} 
-                                  disabled={isUploadingAvatar}
-                                />
-                              </label>
                             </div>
-                            <label className="text-xs font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-                              <Camera className="size-3.5" /> Tap to change profile photo
+                            <label className="absolute bottom-0 right-0 size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                              <Camera className="size-4.5" />
                               <input 
                                 type="file" 
                                 accept="image/*" 
@@ -983,325 +1176,297 @@ export default function ProfilePage() {
                               />
                             </label>
                           </div>
+                          <label className="text-xs font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                            <Camera className="size-3.5" /> Tap to change profile photo
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={handleAvatarFileChange} 
+                              disabled={isUploadingAvatar}
+                            />
+                          </label>
+                        </div>
 
-                          <div className="grid sm:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <User className="size-4 text-primary" /> Full Name
-                              </label>
-                              <Input 
-                                required 
-                                value={settingsForm.name} 
-                                onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
-                                className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <Phone className="size-4 text-primary" /> Phone Number
-                              </label>
-                              <Input 
-                                required 
-                                value={settingsForm.phone} 
-                                onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
-                                className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
-                              />
-                            </div>
-                            <div className="space-y-2 sm:col-span-2">
-                              <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                                <Mail className="size-4 text-primary" /> Email Address <span className="text-xs text-muted-foreground font-normal">(Locked)</span>
-                              </label>
-                              <Input 
-                                type="email" 
-                                value={settingsForm.email} 
-                                readOnly
-                                disabled
-                                autoComplete="off"
-                                className="rounded-xl border-border/60 bg-secondary/80 h-12 cursor-not-allowed opacity-80 text-sm" 
-                              />
-                            </div>
+                        <div className="grid sm:grid-cols-2 gap-6">
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <User className="size-4 text-primary" /> Full Name
+                            </label>
+                            <Input 
+                              required 
+                              value={settingsForm.name} 
+                              onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
+                              className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
+                            />
                           </div>
-
-                          <div className="flex justify-end pt-2">
-                            <Button 
-                              type="submit" 
-                              size="lg" 
-                              className="rounded-full px-8 font-semibold shadow-warm hover:shadow-warm-lg"
-                              disabled={isUpdatingSettings}
-                            >
-                              {isUpdatingSettings ? "Saving..." : "Save Profile Info"}
-                            </Button>
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <Phone className="size-4 text-primary" /> Phone Number
+                            </label>
+                            <Input 
+                              required 
+                              value={settingsForm.phone} 
+                              onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
+                              className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
+                            />
                           </div>
-                        </form>
-                      </div>
+                          <div className="space-y-2 sm:col-span-2">
+                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                              <Mail className="size-4 text-primary" /> Email Address <span className="text-xs text-muted-foreground font-normal">(Locked)</span>
+                            </label>
+                            <Input 
+                              type="email" 
+                              value={settingsForm.email} 
+                              readOnly
+                              disabled
+                              autoComplete="off"
+                              className="rounded-xl border-border/60 bg-secondary/80 h-12 cursor-not-allowed opacity-80 text-sm" 
+                            />
+                          </div>
+                        </div>
 
-                      {/* Card 2: Security & Password Update */}
-                      <div className="bg-card border border-border/60 rounded-3xl p-6 sm:p-8">
-                        <h4 className="font-serif text-2xl font-bold text-foreground mb-2">Security</h4>
-                        <p className="text-sm text-muted-foreground mb-6">
-                          Update your login password. Leaving these fields blank keeps your current password unchanged.
-                        </p>
-                        <form onSubmit={handleUpdateSecurity} className="space-y-6" autoComplete="off">
-                          <div className="space-y-4 max-w-md animate-fade-in">
-                            {hasPassword && (
-                              <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                    <Lock className="size-4" /> Current Password
-                                  </label>
-                                  <button
-                                    type="button"
-                                    onClick={handleSendForgotOTP}
-                                    disabled={isSendingOTP}
-                                    className="text-xs font-semibold text-primary hover:underline"
-                                  >
-                                    {isSendingOTP ? "Sending OTP..." : "Forgot Password?"}
-                                  </button>
-                                </div>
-                                <div className="relative">
-                                  <Input 
-                                    type={showOldPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    autoComplete="new-password"
-                                    value={settingsForm.oldPassword} 
-                                    onChange={e => setSettingsForm(prev => ({...prev, oldPassword: e.target.value}))} 
-                                    className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowOldPassword(!showOldPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                  >
-                                    {showOldPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                                  </button>
-                                </div>
+                        <div className="flex justify-end pt-2">
+                          <Button 
+                            type="submit" 
+                            size="lg" 
+                            className="rounded-full px-8 font-semibold shadow-warm hover:shadow-warm-lg"
+                            disabled={isUpdatingSettings}
+                          >
+                            {isUpdatingSettings ? "Saving..." : "Save Profile Info"}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+
+                    {/* Card 2: Security & Password Update */}
+                    <div className="bg-card border border-border/70 rounded-[24px] p-6 sm:p-8 shadow-warm">
+                      <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Security</h3>
+                      <p className="text-sm text-muted-foreground mb-6">
+                        Update your login password. Leaving these fields blank keeps your current password unchanged.
+                      </p>
+                      <form onSubmit={handleUpdateSecurity} className="space-y-6" autoComplete="off">
+                        <div className="space-y-4 max-w-md animate-fade-in">
+                          {hasPassword && (
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                  <Lock className="size-4" /> Current Password
+                                </label>
+                                <button
+                                  type="button"
+                                  onClick={handleSendForgotOTP}
+                                  disabled={isSendingOTP}
+                                  className="text-xs font-semibold text-primary hover:underline cursor-pointer"
+                                >
+                                  {isSendingOTP ? "Sending OTP..." : "Forgot Password?"}
+                                </button>
                               </div>
-                            )}
-
-                            <div className="space-y-2">
-                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                <Lock className="size-4" /> {hasPassword ? "New Password" : "Create Password"}
-                              </label>
                               <div className="relative">
                                 <Input 
-                                  type={showNewPassword ? "text" : "password"}
+                                  type={showOldPassword ? "text" : "password"}
                                   placeholder="••••••••"
                                   autoComplete="new-password"
-                                  value={settingsForm.password} 
-                                  onChange={e => setSettingsForm(prev => ({...prev, password: e.target.value}))} 
+                                  value={settingsForm.oldPassword} 
+                                  onChange={e => setSettingsForm(prev => ({...prev, oldPassword: e.target.value}))} 
                                   className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setShowNewPassword(!showNewPassword)}
+                                  onClick={() => setShowOldPassword(!showOldPassword)}
                                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                                 >
-                                  {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                  {showOldPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                                 </button>
                               </div>
+                            </div>
+                          )}
 
-                              {settingsForm.password && (
-                                <div className="p-3 bg-secondary/40 rounded-xl space-y-1.5 mt-2 text-xs border border-border/40">
-                                  <p className="font-semibold text-muted-foreground">Password requirements:</p>
-                                  <div className="grid grid-cols-2 gap-1.5">
-                                    <div className="flex items-center gap-1">
-                                      {settingsForm.password.length >= 8 ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
-                                      <span className={settingsForm.password.length >= 8 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>8+ characters</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      {/[A-Z]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
-                                      <span className={/[A-Z]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>Uppercase letter</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      {/[a-z]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
-                                      <span className={/[a-z]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>Lowercase letter</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      {/[0-9]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
-                                      <span className={/[0-9]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>At least one number</span>
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                          <div className="space-y-2">
+                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                              <Lock className="size-4" /> {hasPassword ? "New Password" : "Create Password"}
+                            </label>
+                            <div className="relative">
+                              <Input 
+                                type={showNewPassword ? "text" : "password"}
+                                placeholder="••••••••"
+                                autoComplete="new-password"
+                                value={settingsForm.password} 
+                                onChange={e => setSettingsForm(prev => ({...prev, password: e.target.value}))} 
+                                className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowNewPassword(!showNewPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              >
+                                {showNewPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                              </button>
                             </div>
 
                             {settingsForm.password && (
-                              <div className="space-y-2 animate-card-fade-in">
-                                <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                  <Lock className="size-4" /> Confirm New Password
-                                </label>
-                                <div className="relative">
-                                  <Input 
-                                    type={showConfirmPassword ? "text" : "password"}
-                                    placeholder="••••••••"
-                                    autoComplete="new-password"
-                                    value={settingsForm.confirmPassword} 
-                                    onChange={e => setSettingsForm(prev => ({...prev, confirmPassword: e.target.value}))} 
-                                    className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
-                                  />
-                                  <button
-                                    type="button"
-                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                                  >
-                                    {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
-                                  </button>
+                              <div className="p-3 bg-secondary/40 rounded-xl space-y-1.5 mt-2 text-xs border border-border/40">
+                                <p className="font-semibold text-muted-foreground">Password requirements:</p>
+                                <div className="grid grid-cols-2 gap-1.5">
+                                  <div className="flex items-center gap-1">
+                                    {settingsForm.password.length >= 8 ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                    <span className={settingsForm.password.length >= 8 ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>8+ characters</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {/[A-Z]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                    <span className={/[A-Z]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>Uppercase letter</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {/[a-z]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                    <span className={/[a-z]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>Lowercase letter</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    {/[0-9]/.test(settingsForm.password) ? <Check className="size-3.5 text-green-500" /> : <X className="size-3.5 text-red-400" />}
+                                    <span className={/[0-9]/.test(settingsForm.password) ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}>At least one number</span>
+                                  </div>
                                 </div>
                               </div>
                             )}
                           </div>
-                          <div className="flex justify-end pt-4">
-                            <Button 
-                              type="submit" 
-                              size="lg" 
-                              className="rounded-full px-8"
-                              disabled={isUpdatingSettings || (settingsForm.password && (settingsForm.password !== settingsForm.confirmPassword || settingsForm.password.length < 8))}
-                            >
-                              {isUpdatingSettings ? "Saving..." : "Update Password"}
-                            </Button>
-                          </div>
-                        </form>
-                      </div>
+
+                          {settingsForm.password && (
+                            <div className="space-y-2 animate-card-fade-in">
+                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
+                                <Lock className="size-4" /> Confirm New Password
+                              </label>
+                              <div className="relative">
+                                <Input 
+                                  type={showConfirmPassword ? "text" : "password"}
+                                  placeholder="••••••••"
+                                  autoComplete="new-password"
+                                  value={settingsForm.confirmPassword} 
+                                  onChange={e => setSettingsForm(prev => ({...prev, confirmPassword: e.target.value}))} 
+                                  className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                >
+                                  {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex justify-end pt-4">
+                          <Button 
+                            type="submit" 
+                            size="lg" 
+                            className="rounded-full px-8"
+                            disabled={isUpdatingSettings || (settingsForm.password && (settingsForm.password !== settingsForm.confirmPassword || settingsForm.password.length < 8))}
+                          >
+                            {isUpdatingSettings ? "Saving..." : "Update Password"}
+                          </Button>
+                        </div>
+                      </form>
+                    </div>
+                  </div>
+                )}
+
+                {/* ---------------- ORDERS TAB ---------------- */}
+                {activeTab === "ORDERS" && (
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="font-serif text-3xl font-bold text-foreground">Recent Orders</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Track current deliveries and view your order receipt history</p>
                     </div>
 
-                    {/* Reset Password via OTP Dialog Overlay */}
-                    <Dialog open={showOTPDialog} onOpenChange={setShowOTPDialog}>
-                      <DialogContent className="sm:max-w-md rounded-3xl border border-border/60 bg-card p-6 shadow-warm-lg">
-                        <DialogHeader>
-                          <DialogTitle className="font-serif text-2xl font-bold">Bypass Password via OTP</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4 py-4">
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            We have sent a 6-digit OTP code to your email <strong>{settingsForm.email}</strong>. Enter it below to authorize setting a new password.
-                          </p>
-                          <div className="space-y-2">
-                            <Input 
-                              type="text"
-                              placeholder="000000"
-                              maxLength={6}
-                              value={otpCode}
-                              onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                              className="rounded-xl border-border/60 bg-background/50 h-14 text-center font-mono tracking-[0.5em] text-2xl"
-                            />
-                          </div>
-                          <div className="flex gap-3 justify-end pt-2">
-                            <Button
-                              type="button"
-                              variant="outline"
-                              onClick={() => setShowOTPDialog(false)}
-                              className="rounded-full px-5"
-                            >
-                              Cancel
-                            </Button>
-                            <Button
-                              type="button"
-                              onClick={handleVerifyForgotOTP}
-                              disabled={isVerifyingOTP}
-                              className="rounded-full px-6"
-                            >
-                              {isVerifyingOTP ? "Verifying..." : "Verify OTP"}
-                            </Button>
-                          </div>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </>
-                )}
-
-                {activeTab === "ORDERS" && (
-                  <>
-                    <h3 className="font-serif text-3xl font-bold text-foreground mb-6">
-                      Recent Orders
-                    </h3>
-
-                {loading ? (
-                  <div className="flex justify-center py-12">
-                    <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                  </div>
-                ) : orders.length === 0 ? (
-                  <div className="bg-card border border-border/60 rounded-3xl p-12 text-center text-muted-foreground">
-                    <ShoppingBag className="size-16 mx-auto mb-4 opacity-20" />
-                    <p>No orders yet. Time to crave something delicious!</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {orders.map((order) => (
-                      <div 
-                        key={order.id} 
-                        className="bg-card border border-border/60 rounded-3xl p-6 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm"
-                        onClick={() => navigate(`/track/${order.id}`)}
-                      >
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-3 mb-1">
-                              <span className="font-mono text-sm text-muted-foreground">#{order.order_number}</span>
-                              <span className={cn(
-                                "text-[10px] font-bold px-2 py-0.5 rounded-full uppercase",
-                                order.status === "DELIVERED" ? "bg-green-600/20 text-green-600" :
-                                order.status === "CANCELLED" ? "bg-destructive/20 text-destructive" :
-                                "bg-primary/20 text-primary"
-                              )}>
-                                {order.status}
-                              </span>
-                            </div>
-                            <h4 className="font-semibold text-foreground flex items-center gap-2">
-                              <Clock className="size-4 text-muted-foreground" />
-                              {formatDate(order.created_at)}
-                            </h4>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-wrap justify-between items-center mt-4 pt-4 border-t border-border/60 gap-3">
-                          <span className="font-bold text-primary">${order.total}</span>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="rounded-full text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleReorder(order.id);
-                              }}
-                            >
-                              <RefreshCcw className="size-3 mr-1 sm:mr-1.5" /> Reorder
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="rounded-full text-[11px] sm:text-xs h-7 sm:h-8 px-2 sm:px-3 text-muted-foreground"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedOrderDetails(order);
-                              }}
-                            >
-                              Details <ChevronRight className="size-3 ml-0.5 sm:ml-1" />
-                            </Button>
-                            <Button 
-                              variant="default" 
-                              size="sm" 
-                              className="rounded-full text-[11px] sm:text-xs h-7 sm:h-8 px-3 sm:px-4 ml-1 sm:ml-2"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                navigate(`/track/${order.id}`);
-                              }}
-                            >
-                              Track
-                            </Button>
-                          </div>
-                        </div>
+                    {loading ? (
+                      <div className="flex justify-center py-12">
+                        <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
-                    ))}
+                    ) : orders.length === 0 ? (
+                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
+                        <ShoppingBag className="size-16 mx-auto mb-4 opacity-20" />
+                        <p className="font-semibold text-foreground text-base">No orders yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Time to crave something delicious!</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {orders.map((order) => (
+                          <div 
+                            key={order.id} 
+                            className="bg-card border border-border/70 rounded-[24px] p-6 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm group"
+                            onClick={() => navigate(`/track/${order.id}`)}
+                          >
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                              <div>
+                                <div className="flex items-center gap-3 mb-1">
+                                  <span className="font-mono text-sm text-muted-foreground font-bold">#{order.order_number}</span>
+                                  <span className={cn(
+                                    "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider",
+                                    order.status === "DELIVERED" ? "bg-green-600/20 text-green-600 dark:text-green-400" :
+                                    order.status === "CANCELLED" ? "bg-destructive/20 text-destructive" :
+                                    "bg-primary/20 text-primary"
+                                  )}>
+                                    {order.status}
+                                  </span>
+                                </div>
+                                <h4 className="font-semibold text-foreground flex items-center gap-2 text-sm sm:text-base">
+                                  <Clock className="size-4 text-muted-foreground" />
+                                  {formatDate(order.created_at)}
+                                </h4>
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap justify-between items-center mt-4 pt-4 border-t border-border/60 gap-3">
+                              <span className="font-bold text-lg text-primary">${order.total}</span>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="rounded-full text-xs h-8 px-3"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReorder(order.id);
+                                  }}
+                                >
+                                  <RefreshCcw className="size-3.5 mr-1.5" /> Reorder
+                                </Button>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="rounded-full text-xs h-8 px-3 text-muted-foreground hover:text-foreground"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedOrderDetails(order);
+                                  }}
+                                >
+                                  Details <ChevronRight className="size-3.5 ml-1" />
+                                </Button>
+                                <Button 
+                                  variant="default" 
+                                  size="sm" 
+                                  className="rounded-full text-xs h-8 px-4 font-semibold shadow-warm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/track/${order.id}`);
+                                  }}
+                                >
+                                  Track
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
-                  </>
-                )}
 
+                {/* ---------------- ADDRESSES TAB ---------------- */}
                 {activeTab === "ADDRESSES" && (
-                  <>
-                    <div className="flex justify-between items-center mb-6 flex-wrap gap-3">
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center flex-wrap gap-3">
                       <div>
-                        <h3 className="font-serif text-3xl font-bold text-foreground">Saved Addresses</h3>
-                        <p className="text-sm text-muted-foreground mt-1">Manage your delivery locations & fast checkout pins</p>
+                        <h2 className="font-serif text-3xl font-bold text-foreground">Saved Addresses</h2>
+                        <p className="text-sm text-muted-foreground mt-1">Manage your delivery locations &amp; fast checkout pins</p>
                       </div>
                       <Button 
                         onClick={() => setShowAddForm(!showAddForm)} 
@@ -1312,13 +1477,13 @@ export default function ProfilePage() {
                     </div>
 
                     {showAddForm && (
-                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-3xl p-6 mb-6 shadow-warm space-y-4 animate-fade-in">
+                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-[24px] p-6 mb-6 shadow-warm space-y-4 animate-fade-in">
                         <div className="flex items-center justify-between pb-3 border-b border-border/60">
                           <h4 className="font-semibold text-foreground text-base">New Address Location</h4>
                           <button 
                             type="button" 
                             onClick={() => setShowAddForm(false)} 
-                            className="text-xs text-muted-foreground hover:text-foreground"
+                            className="text-xs text-muted-foreground hover:text-foreground cursor-pointer"
                           >
                             Close
                           </button>
@@ -1360,7 +1525,7 @@ export default function ProfilePage() {
                                 type="button" 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
+                                className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
                                 onClick={() => setShowMap(true)}
                               >
                                 <MapPin className="size-3 mr-1" />
@@ -1370,7 +1535,7 @@ export default function ProfilePage() {
                                 type="button" 
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full"
+                                className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
                                 onClick={handleAutoLocation}
                                 disabled={isLocating}
                               >
@@ -1399,7 +1564,7 @@ export default function ProfilePage() {
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : addresses.length === 0 ? (
-                      <div className="bg-card border border-border/70 rounded-3xl p-12 text-center text-muted-foreground shadow-warm">
+                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
                         <MapPin className="size-16 mx-auto mb-4 opacity-20" />
                         <p className="font-semibold text-foreground">No saved addresses yet</p>
                         <p className="text-xs text-muted-foreground mt-1">Add your home or office address for 1-tap checkout!</p>
@@ -1414,11 +1579,10 @@ export default function ProfilePage() {
                             <div 
                               key={addr.id} 
                               className={cn(
-                                "bg-card border rounded-3xl p-5 relative group flex flex-col justify-between transition-all hover:shadow-warm",
-                                addr.is_default ? "border-primary/40 shadow-xs" : "border-border/70"
+                                "bg-card border rounded-[24px] p-5 relative group flex flex-col justify-between transition-all hover:shadow-warm",
+                                addr.is_default ? "border-primary/50 shadow-xs" : "border-border/70"
                               )}
                             >
-                              {/* Top Bar: Icon + Label + Default Badge */}
                               <div>
                                 <div className="flex items-start justify-between gap-3 mb-2.5">
                                   <div className="flex items-center gap-3">
@@ -1454,13 +1618,11 @@ export default function ProfilePage() {
                                   )}
                                 </div>
 
-                                {/* Short & Concise Address Line (Max 2 lines) */}
-                                <p className="text-xs text-foreground/80 font-medium line-clamp-2 mt-1.5 leading-relaxed bg-secondary/30 rounded-xl p-2.5 border border-border/30">
+                                <p className="text-xs text-foreground/85 font-medium line-clamp-2 mt-1.5 leading-relaxed bg-secondary/30 rounded-xl p-2.5 border border-border/30">
                                   {addr.address_line}
                                 </p>
                               </div>
 
-                              {/* Bottom Action Bar: View Detail, Edit, Delete */}
                               <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between gap-2">
                                 <Button
                                   type="button"
@@ -1501,167 +1663,31 @@ export default function ProfilePage() {
                         })}
                       </div>
                     )}
-
-                    {/* View Address Detail Modal */}
-                    <Dialog open={Boolean(selectedAddressDetails)} onOpenChange={(open) => !open && setSelectedAddressDetails(null)}>
-                      <DialogContent className="sm:max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-warm-lg">
-                        <DialogHeader>
-                          <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
-                            <MapPin className="size-5 text-primary" />
-                            {selectedAddressDetails?.label || "Address Details"}
-                          </DialogTitle>
-                        </DialogHeader>
-                        {selectedAddressDetails && (
-                          <div className="space-y-4 py-3">
-                            <div className="p-4 rounded-2xl bg-secondary/50 border border-border/60 space-y-2">
-                              <div>
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">City / Province</span>
-                                <span className="text-sm font-semibold text-foreground">{selectedAddressDetails.city || "Phnom Penh"}</span>
-                              </div>
-                              <div className="pt-2 border-t border-border/40">
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Full Address Details</span>
-                                <p className="text-sm font-medium text-foreground leading-relaxed mt-0.5">{selectedAddressDetails.address_line}</p>
-                              </div>
-                              <div className="pt-2 border-t border-border/40 flex items-center justify-between">
-                                <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Status</span>
-                                {selectedAddressDetails.is_default ? (
-                                  <span className="inline-flex items-center gap-1 text-xs bg-primary/15 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase">
-                                    <Star className="size-3 fill-primary" /> Default
-                                  </span>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground font-medium">Standard</span>
-                                )}
-                              </div>
-                            </div>
-
-                            <div className="flex gap-2 justify-end pt-2">
-                              {!selectedAddressDetails.is_default && (
-                                <Button
-                                  type="button"
-                                  variant="outline"
-                                  onClick={() => {
-                                    handleSetDefaultAddress(selectedAddressDetails.id);
-                                    setSelectedAddressDetails(null);
-                                  }}
-                                  className="rounded-full px-4 text-xs font-semibold"
-                                >
-                                  <Star className="size-3.5 mr-1" /> Set Default
-                                </Button>
-                              )}
-                              <Button
-                                type="button"
-                                onClick={() => {
-                                  setEditingAddress(selectedAddressDetails);
-                                  setSelectedAddressDetails(null);
-                                }}
-                                className="rounded-full px-5 font-semibold shadow-warm"
-                              >
-                                <Pencil className="size-3.5 mr-1" /> Edit
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Edit Address Modal */}
-                    <Dialog open={Boolean(editingAddress)} onOpenChange={(open) => !open && setEditingAddress(null)}>
-                      <DialogContent className="sm:max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-warm-lg">
-                        <DialogHeader>
-                          <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
-                            <Pencil className="size-5 text-primary" />
-                            Edit Address
-                          </DialogTitle>
-                        </DialogHeader>
-                        {editingAddress && (
-                          <form onSubmit={handleUpdateAddress} className="space-y-4 py-3">
-                            <div className="space-y-3">
-                              <div>
-                                <label className="text-xs font-semibold text-foreground mb-1 block">Address Label</label>
-                                <Input 
-                                  required 
-                                  value={editingAddress.label || ""} 
-                                  onChange={e => setEditingAddress(prev => ({ ...prev, label: e.target.value }))} 
-                                  className="rounded-xl border-border/70 bg-background/50 h-11"
-                                />
-                              </div>
-                              <div>
-                                <label className="text-xs font-semibold text-foreground mb-1 block">City / Province</label>
-                                <select 
-                                  required 
-                                  value={editingAddress.city || ""} 
-                                  onChange={e => setEditingAddress(prev => ({ ...prev, city: e.target.value }))} 
-                                  className="w-full h-11 px-3 rounded-xl border border-border/70 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
-                                >
-                                  <option value="Phnom Penh">Phnom Penh</option>
-                                  <option value="Kandal">Kandal</option>
-                                  <option value="Siem Reap">Siem Reap</option>
-                                  <option value="Sihanoukville">Sihanoukville</option>
-                                  <option value="Battambang">Battambang</option>
-                                  <option value="Kampong Cham">Kampong Cham</option>
-                                </select>
-                              </div>
-                              <div>
-                                <div className="flex items-center justify-between mb-1">
-                                  <label className="text-xs font-semibold text-foreground">Specific Street Address</label>
-                                  <div className="flex gap-2">
-                                    <Button 
-                                      type="button" 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
-                                      onClick={() => setShowMap(true)}
-                                    >
-                                      <MapPin className="size-3 mr-1" />
-                                      Map Pin
-                                    </Button>
-                                    <Button 
-                                      type="button" 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
-                                      onClick={handleAutoLocation}
-                                      disabled={isLocating}
-                                    >
-                                      <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
-                                      {isLocating ? "Locating..." : "Use GPS"}
-                                    </Button>
-                                  </div>
-                                </div>
-                                <Input 
-                                  required 
-                                  value={editingAddress.address_line || ""} 
-                                  onChange={e => setEditingAddress(prev => ({ ...prev, address_line: e.target.value }))} 
-                                  className="rounded-xl border-border/70 bg-background/50 h-11"
-                                />
-                              </div>
-                            </div>
-                            <div className="flex justify-end gap-2 pt-3">
-                              <Button type="button" variant="outline" className="rounded-full px-4" onClick={() => setEditingAddress(null)}>
-                                Cancel
-                              </Button>
-                              <Button type="submit" className="rounded-full px-6 font-semibold shadow-warm">
-                                Save Changes
-                              </Button>
-                            </div>
-                          </form>
-                        )}
-                      </DialogContent>
-                    </Dialog>
-                  </>
+                  </div>
                 )}
+
+                {/* ---------------- FAVORITES TAB ---------------- */}
                 {activeTab === "FAVORITES" && (
-                  <>
-                    <h3 className="font-serif text-3xl font-bold text-foreground mb-6">Favorites</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="font-serif text-3xl font-bold text-foreground">Favorite Pizzas</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Your quick access list of loved dishes and crusts</p>
+                    </div>
+
                     {favorites.length === 0 ? (
-                      <div className="bg-card border border-border/60 rounded-3xl p-12 text-center text-muted-foreground">
+                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
                         <Heart className="size-16 mx-auto mb-4 opacity-20" />
-                        <p>No favorites yet. Add some items you love!</p>
+                        <p className="font-semibold text-foreground">No favorites yet</p>
+                        <p className="text-xs text-muted-foreground mt-1">Browse our menu and tap the heart icon to save dishes!</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                         {favorites.map(item => (
-                          <div key={item.id} className="bg-card border border-border/60 rounded-2xl overflow-hidden group cursor-pointer" onClick={() => navigate(`/product/${item.id}`)}>
+                          <div 
+                            key={item.id} 
+                            className="bg-card border border-border/70 rounded-2xl overflow-hidden group cursor-pointer hover:shadow-warm transition-all hover:-translate-y-0.5" 
+                            onClick={() => navigate(`/product/${item.id}`)}
+                          >
                             <div className="aspect-square relative overflow-hidden bg-secondary">
                               <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
                               <button 
@@ -1672,12 +1698,13 @@ export default function ProfilePage() {
                                   localStorage.setItem("customerFavorites", JSON.stringify(favs));
                                   window.dispatchEvent(new Event("favoritesChanged"));
                                 }}
-                                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/80 shadow-sm"
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/85 backdrop-blur-xs shadow-sm hover:scale-110 active:scale-95 transition-transform"
+                                title="Remove from Favorites"
                               >
                                 <Heart className="size-4 fill-red-500 text-red-500" />
                               </button>
                             </div>
-                            <div className="p-3">
+                            <div className="p-3.5">
                               <h4 className="font-bold text-sm text-foreground truncate">{item.name}</h4>
                               <p className="text-primary font-bold text-sm mt-1">${item.price}</p>
                             </div>
@@ -1685,36 +1712,43 @@ export default function ProfilePage() {
                         ))}
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
+
+                {/* ---------------- COUPONS TAB ---------------- */}
                 {activeTab === "COUPONS" && (
-                  <>
-                    <h3 className="font-serif text-3xl font-bold text-foreground mb-6">My Coupons</h3>
+                  <div className="space-y-6">
+                    <div>
+                      <h2 className="font-serif text-3xl font-bold text-foreground">My Coupons &amp; Rewards</h2>
+                      <p className="text-sm text-muted-foreground mt-1">Use coupons at checkout to enjoy discounts on your orders</p>
+                    </div>
+
                     {loading ? (
                       <div className="flex justify-center py-12">
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : coupons.length === 0 ? (
-                      <div className="bg-card border border-border/60 rounded-3xl p-12 text-center text-muted-foreground">
+                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
                         <Ticket className="size-16 mx-auto mb-4 opacity-20" />
-                        <p>No coupons available right now.</p>
+                        <p className="font-semibold text-foreground">No coupons available right now</p>
+                        <p className="text-xs text-muted-foreground mt-1">Check back soon for new offers and rewards!</p>
                       </div>
                     ) : (
                       <div className="space-y-8">
                         <div>
-                          <h4 className="text-lg font-bold mb-4 text-foreground flex items-center gap-2">
-                            <span className="size-2 rounded-full bg-green-500"></span> Available Now
+                          <h4 className="text-base font-bold mb-4 text-foreground flex items-center gap-2">
+                            <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span> Available Now
                           </h4>
                           <div className="grid sm:grid-cols-2 gap-4">
                             {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).map(coupon => (
-                              <div key={coupon.id} className="bg-primary/5 border border-primary/20 rounded-2xl p-5 relative overflow-hidden shadow-sm">
-                                <div className="absolute -right-6 -top-6 size-24 bg-primary/10 rounded-full blur-2xl"></div>
+                              <div key={coupon.id} className="bg-card border border-emerald-500/30 rounded-2xl p-5 relative overflow-hidden shadow-warm">
+                                <div className="absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <div className="inline-block px-3 py-1 bg-primary text-primary-foreground text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
+                                    <div className="inline-block px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
                                       {coupon.code}
                                     </div>
-                                    <h5 className="font-bold text-lg">
+                                    <h5 className="font-bold text-lg text-foreground">
                                       {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
                                        coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
                                        `$${coupon.discount_value} OFF`}
@@ -1723,7 +1757,7 @@ export default function ProfilePage() {
                                   </div>
                                 </div>
                                 {coupon.expires_at && (
-                                  <div className="mt-4 pt-3 border-t border-primary/10 text-xs text-primary font-semibold flex items-center gap-1.5">
+                                  <div className="mt-4 pt-3 border-t border-border/60 text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
                                     <Clock className="size-3" /> Valid until {new Date(coupon.expires_at).toLocaleDateString()}
                                   </div>
                                 )}
@@ -1736,12 +1770,12 @@ export default function ProfilePage() {
                         </div>
 
                         <div>
-                          <h4 className="text-lg font-bold mb-4 text-muted-foreground flex items-center gap-2">
+                          <h4 className="text-base font-bold mb-4 text-muted-foreground flex items-center gap-2">
                             <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
                           </h4>
                           <div className="grid sm:grid-cols-2 gap-4 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
                             {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => (
-                              <div key={coupon.id} className="bg-card border border-border/60 rounded-2xl p-5 shadow-sm">
+                              <div key={coupon.id} className="bg-card border border-border/60 rounded-2xl p-5 shadow-2xs">
                                 <div className="flex items-start justify-between">
                                   <div>
                                     <div className="inline-block px-3 py-1 bg-secondary text-muted-foreground text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
@@ -1766,101 +1800,297 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
               </div>
             )}
-          </div>
-        </PageTransition>
 
-      {/* Order Details Modal */}
-      <Dialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
-        <DialogContent className="sm:max-w-md bg-background border-border/60">
-          <DialogHeader>
-            <DialogTitle className="font-serif text-xl">Order #{selectedOrderDetails?.order_number}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mt-4">
-            {selectedOrderDetails && allOrderItems
-              .filter(item => String(item.order_id) === String(selectedOrderDetails.id))
-              .map(item => {
-                const foodItem = allProducts.find(f => String(f.id) === String(item.product_id) || f.name === item.product_name) || {};
-                return (
-                  <div key={item.id} className="flex justify-between items-center text-sm gap-3 p-3 bg-secondary/30 rounded-xl border border-border/40">
-                    <div className="flex items-center gap-3">
-                      <div className="size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
-                        {foodItem.image ? (
-                          <img src={foodItem.image} alt={item.product_name} className="w-full h-full object-cover" />
-                        ) : (
-                          <ShoppingBag className="size-5 text-primary/60" />
-                        )}
+            {/* ========================================================================= */}
+            {/* 3. MODALS & DIALOGS (PASSWORD OTP, ORDER DETAILS, ADDRESSES, MAP PICKER) */}
+            {/* ========================================================================= */}
+
+            {/* Reset Password via OTP Dialog Overlay */}
+            <Dialog open={showOTPDialog} onOpenChange={setShowOTPDialog}>
+              <DialogContent className="sm:max-w-md rounded-3xl border border-border/60 bg-card p-6 shadow-warm-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-serif text-2xl font-bold">Bypass Password via OTP</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    We have sent a 6-digit OTP code to your email <strong>{settingsForm.email}</strong>. Enter it below to authorize setting a new password.
+                  </p>
+                  <div className="space-y-2">
+                    <Input 
+                      type="text"
+                      placeholder="000000"
+                      maxLength={6}
+                      value={otpCode}
+                      onChange={e => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      className="rounded-xl border-border/60 bg-background/50 h-14 text-center font-mono tracking-[0.5em] text-2xl"
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowOTPDialog(false)}
+                      className="rounded-full px-5"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleVerifyForgotOTP}
+                      disabled={isVerifyingOTP}
+                      className="rounded-full px-6"
+                    >
+                      {isVerifyingOTP ? "Verifying..." : "Verify OTP"}
+                    </Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Order Details Modal */}
+            <Dialog open={!!selectedOrderDetails} onOpenChange={(open) => !open && setSelectedOrderDetails(null)}>
+              <DialogContent className="sm:max-w-md bg-background border-border/60 rounded-3xl">
+                <DialogHeader>
+                  <DialogTitle className="font-serif text-xl">Order #{selectedOrderDetails?.order_number}</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mt-4">
+                  {selectedOrderDetails && allOrderItems
+                    .filter(item => String(item.order_id) === String(selectedOrderDetails.id))
+                    .map(item => {
+                      const foodItem = allProducts.find(f => String(f.id) === String(item.product_id) || f.name === item.product_name) || {};
+                      return (
+                        <div key={item.id} className="flex justify-between items-center text-sm gap-3 p-3 bg-secondary/30 rounded-xl border border-border/40">
+                          <div className="flex items-center gap-3">
+                            <div className="size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
+                              {foodItem.image ? (
+                                <img src={foodItem.image} alt={item.product_name} className="w-full h-full object-cover" />
+                              ) : (
+                                <ShoppingBag className="size-5 text-primary/60" />
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-foreground">
+                                {item.quantity}x {item.product_name}
+                              </span>
+                              {item.options && (
+                                <span className="text-xs text-muted-foreground">
+                                  {(() => {
+                                    try {
+                                      return Object.values(JSON.parse(item.options)).join(", ");
+                                    } catch(e) {
+                                      return String(item.options);
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-bold">${Number(item.line_total).toFixed(2)}</span>
+                        </div>
+                      );
+                    })}
+                  {selectedOrderDetails && allOrderItems.filter(item => String(item.order_id) === String(selectedOrderDetails.id)).length === 0 && (
+                    <div className="text-center py-6 text-muted-foreground">No items found for this order.</div>
+                  )}
+                </div>
+                <div className="pt-4 border-t border-border/60 space-y-2 text-sm mt-4">
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span>${Number(selectedOrderDetails?.subtotal || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Delivery Fee</span>
+                    <span>${Number(selectedOrderDetails?.delivery_fee || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-foreground text-base pt-2">
+                    <span>Total</span>
+                    <span className="text-primary">${Number(selectedOrderDetails?.total || 0).toFixed(2)}</span>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* View Address Detail Modal */}
+            <Dialog open={Boolean(selectedAddressDetails)} onOpenChange={(open) => !open && setSelectedAddressDetails(null)}>
+              <DialogContent className="sm:max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-warm-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
+                    <MapPin className="size-5 text-primary" />
+                    {selectedAddressDetails?.label || "Address Details"}
+                  </DialogTitle>
+                </DialogHeader>
+                {selectedAddressDetails && (
+                  <div className="space-y-4 py-3">
+                    <div className="p-4 rounded-2xl bg-secondary/50 border border-border/60 space-y-2">
+                      <div>
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">City / Province</span>
+                        <span className="text-sm font-semibold text-foreground">{selectedAddressDetails.city || "Phnom Penh"}</span>
                       </div>
-                      <div className="flex flex-col">
-                        <span className="font-semibold text-foreground">
-                          {item.quantity}x {item.product_name}
-                        </span>
-                        {item.options && (
-                          <span className="text-xs text-muted-foreground">
-                            {(() => {
-                              try {
-                                return Object.values(JSON.parse(item.options)).join(", ");
-                              } catch(e) {
-                                return String(item.options);
-                              }
-                            })()}
+                      <div className="pt-2 border-t border-border/40">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider block">Full Address Details</span>
+                        <p className="text-sm font-medium text-foreground leading-relaxed mt-0.5">{selectedAddressDetails.address_line}</p>
+                      </div>
+                      <div className="pt-2 border-t border-border/40 flex items-center justify-between">
+                        <span className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider">Status</span>
+                        {selectedAddressDetails.is_default ? (
+                          <span className="inline-flex items-center gap-1 text-xs bg-primary/15 text-primary px-2.5 py-0.5 rounded-full font-bold uppercase">
+                            <Star className="size-3 fill-primary" /> Default
                           </span>
+                        ) : (
+                          <span className="text-xs text-muted-foreground font-medium">Standard</span>
                         )}
                       </div>
                     </div>
-                    <span className="font-bold">${Number(item.line_total).toFixed(2)}</span>
+
+                    <div className="flex gap-2 justify-end pt-2">
+                      {!selectedAddressDetails.is_default && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => {
+                            handleSetDefaultAddress(selectedAddressDetails.id);
+                            setSelectedAddressDetails(null);
+                          }}
+                          className="rounded-full px-4 text-xs font-semibold"
+                        >
+                          <Star className="size-3.5 mr-1" /> Set Default
+                        </Button>
+                      )}
+                      <Button
+                        type="button"
+                        onClick={() => {
+                          setEditingAddress(selectedAddressDetails);
+                          setSelectedAddressDetails(null);
+                        }}
+                        className="rounded-full px-5 font-semibold shadow-warm"
+                      >
+                        <Pencil className="size-3.5 mr-1" /> Edit
+                      </Button>
+                    </div>
                   </div>
-                );
-              })}
-            {selectedOrderDetails && allOrderItems.filter(item => String(item.order_id) === String(selectedOrderDetails.id)).length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">No items found for this order.</div>
-            )}
+                )}
+              </DialogContent>
+            </Dialog>
+
+            {/* Edit Address Modal */}
+            <Dialog open={Boolean(editingAddress)} onOpenChange={(open) => !open && setEditingAddress(null)}>
+              <DialogContent className="sm:max-w-md rounded-3xl border border-border/70 bg-card p-6 shadow-warm-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-serif text-2xl font-bold flex items-center gap-2">
+                    <Pencil className="size-5 text-primary" />
+                    Edit Address
+                  </DialogTitle>
+                </DialogHeader>
+                {editingAddress && (
+                  <form onSubmit={handleUpdateAddress} className="space-y-4 py-3">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-xs font-semibold text-foreground mb-1 block">Address Label</label>
+                        <Input 
+                          required 
+                          value={editingAddress.label || ""} 
+                          onChange={e => setEditingAddress(prev => ({ ...prev, label: e.target.value }))} 
+                          className="rounded-xl border-border/70 bg-background/50 h-11"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-semibold text-foreground mb-1 block">City / Province</label>
+                        <select 
+                          required 
+                          value={editingAddress.city || ""} 
+                          onChange={e => setEditingAddress(prev => ({ ...prev, city: e.target.value }))} 
+                          className="w-full h-11 px-3 rounded-xl border border-border/70 bg-background text-sm font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="Phnom Penh">Phnom Penh</option>
+                          <option value="Kandal">Kandal</option>
+                          <option value="Siem Reap">Siem Reap</option>
+                          <option value="Sihanoukville">Sihanoukville</option>
+                          <option value="Battambang">Battambang</option>
+                          <option value="Kampong Cham">Kampong Cham</option>
+                        </select>
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <label className="text-xs font-semibold text-foreground">Specific Street Address</label>
+                          <div className="flex gap-2">
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
+                              onClick={() => setShowMap(true)}
+                            >
+                              <MapPin className="size-3 mr-1" />
+                              Map Pin
+                            </Button>
+                            <Button 
+                              type="button" 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-6 text-[10px] px-2 text-primary hover:text-primary hover:bg-primary/10 rounded-full cursor-pointer"
+                              onClick={handleAutoLocation}
+                              disabled={isLocating}
+                            >
+                              <LocateFixed className={cn("size-3 mr-1", isLocating && "animate-spin")} />
+                              {isLocating ? "Locating..." : "Use GPS"}
+                            </Button>
+                          </div>
+                        </div>
+                        <Input 
+                          required 
+                          value={editingAddress.address_line || ""} 
+                          onChange={e => setEditingAddress(prev => ({ ...prev, address_line: e.target.value }))} 
+                          className="rounded-xl border-border/70 bg-background/50 h-11"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-3">
+                      <Button type="button" variant="outline" className="rounded-full px-4" onClick={() => setEditingAddress(null)}>
+                        Cancel
+                      </Button>
+                      <Button type="submit" className="rounded-full px-6 font-semibold shadow-warm">
+                        Save Changes
+                      </Button>
+                    </div>
+                  </form>
+                )}
+              </DialogContent>
+            </Dialog>
+
+            {/* Map Picker Modal */}
+            <AnimatePresence>
+              {showMap && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    className="bg-card w-full max-w-lg rounded-3xl p-6 shadow-2xl relative"
+                  >
+                    <h3 className="font-serif text-xl font-bold text-foreground mb-4">Pick Location</h3>
+                    <MapPicker
+                      onConfirm={(loc) => {
+                        if (editingAddress) {
+                          setEditingAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city || prev?.city }));
+                        } else {
+                          setNewAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city || prev?.city }));
+                        }
+                        setShowMap(false);
+                        toast.success("Location picked successfully!");
+                      }}
+                      onClose={() => setShowMap(false)}
+                    />
+                  </motion.div>
+                </div>
+              )}
+            </AnimatePresence>
+
           </div>
-          <div className="pt-4 border-t border-border/60 space-y-2 text-sm mt-4">
-            <div className="flex justify-between text-muted-foreground">
-              <span>Subtotal</span>
-              <span>${Number(selectedOrderDetails?.subtotal || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between text-muted-foreground">
-              <span>Delivery Fee</span>
-              <span>${Number(selectedOrderDetails?.delivery_fee || 0).toFixed(2)}</span>
-            </div>
-            <div className="flex justify-between font-bold text-foreground text-base pt-2">
-              <span>Total</span>
-              <span className="text-primary">${Number(selectedOrderDetails?.total || 0).toFixed(2)}</span>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-      <AnimatePresence>
-        {showMap && (
-          <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-card w-full max-w-lg rounded-3xl p-6 shadow-2xl relative"
-            >
-              <h3 className="font-serif text-xl font-bold text-foreground mb-4">Pick Location</h3>
-              <MapPicker
-                onConfirm={(loc) => {
-                  if (editingAddress) {
-                    setEditingAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city || prev?.city }));
-                  } else {
-                    setNewAddress(prev => ({ ...prev, address_line: loc.address, city: loc.city || prev?.city }));
-                  }
-                  setShowMap(false);
-                  toast.success("Location picked successfully!");
-                }}
-                onClose={() => setShowMap(false)}
-              />
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+        </PageTransition>
       </main>
     </div>
   );

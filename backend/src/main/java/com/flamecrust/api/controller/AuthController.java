@@ -784,6 +784,7 @@ public class AuthController {
         String name = (String) body.get("name");
         String phone = (String) body.get("phone");
         String avatar = (String) body.get("avatar");
+        String coverPhoto = (String) body.get("cover_photo");
         String password = (String) body.get("password");
 
         List<Map<String, Object>> customers = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email);
@@ -800,6 +801,9 @@ public class AuthController {
         }
         if (avatar != null) {
             jdbc.update("UPDATE customers SET avatar = ? WHERE id = ?", avatar, customerId);
+        }
+        if (coverPhoto != null) {
+            jdbc.update("UPDATE customers SET cover_photo = ? WHERE id = ?", coverPhoto, customerId);
         }
         if (password != null && !password.isBlank() && password.length() >= 6) {
             jdbc.update("UPDATE customers SET password_hash = ? WHERE id = ?", passwordEncoder.encode(password), customerId);
@@ -858,13 +862,13 @@ public class AuthController {
         
         List<Map<String, Object>> customers = List.of();
         if (customerId != null && customerId > 0) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", customerId);
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", customerId);
         }
         if (customers.isEmpty() && phone != null && !phone.isBlank()) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone);
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone);
         }
         if (customers.isEmpty() && email != null && !email.isBlank()) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email);
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email);
         }
 
         Map<String, Object> customer = !customers.isEmpty() ? customers.getFirst() : new LinkedHashMap<>();
