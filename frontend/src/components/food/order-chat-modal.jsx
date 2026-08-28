@@ -308,7 +308,7 @@ export function OrderChatModal({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
         showCloseButton={false}
-        className="w-[94vw] max-w-md h-[85vh] sm:h-[620px] p-0 overflow-hidden rounded-[28px] bg-card border border-border/70 shadow-2xl flex flex-col z-[100]"
+        className="w-[94vw] max-w-md h-[78vh] sm:h-[620px] max-h-[80vh] mt-12 sm:mt-0 p-0 overflow-hidden rounded-[28px] bg-card border border-border/70 shadow-2xl flex flex-col z-[100]"
       >
         {/* Header */}
         <DialogHeader className="p-4 border-b border-border/60 bg-secondary/30 shrink-0 flex flex-row items-center justify-between space-y-0">

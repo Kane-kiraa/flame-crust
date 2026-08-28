@@ -308,7 +308,7 @@ export function OnlineCallModal({
       {open && isMinimized && isCallActive && (
         <div 
           onClick={() => setIsMinimized(false)}
-          className="fixed top-3 left-1/2 -translate-x-1/2 z-[99999] w-[94vw] max-w-md p-2.5 pl-3 rounded-full bg-zinc-950/95 backdrop-blur-xl border border-emerald-500/40 text-white shadow-2xl shadow-emerald-950/50 flex items-center justify-between gap-3 cursor-pointer hover:border-emerald-400 transition-all active:scale-98 animate-in slide-in-from-top-4 duration-300"
+          className="fixed top-2 left-1/2 -translate-x-1/2 z-[99999] w-[92vw] max-w-md py-2 px-3 rounded-full bg-zinc-950/95 backdrop-blur-xl border border-emerald-500/40 text-white shadow-2xl shadow-emerald-950/50 flex items-center justify-between gap-2.5 cursor-pointer hover:border-emerald-400 transition-all active:scale-98 animate-in slide-in-from-top-4 duration-300"
         >
           <div className="flex items-center gap-3 min-w-0">
             {/* Avatar with live pulsating ring */}
