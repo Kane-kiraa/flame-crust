@@ -165,17 +165,25 @@ export function OrderChatModal({
     fetchMessages();
     const interval = setInterval(fetchMessages, 2500);
 
-    // Also poll active call status to catch incoming calls in real-time
+    // Also poll active call status to catch incoming/ongoing calls in real-time
     const callInterval = setInterval(async () => {
       try {
         const { getActiveCall } = await import("@/lib/api");
         const res = await getActiveCall(orderId);
-        if (res.active && res.call?.status === "RINGING" && res.call?.receiver_type === currentUser.type) {
-          setIsIncomingCall(true);
-          setOnlineCallOpen(true);
+        if (res.active && res.call) {
+          const status = res.call.status;
+          const isReceiver = String(res.call.receiver_type).toUpperCase() === String(currentUser.type).toUpperCase();
+          const isCaller = String(res.call.caller_type).toUpperCase() === String(currentUser.type).toUpperCase();
+
+          if (status === "RINGING" && isReceiver) {
+            setIsIncomingCall(true);
+            setOnlineCallOpen(true);
+          } else if (status === "ACCEPTED" && (isReceiver || isCaller)) {
+            setOnlineCallOpen(true);
+          }
         }
       } catch (e) {}
-    }, 2000);
+    }, 1500);
 
     return () => {
       clearInterval(interval);
