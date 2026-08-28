@@ -15,7 +15,6 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { OnlineCallModal } from "@/components/food/online-call-modal";
 import { getOrderMessages, sendOrderMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -106,8 +105,6 @@ export function OrderChatModal({
   const [inputMsg, setInputMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [onlineCallOpen, setOnlineCallOpen] = useState(false);
-  const [isIncomingCall, setIsIncomingCall] = useState(false);
   const messagesEndRef = useRef(null);
   const prevCountRef = useRef(0);
 
@@ -164,32 +161,8 @@ export function OrderChatModal({
     setLoading(true);
     fetchMessages();
     const interval = setInterval(fetchMessages, 2500);
-
-    // Also poll active call status to catch incoming/ongoing calls in real-time
-    const callInterval = setInterval(async () => {
-      try {
-        const { getActiveCall } = await import("@/lib/api");
-        const res = await getActiveCall(orderId);
-        if (res.active && res.call) {
-          const status = res.call.status;
-          const isReceiver = String(res.call.receiver_type).toUpperCase() === String(currentUser.type).toUpperCase();
-          const isCaller = String(res.call.caller_type).toUpperCase() === String(currentUser.type).toUpperCase();
-
-          if (status === "RINGING" && isReceiver) {
-            setIsIncomingCall(true);
-            setOnlineCallOpen(true);
-          } else if (status === "ACCEPTED" && (isReceiver || isCaller)) {
-            setOnlineCallOpen(true);
-          }
-        }
-      } catch (e) {}
-    }, 1500);
-
-    return () => {
-      clearInterval(interval);
-      clearInterval(callInterval);
-    };
-  }, [open, orderId, currentUser.type]);
+    return () => clearInterval(interval);
+  }, [open, orderId]);
 
   const handleSend = async (textToSend) => {
     const msg = (textToSend || inputMsg).trim();
@@ -267,7 +240,16 @@ export function OrderChatModal({
             {/* Free In-App Online Voice Call */}
             <button
               type="button"
-              onClick={() => setOnlineCallOpen(true)}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent("startOnlineCall", {
+                  detail: {
+                    orderId: orderId,
+                    recipient: recipient,
+                    callerType: currentUser.type,
+                    currentUser: currentUser
+                  }
+                }));
+              }}
               className="size-9 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-colors cursor-pointer"
               title="Online Voice Call"
             >
@@ -384,20 +366,6 @@ export function OrderChatModal({
             {sending ? <Loader2 className="size-4.5 animate-spin" /> : <Send className="size-4.5" />}
           </Button>
         </form>
-
-        {/* In-App Online Voice Call Screen */}
-        <OnlineCallModal
-          open={onlineCallOpen}
-          onOpenChange={(val) => {
-            setOnlineCallOpen(val);
-            if (!val) setIsIncomingCall(false);
-          }}
-          orderId={orderId}
-          recipient={recipient}
-          callerType={currentUser.type}
-          currentUser={currentUser}
-          isIncoming={isIncomingCall}
-        />
       </DialogContent>
     </Dialog>
   );

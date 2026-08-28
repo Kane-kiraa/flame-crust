@@ -7,6 +7,7 @@ import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
 import { CartDrawer } from "@/components/food/cart-drawer.jsx";
+import { GlobalActiveCallManager } from "@/components/food/global-call-manager.jsx";
 import { API_URL } from "@/lib/api";
 
 const Home = lazy(() => import("./pages/home.jsx"));
@@ -159,6 +160,7 @@ export default function App() {
     <Suspense fallback={<PageLoader />}>
       <ScrollToTop />
       <Toaster position="top-center" richColors closeButton />
+      <GlobalActiveCallManager />
       {!isStaff && <ActiveOrderWidget />}
       {!isStaff && <FlyToCart />}
       {!isStaff && <CartDrawer />}
