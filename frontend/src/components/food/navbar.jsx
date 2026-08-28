@@ -584,7 +584,9 @@ function Navbar() {
                   type="button"
                   onClick={() => {
                     if (orderConversations.length === 1) {
-                      setSelectedChatOrder(orderConversations[0]);
+                      const convo = orderConversations[0];
+                      convo.unreadCount = 0;
+                      setSelectedChatOrder(convo);
                     } else {
                       setChatListModalOpen(true);
                     }
@@ -847,6 +849,7 @@ function Navbar() {
                 <div
                   key={convo.order.id}
                   onClick={() => {
+                    convo.unreadCount = 0;
                     setSelectedChatOrder(convo);
                     setChatListModalOpen(false);
                   }}

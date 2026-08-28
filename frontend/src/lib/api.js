@@ -307,3 +307,34 @@ export async function endActiveCall(orderId) {
   return await res.json();
 }
 
+export async function markOrderMessagesRead(orderId, readerType = "CUSTOMER") {
+  try {
+    await globalThis.fetch(`${API_URL}/auth/order-messages/read`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_id: orderId, reader_type: readerType })
+    });
+  } catch (e) {}
+}
+
+export async function reportOrderChatTyping(orderId, senderType = "CUSTOMER") {
+  try {
+    await globalThis.fetch(`${API_URL}/auth/order-chat/typing`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ order_id: orderId, sender_type: senderType })
+    });
+  } catch (e) {}
+}
+
+export async function checkOrderChatTyping(orderId, userType = "CUSTOMER") {
+  try {
+    const res = await globalThis.fetch(`${API_URL}/auth/order-chat/typing?orderId=${encodeURIComponent(orderId)}&userType=${encodeURIComponent(userType)}`);
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (e) {}
+  return { isTyping: false };
+}
+
+

@@ -1041,6 +1041,55 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/order-messages/read")
+    public ResponseEntity<?> markMessagesAsRead(@RequestBody Map<String, Object> payload) {
+        try {
+            Object orderIdObj = payload.get("order_id") != null ? payload.get("order_id") : payload.get("orderId");
+            if (orderIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "order_id is required"));
+            }
+            Long orderId = Long.valueOf(orderIdObj.toString());
+            String readerType = (String) payload.getOrDefault("reader_type", payload.getOrDefault("readerType", "CUSTOMER"));
+            jdbc.update(
+                "UPDATE order_messages SET is_read = TRUE WHERE order_id = ? AND sender_type != ?",
+                orderId, readerType
+            );
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            log.error("Error marking messages as read", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    private final java.util.concurrent.ConcurrentHashMap<String, Long> typingStatusMap = new java.util.concurrent.ConcurrentHashMap<>();
+
+    @PostMapping("/order-chat/typing")
+    public ResponseEntity<?> reportTyping(@RequestBody Map<String, Object> payload) {
+        try {
+            Object orderIdObj = payload.get("order_id") != null ? payload.get("order_id") : payload.get("orderId");
+            if (orderIdObj == null) return ResponseEntity.badRequest().body(Map.of("error", "order_id is required"));
+            String senderType = (String) payload.getOrDefault("sender_type", payload.getOrDefault("senderType", "CUSTOMER"));
+            String key = orderIdObj.toString() + "_" + senderType.toUpperCase();
+            typingStatusMap.put(key, System.currentTimeMillis());
+            return ResponseEntity.ok(Map.of("success", true));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("success", false));
+        }
+    }
+
+    @GetMapping("/order-chat/typing")
+    public ResponseEntity<?> checkTyping(@RequestParam("orderId") Long orderId, @RequestParam("userType") String userType) {
+        try {
+            String otherType = "CUSTOMER".equalsIgnoreCase(userType) ? "DRIVER" : "CUSTOMER";
+            String key = orderId + "_" + otherType;
+            Long lastTyping = typingStatusMap.get(key);
+            boolean isTyping = lastTyping != null && (System.currentTimeMillis() - lastTyping) < 3500;
+            return ResponseEntity.ok(Map.of("isTyping", isTyping));
+        } catch (Exception e) {
+            return ResponseEntity.ok(Map.of("isTyping", false));
+        }
+    }
+
     @GetMapping("/active-calls")
     public ResponseEntity<?> getActiveCall(@RequestParam("orderId") Long orderId) {
         try {

@@ -16,7 +16,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getOrderMessages, sendOrderMessage } from "@/lib/api";
+import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -106,8 +106,10 @@ export function OrderChatModal({
   const [inputMsg, setInputMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [otherTyping, setOtherTyping] = useState(false);
   const messagesEndRef = useRef(null);
   const prevCountRef = useRef(0);
+  const typingTimeoutRef = useRef(null);
 
   const cannedReplies = currentUser.type === "CUSTOMER" 
     ? [
@@ -129,6 +131,9 @@ export function OrderChatModal({
       const data = await getOrderMessages(orderId);
       const list = Array.isArray(data) ? data : [];
       setMessages(list);
+
+      // Auto mark messages as read
+      markOrderMessagesRead(orderId, currentUser.type);
 
       // Play soft sound or scroll if new message arrives
       if (list.length > prevCountRef.current) {
@@ -161,9 +166,28 @@ export function OrderChatModal({
     if (!open || !orderId) return;
     setLoading(true);
     fetchMessages();
-    const interval = setInterval(fetchMessages, 2500);
+    markOrderMessagesRead(orderId, currentUser.type);
+
+    const interval = setInterval(async () => {
+      fetchMessages();
+      try {
+        const typeRes = await checkOrderChatTyping(orderId, currentUser.type);
+        setOtherTyping(Boolean(typeRes?.isTyping));
+      } catch (e) {}
+    }, 2000);
+
     return () => clearInterval(interval);
-  }, [open, orderId]);
+  }, [open, orderId, currentUser.type]);
+
+  const handleInputChange = (val) => {
+    setInputMsg(val);
+    if (!orderId) return;
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+    reportOrderChatTyping(orderId, currentUser.type);
+    typingTimeoutRef.current = setTimeout(() => {
+      // debounce next typing report
+    }, 1200);
+  };
 
   const handleSend = async (textToSend) => {
     const msg = (textToSend || inputMsg).trim();
@@ -326,33 +350,69 @@ export function OrderChatModal({
                 <div 
                   key={m.id} 
                   className={cn(
-                    "flex flex-col max-w-[82%] animate-in fade-in-50 duration-150",
-                    isMe ? "ml-auto items-end" : "mr-auto items-start"
+                    "flex gap-2 max-w-[85%] animate-in fade-in-50 duration-150",
+                    isMe ? "ml-auto flex-row-reverse items-end" : "mr-auto flex-row items-end"
                   )}
                 >
-                  <div className="flex items-center gap-1 mb-0.5 px-1">
-                    <span className="text-[10px] font-semibold text-muted-foreground">
-                      {isMe ? "You" : m.sender_name || (m.sender_type === "DRIVER" ? "Driver" : "Customer")}
-                    </span>
-                    <span className="text-[9px] text-muted-foreground/60">
-                      {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
-                    </span>
-                  </div>
+                  {!isMe && (
+                    <div className="size-6.5 rounded-full overflow-hidden bg-primary/15 shrink-0 mb-1 border border-border/50">
+                      {recipient.photo ? (
+                        <img src={recipient.photo} alt="" className="size-full object-cover" />
+                      ) : (
+                        <div className="size-full flex items-center justify-center text-primary text-[10px] font-bold">
+                          {recipient.name?.[0] || "P"}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
-                  <div 
-                    className={cn(
-                      "px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-xs",
-                      isMe 
-                        ? "bg-primary text-primary-foreground rounded-tr-xs" 
-                        : "bg-secondary text-foreground border border-border/50 rounded-tl-xs"
-                    )}
-                  >
-                    {m.message}
+                  <div className={cn("flex flex-col", isMe ? "items-end" : "items-start")}>
+                    <div className="flex items-center gap-1 mb-0.5 px-1">
+                      <span className="text-[10px] font-semibold text-muted-foreground">
+                        {isMe ? "You" : m.sender_name || (m.sender_type === "DRIVER" ? "Driver" : "Customer")}
+                      </span>
+                      <span className="text-[9px] text-muted-foreground/60">
+                        {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ""}
+                      </span>
+                    </div>
+
+                    <div 
+                      className={cn(
+                        "px-3.5 py-2.5 rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-xs",
+                        isMe 
+                          ? "bg-primary text-primary-foreground rounded-tr-xs" 
+                          : "bg-secondary text-foreground border border-border/50 rounded-tl-xs"
+                      )}
+                    >
+                      {m.message}
+                    </div>
                   </div>
                 </div>
               );
             })
           )}
+
+          {/* Live Typing Indicator */}
+          {otherTyping && (
+            <div className="flex items-center gap-2 mr-auto animate-in fade-in duration-200 pt-1">
+              <div className="size-6.5 rounded-full overflow-hidden bg-primary/15 shrink-0 border border-border/50">
+                {recipient.photo ? (
+                  <img src={recipient.photo} alt="" className="size-full object-cover" />
+                ) : (
+                  <div className="size-full flex items-center justify-center text-primary text-[10px] font-bold">
+                    {recipient.name?.[0] || "P"}
+                  </div>
+                )}
+              </div>
+              <div className="px-3.5 py-2 rounded-2xl bg-secondary/90 text-foreground border border-border/60 rounded-tl-xs flex items-center gap-1.5 shadow-xs">
+                <span className="size-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.3s]" />
+                <span className="size-1.5 rounded-full bg-primary animate-bounce [animation-delay:-0.15s]" />
+                <span className="size-1.5 rounded-full bg-primary animate-bounce" />
+                <span className="text-[10px] text-muted-foreground ml-1 font-medium">{recipient.name || "Partner"} is typing...</span>
+              </div>
+            </div>
+          )}
+
           <div ref={messagesEndRef} />
         </div>
 
@@ -381,7 +441,7 @@ export function OrderChatModal({
         >
           <Input 
             value={inputMsg}
-            onChange={(e) => setInputMsg(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             placeholder="Type a message..."
             className="rounded-full bg-secondary/40 border-border/70 text-xs sm:text-sm h-11 px-4 flex-1 focus-visible:ring-primary"
           />
