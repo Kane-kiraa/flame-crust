@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { list, get, update, getDriverMe, updateDriverLocation, getOrderMessages } from "@/lib/api";
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
+import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -859,6 +860,7 @@ export default function DriverDashboardPage() {
   const [availableOrders, setAvailableOrders] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
   const [selectedChatOrder, setSelectedChatOrder] = useState(null);
+  const [driverChatHead, setDriverChatHead] = useState(null);
   const [unreadMap, setUnreadMap] = useState({});
   const lastKnownDriverMsgsRef = useRef({});
 
@@ -876,6 +878,11 @@ export default function DriverDashboardPage() {
               if (lastMsg.sender_type !== "DRIVER") {
                 // Incoming message from Customer!
                 setUnreadMap(prev => ({ ...prev, [ord.id]: (prev[ord.id] || 0) + 1 }));
+                setDriverChatHead({
+                  order: ord,
+                  message: lastMsg.message,
+                  timestamp: Date.now()
+                });
                 showChatNotificationToast({
                   senderName: ord.customer?.name || lastMsg.sender_name || "Customer",
                   message: lastMsg.message,
@@ -883,6 +890,7 @@ export default function DriverDashboardPage() {
                   onReply: () => {
                     setSelectedChatOrder(ord);
                     setUnreadMap(prev => ({ ...prev, [ord.id]: 0 }));
+                    setDriverChatHead(null);
                   }
                 });
               }
@@ -1282,6 +1290,24 @@ export default function DriverDashboardPage() {
             role: "Customer",
             phone: selectedChatOrder.customer?.phone || selectedChatOrder.customer_phone
           }}
+        />
+      )}
+
+      {/* Android Style Floating Chat Head for Driver */}
+      {driverChatHead && !selectedChatOrder && (
+        <FloatingChatHead
+          visible={true}
+          photo={driverChatHead.order.customer?.avatar}
+          name={driverChatHead.order.customer?.name || "Customer"}
+          role="Customer"
+          lastMessage={driverChatHead.message}
+          unreadCount={unreadMap[driverChatHead.order.id] || 1}
+          onClick={() => {
+            setSelectedChatOrder(driverChatHead.order);
+            setUnreadMap(prev => ({ ...prev, [driverChatHead.order.id]: 0 }));
+            setDriverChatHead(null);
+          }}
+          onDismiss={() => setDriverChatHead(null)}
         />
       )}
 

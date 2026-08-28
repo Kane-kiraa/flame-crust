@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
+import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { list, get, getOrderMessages } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
@@ -157,6 +158,8 @@ export default function OrderTrackingPage() {
   const [recenterCounter, setRecenterCounter] = useState(0);
   const [chatOpen, setChatOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [lastMsgText, setLastMsgText] = useState("");
+  const [chatHeadDismissed, setChatHeadDismissed] = useState(false);
   const lastKnownMsgIdRef = useRef(null);
 
   // Background message monitoring for incoming notifications & sound chime
@@ -170,6 +173,8 @@ export default function OrderTrackingPage() {
           if (lastKnownMsgIdRef.current !== null && lastMsg.id > lastKnownMsgIdRef.current) {
             if (lastMsg.sender_type !== "CUSTOMER") {
               // Incoming message from Driver!
+              setLastMsgText(lastMsg.message);
+              setChatHeadDismissed(false);
               if (!chatOpen) {
                 setUnreadCount(prev => prev + 1);
               }
@@ -880,6 +885,23 @@ export default function OrderTrackingPage() {
             role: driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner",
             phone: driver?.phone || "0965755963"
           }}
+        />
+      )}
+
+      {/* Android Style Floating Chat Head */}
+      {order && !chatOpen && !chatHeadDismissed && (driver || unreadCount > 0 || lastMsgText) && (
+        <FloatingChatHead
+          visible={true}
+          photo={driver?.profilePhoto || driver?.profile_photo}
+          name={driver?.name || "Courier Partner"}
+          role={driver?.vehicleInfo || "Courier Partner"}
+          lastMessage={lastMsgText}
+          unreadCount={unreadCount}
+          onClick={() => {
+            setChatOpen(true);
+            setUnreadCount(0);
+          }}
+          onDismiss={() => setChatHeadDismissed(true)}
         />
       )}
     </div>
