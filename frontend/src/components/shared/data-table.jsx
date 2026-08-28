@@ -14,7 +14,7 @@ import { TableSkeleton } from "./loading-skeleton";
 import { EmptyState } from "./empty-state";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZES = [10, 20, 50];
+const PAGE_SIZES = [5, 10, 20, 50];
 
 export function DataTable({
   columns,
@@ -36,6 +36,14 @@ export function DataTable({
   const [sortDir, setSortDir] = useState("asc");
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState(controlledPageSize || 10);
+
+  // Sync pageSize when controlledPageSize changes (e.g. products -> 5)
+  useEffect(() => {
+    if (controlledPageSize) {
+      setPageSize(controlledPageSize);
+      setPage(0);
+    }
+  }, [controlledPageSize]);
 
   const handleSearch = (value) => {
     setSearch(value);

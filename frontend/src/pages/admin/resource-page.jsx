@@ -247,6 +247,7 @@ function AdminResourcePage({ resource }) {
             columns={columnsWithActions}
             data={data}
             loading={loading}
+            pageSize={config.pageSize || (resource === "products" ? 5 : 10)}
             searchKeys={config.searchKeys}
             searchPlaceholder={`Search ${config.label.toLowerCase()}...`}
             emptyTitle={`No ${config.label.toLowerCase()} found`}
