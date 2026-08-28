@@ -53,16 +53,7 @@ export default function DriverLoginPage() {
       try {
         const parsed = JSON.parse(auth);
         if (parsed.token) {
-          // Check if profile is completed
-          getDriverMe().then(driver => {
-            if (driver.profile_completed) {
-              navigate("/driver/dashboard");
-            } else {
-              setStep(STEPS.PROFILE);
-            }
-          }).catch(() => {
-            localStorage.removeItem("driverAuth");
-          });
+          navigate("/driver/dashboard");
         }
       } catch { /* invalid auth */ }
     }
@@ -84,13 +75,13 @@ export default function DriverLoginPage() {
     setLoading(true);
     try {
       const data = await driverLogin(email.trim(), password);
+      localStorage.removeItem("customerAuth");
+      localStorage.removeItem("adminAuth");
+      localStorage.removeItem("kitchenAuth");
       localStorage.setItem("driverAuth", JSON.stringify({ ...data.driver, token: data.token }));
+      window.dispatchEvent(new Event("authChanged"));
       toast.success(`សូមស្វាគមន៍ ${data.driver.name}!`);
-      if (data.driver.profile_completed) {
-        navigate("/driver/dashboard");
-      } else {
-        goToStep(STEPS.PROFILE);
-      }
+      navigate("/driver/dashboard");
     } catch (err) {
       toast.error(err.message || "Login បរាជ័យ");
     } finally {

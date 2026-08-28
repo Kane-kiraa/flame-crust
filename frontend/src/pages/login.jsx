@@ -179,14 +179,16 @@ export default function LoginPage() {
       }
 
       const data = await response.json();
-      const isAdmin = data.type === "ADMIN";
+      const roleType = (data.type || data.role || "").toUpperCase();
 
-      if (isAdmin) {
+      if (roleType === "ADMIN") {
         const user = data.user || data;
         const seedName = user.name || email.split("@")[0] || "Admin";
         const avatarUrl = user.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=cbd5e1&textColor=334155`;
 
         localStorage.removeItem("customerAuth");
+        localStorage.removeItem("driverAuth");
+        localStorage.removeItem("kitchenAuth");
         localStorage.setItem(
           "adminAuth",
           JSON.stringify({
@@ -199,6 +201,43 @@ export default function LoginPage() {
         window.dispatchEvent(new Event("authChanged"));
         toast.success(`Welcome Admin, ${user.name || seedName}!`);
         navigate("/admin/dashboard", { replace: true });
+      } else if (roleType === "DRIVER") {
+        const driver = data.driver || data.user || data;
+        const seedName = driver.name || email.split("@")[0] || "Driver";
+        const avatarUrl = driver.profile_photo || driver.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${seedName}&backgroundColor=fef08a&textColor=854d0e`;
+
+        localStorage.removeItem("customerAuth");
+        localStorage.removeItem("adminAuth");
+        localStorage.removeItem("kitchenAuth");
+        localStorage.setItem(
+          "driverAuth",
+          JSON.stringify({
+            ...driver,
+            avatar: avatarUrl,
+            profile_photo: driver.profile_photo || avatarUrl,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success(`Welcome Driver, ${driver.name || seedName}!`);
+        navigate("/driver/dashboard", { replace: true });
+      } else if (roleType === "KITCHEN_STAFF" || roleType === "KITCHEN") {
+        const staff = data.staff || data.user || data;
+        localStorage.removeItem("customerAuth");
+        localStorage.removeItem("adminAuth");
+        localStorage.removeItem("driverAuth");
+        localStorage.setItem(
+          "kitchenAuth",
+          JSON.stringify({
+            ...staff,
+            token: data.token,
+            authenticated: true,
+          })
+        );
+        window.dispatchEvent(new Event("authChanged"));
+        toast.success(`Welcome Kitchen Staff, ${staff.name || "Staff"}!`);
+        navigate("/admin/kitchen-dashboard", { replace: true });
       } else {
         const customer = data.customer || data.user || data;
         checkProfileAndRedirect(customer, data.token);
