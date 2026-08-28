@@ -19,11 +19,13 @@ import {
   Check,
   Compass,
   Copy,
-  Gauge
+  Gauge,
+  MessageSquare
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Navbar } from "@/components/food/navbar";
 import { PageTransition } from "@/components/shared/page-transition";
+import { OrderChatModal } from "@/components/food/order-chat-modal";
 import { list, get } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
@@ -153,6 +155,7 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [recenterCounter, setRecenterCounter] = useState(0);
+  const [chatOpen, setChatOpen] = useState(false);
 
   // Real turn-by-turn road route geometry from OSRM
   const [roadRoute, setRoadRoute] = useState([]);
@@ -172,6 +175,28 @@ export default function OrderTrackingPage() {
           const driverData = await get("drivers", driverId);
           setDriver(driverData);
         } catch(e) {}
+      } else if (orderData.status === "ON_DELIVERY" || orderData.status === "OUT_FOR_DELIVERY") {
+        try {
+          const allDrivers = await list("drivers");
+          const activeDriver = allDrivers.find(d => String(d.status).toUpperCase() === "ACTIVE" || d.is_online || d.active) || allDrivers[0];
+          if (activeDriver) {
+            setDriver(activeDriver);
+          } else {
+            setDriver({
+              name: "Flame Courier Partner",
+              phone: "0965755963",
+              vehicle_info: "Honda Dream 125 • Phnom Penh Delivery",
+              status: "ACTIVE"
+            });
+          }
+        } catch(e) {
+          setDriver({
+            name: "Flame Courier Partner",
+            phone: "0965755963",
+            vehicle_info: "Honda Dream 125 • Phnom Penh Delivery",
+            status: "ACTIVE"
+          });
+        }
       } else {
         setDriver(null);
       }
@@ -588,10 +613,7 @@ export default function OrderTrackingPage() {
                           attributionControl={false}
                         >
                           <TileLayer
-                            url={theme === 'dark'
-                              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-                              : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-                            }
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                           />
 
                           {/* 1. Restaurant Marker */}
@@ -645,48 +667,61 @@ export default function OrderTrackingPage() {
                         </MapContainer>
                       </div>
 
-                      {/* Driver Strip (When Driver is assigned) */}
+                      {/* Driver Strip (When Driver is assigned or On Delivery) */}
                       {driver ? (
-                        <div className="p-3.5 bg-secondary/20 border-t border-border/50 flex items-center justify-between gap-3">
+                        <div className="p-3.5 bg-secondary/30 border-t border-border/50 flex items-center justify-between gap-3">
                           <div className="flex items-center gap-3 min-w-0">
                             {driver.profilePhoto || driver.profile_photo ? (
                               <img 
                                 src={driver.profilePhoto || driver.profile_photo} 
                                 alt={driver.name} 
-                                className="size-10 rounded-full object-cover border border-border shrink-0" 
+                                className="size-11 rounded-full object-cover border-2 border-primary/40 shadow-xs shrink-0" 
                               />
                             ) : (
-                              <div className="size-10 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
+                              <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-orange-600 text-white flex items-center justify-center shrink-0 shadow-xs">
                                 <Bike className="size-5" />
                               </div>
                             )}
                             <div className="min-w-0">
-                              <h4 className="font-bold text-xs sm:text-sm text-foreground flex items-center gap-1.5 truncate">
+                              <h4 className="font-bold text-sm text-foreground flex items-center gap-1.5 truncate">
                                 {driver.name}
-                                <span className="text-[9px] bg-emerald-500/15 text-emerald-600 font-bold px-1.5 py-0.2 rounded-full shrink-0">
+                                <span className="text-[10px] bg-emerald-500/15 text-emerald-600 font-bold px-2 py-0.5 rounded-full shrink-0">
                                   {hasRealDriverGps ? "Live GPS" : "Assigned"}
                                 </span>
                               </h4>
-                              <p className="text-[11px] text-muted-foreground truncate">
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
                                 {driver.vehicleInfo || driver.vehicle_info || "Delivery Partner"}
                                 {hasRealDriverGps && <span className="text-primary font-bold"> • ~{remainingMinutes}m away</span>}
                               </p>
                             </div>
                           </div>
 
-                          <a 
-                            href={`tel:${driver.phone || "012345678"}`} 
-                            className="flex items-center gap-1.5 bg-primary text-primary-foreground font-bold text-xs sm:text-sm px-4 py-2 rounded-full shadow-xs hover:bg-primary/90 transition-all active:scale-95 shrink-0"
-                          >
-                            <PhoneCall className="size-3.5" />
-                            <span>Call</span>
-                          </a>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              type="button"
+                              onClick={() => setChatOpen(true)}
+                              className="flex items-center gap-1.5 bg-secondary/80 hover:bg-secondary text-foreground font-bold text-xs sm:text-sm px-3.5 py-2.5 rounded-full border border-border/70 shadow-xs transition-all active:scale-95 cursor-pointer"
+                              title="Chat with Driver"
+                            >
+                              <MessageSquare className="size-4 text-primary" />
+                              <span>Chat</span>
+                            </button>
+                            <a 
+                              href={`tel:${driver.phone || "0965755963"}`} 
+                              className="flex items-center gap-1.5 bg-primary text-primary-foreground font-bold text-xs sm:text-sm px-4 py-2.5 rounded-full shadow-xs hover:bg-primary/90 transition-all active:scale-95 shrink-0"
+                            >
+                              <PhoneCall className="size-4" />
+                              <span>Call</span>
+                            </a>
+                          </div>
                         </div>
                       ) : (
                         <div className="px-4 py-3 bg-secondary/15 border-t border-border/40 text-center text-xs text-muted-foreground">
                           {order.status === "READY" 
                             ? "Waiting for courier to accept & pick up delivery..." 
-                            : "Kitchen is preparing your order with fresh ingredients 🍕"}
+                            : (order.status === "ON_DELIVERY" || order.status === "OUT_FOR_DELIVERY")
+                              ? "Courier is on the way to your delivery address 🛵"
+                              : "Kitchen is preparing your order with fresh ingredients 🍕"}
                         </div>
                       )}
                     </div>
@@ -782,6 +817,26 @@ export default function OrderTrackingPage() {
           </div>
         </PageTransition>
       </main>
+
+      {/* Live Driver Chat Modal */}
+      {order && (
+        <OrderChatModal
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          orderId={order.id}
+          orderNumber={order.order_number || order.id}
+          currentUser={{
+            type: "CUSTOMER",
+            name: order.customer_name || address?.name || "Customer"
+          }}
+          recipient={{
+            name: driver?.name || "Courier Partner",
+            photo: driver?.profilePhoto || driver?.profile_photo,
+            role: driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner",
+            phone: driver?.phone || "0965755963"
+          }}
+        />
+      )}
     </div>
   );
 }

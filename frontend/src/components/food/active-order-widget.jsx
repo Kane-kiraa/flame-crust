@@ -12,7 +12,7 @@ import {
   Layers,
   ArrowRight
 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { list, API_URL } from "@/lib/api";
 import { cn, formatPrice } from "@/lib/utils";
 import { useCart } from "@/lib/cart-store";
@@ -310,9 +310,9 @@ export function ActiveOrderWidget() {
                   <DialogTitle className="font-serif text-lg font-bold text-foreground">
                     Active Orders ({activeOrders.length})
                   </DialogTitle>
-                  <p className="text-xs text-muted-foreground font-medium mt-0.5">
+                  <DialogDescription className="text-xs text-muted-foreground font-medium mt-0.5">
                     Track your orders in real-time
-                  </p>
+                  </DialogDescription>
                 </div>
               </div>
               <button 
@@ -340,8 +340,8 @@ export function ActiveOrderWidget() {
                       <Icon className="size-5 sm:size-5.5 animate-pulse" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs sm:text-sm text-foreground truncate">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="font-bold text-xs sm:text-sm text-foreground font-mono">
                           Order #{order.order_number || order.id}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-foreground/90 border border-border/60 whitespace-nowrap shrink-0">

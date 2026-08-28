@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ShoppingBag, Search, Menu as MenuIcon, X, Moon, Sun, User, MapPin, Ticket, LogOut, ShieldCheck, LayoutDashboard, Clock, Package, Bike, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useCart } from "@/lib/cart-store";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -656,6 +656,9 @@ function Navbar() {
             <DialogTitle className="font-serif text-xl font-bold flex items-center gap-2">
               <Package className="size-5 text-primary" /> Active Orders ({activeOrders.length})
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Track your current active orders and delivery status.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
             {activeOrders.map((order, idx) => (
@@ -667,14 +670,14 @@ function Navbar() {
                 whileTap={{ scale: 0.98 }}
                 className="p-4 rounded-2xl bg-secondary/40 border border-border/60 flex flex-col gap-2.5 hover:bg-secondary/70 hover:border-primary/40 transition-all shadow-xs"
               >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-sm text-foreground">Order #{order.order_number}</span>
-                    <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold text-sm text-foreground font-mono">Order #{order.order_number || order.id}</span>
+                    <span className="text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full bg-primary/20 text-primary border border-primary/30 shrink-0">
                       {order.status.replace(/_/g, " ")}
                     </span>
                   </div>
-                  <span className="text-sm font-bold text-primary">${Number(order.total).toFixed(2)}</span>
+                  <span className="text-sm font-bold text-primary shrink-0">${Number(order.total).toFixed(2)}</span>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Time: {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

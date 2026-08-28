@@ -997,6 +997,50 @@ public class AuthController {
         return isMatch;
     }
 
+    @GetMapping("/order-messages")
+    public ResponseEntity<?> getOrderMessages(@RequestParam("orderId") Long orderId) {
+        try {
+            List<Map<String, Object>> messages = jdbc.queryForList(
+                "SELECT id, order_id, sender_type, sender_id, sender_name, message, is_read, created_at FROM order_messages WHERE order_id = ? ORDER BY created_at ASC",
+                orderId
+            );
+            return ResponseEntity.ok(messages);
+        } catch (Exception e) {
+            log.error("Error fetching order messages for orderId {}", orderId, e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/order-messages")
+    public ResponseEntity<?> sendOrderMessage(@RequestBody Map<String, Object> payload) {
+        try {
+            Object orderIdObj = payload.get("order_id") != null ? payload.get("order_id") : payload.get("orderId");
+            if (orderIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "order_id is required"));
+            }
+            Long orderId = Long.valueOf(orderIdObj.toString());
+            String senderType = (String) payload.getOrDefault("sender_type", payload.getOrDefault("senderType", "CUSTOMER"));
+            String senderName = (String) payload.getOrDefault("sender_name", payload.getOrDefault("senderName", "Customer"));
+            Object senderIdObj = payload.get("sender_id") != null ? payload.get("sender_id") : payload.get("senderId");
+            Long senderId = senderIdObj != null ? Long.valueOf(senderIdObj.toString()) : null;
+            String message = (String) payload.get("message");
+
+            if (message == null || message.trim().isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Message cannot be empty"));
+            }
+
+            jdbc.update(
+                "INSERT INTO order_messages (order_id, sender_type, sender_id, sender_name, message, is_read) VALUES (?, ?, ?, ?, ?, FALSE)",
+                orderId, senderType, senderId, senderName, message.trim()
+            );
+
+            return ResponseEntity.ok(Map.of("success", true, "message", "Sent successfully"));
+        } catch (Exception e) {
+            log.error("Error sending order message", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private String hashPasswordSha256(String password) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");

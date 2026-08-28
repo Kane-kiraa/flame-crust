@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { list, get, update, getDriverMe, updateDriverLocation } from "@/lib/api";
+import { OrderChatModal } from "@/components/food/order-chat-modal";
 import { cn } from "@/lib/utils";
 
 // Leaflet imports
@@ -525,9 +526,10 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, isActionLo
 }
 
 // ----------------- MODAL: FULL ORDER / PASSENGER DETAILS SHEET (Screen 2 & 3) -----------------
-function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, isAvailable, isActionLoading }) {
+function OrderDetailsModal({ order, driver, isOpen, onClose, onAccept, onUpdateStatus, isAvailable, isActionLoading }) {
   if (!isOpen || !order) return null;
 
+  const [chatOpen, setChatOpen] = useState(false);
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
   const customerName = order.customer?.name || "Customer";
   const customerPhone = order.customer?.phone || order.customer_phone || "";
@@ -571,7 +573,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
         <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
           
           {/* Customer Profile Card */}
-          <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+          <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/60 dark:border-white/5 flex items-center justify-between gap-3">
             <div className="flex items-center gap-3.5 min-w-0">
               <img 
                 src={customerAvatar} 
@@ -591,15 +593,25 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
               </div>
             </div>
 
-            {customerPhone && (
-              <a 
-                href={`tel:${customerPhone}`} 
-                className="size-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 active:scale-95 transition-all shrink-0"
-                title="Call Customer"
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setChatOpen(true)}
+                className="size-11 rounded-2xl bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-md shadow-blue-500/25 active:scale-95 transition-all cursor-pointer"
+                title="Chat with Customer"
               >
-                <Phone className="size-5 stroke-[2.5]" />
-              </a>
-            )}
+                <MessageSquare className="size-5 stroke-[2.5]" />
+              </button>
+              {customerPhone && (
+                <a 
+                  href={`tel:${customerPhone}`} 
+                  className="size-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 active:scale-95 transition-all shrink-0"
+                  title="Call Customer"
+                >
+                  <Phone className="size-5 stroke-[2.5]" />
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Pickup & Drop Route Information */}
@@ -748,6 +760,25 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
             </Button>
           )}
         </div>
+
+        {/* Order Live Chat Modal */}
+        <OrderChatModal
+          open={chatOpen}
+          onOpenChange={setChatOpen}
+          orderId={order.id}
+          orderNumber={order.order_number || order.id}
+          currentUser={{
+            type: "DRIVER",
+            name: driver?.name || "Driver",
+            id: driver?.id
+          }}
+          recipient={{
+            name: customerName,
+            photo: customerAvatar,
+            role: "Customer",
+            phone: customerPhone
+          }}
+        />
 
       </div>
     </div>
@@ -1091,7 +1122,7 @@ export default function DriverDashboardPage() {
             className="w-full h-full z-0" 
             zoomControl={false}
           >
-            <TileLayer url={`https://{s}.basemaps.cartocdn.com/${theme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`} />
+            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
             
             {/* Store Central Kitchen Marker */}
             <Marker position={STORE_COORDS}>
@@ -1164,6 +1195,7 @@ export default function DriverDashboardPage() {
       {/* Full Screen / Sheet Details Modal */}
       <OrderDetailsModal 
         order={selectedOrderDetails}
+        driver={driver}
         isOpen={Boolean(selectedOrderDetails)}
         onClose={() => setSelectedOrderDetails(null)}
         onAccept={acceptOrder}

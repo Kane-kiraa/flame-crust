@@ -53,6 +53,7 @@ public class AdminCrudController {
         map.put("inventory", new ResourceConfig(Inventory.class, InventoryRepository.class));
         map.put("kitchen_staff", new ResourceConfig(KitchenStaff.class, KitchenStaffRepository.class));
         map.put("order_items", new ResourceConfig(OrderItem.class, OrderItemRepository.class));
+        map.put("order_messages", new ResourceConfig(OrderMessage.class, OrderMessageRepository.class));
         map.put("order_status_history", new ResourceConfig(OrderStatusHistory.class, OrderStatusHistoryRepository.class));
         map.put("orders", new ResourceConfig(Order.class, OrderRepository.class));
         map.put("otps", new ResourceConfig(Otp.class, OtpRepository.class));

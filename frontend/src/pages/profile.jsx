@@ -39,7 +39,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Navbar } from "@/components/food/navbar";
 import { CartDrawer } from "@/components/food/cart-drawer";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
 import { list, create, update, remove, API_URL } from "@/lib/api";
@@ -1787,11 +1787,11 @@ export default function ProfilePage() {
               <DialogContent className="sm:max-w-md rounded-3xl border border-border/60 bg-card p-6 shadow-warm-lg">
                 <DialogHeader>
                   <DialogTitle className="font-serif text-2xl font-bold">Bypass Password via OTP</DialogTitle>
+                  <DialogDescription className="text-sm text-muted-foreground leading-relaxed">
+                    We have sent a 6-digit OTP code to your email <strong className="text-foreground">{settingsForm.email}</strong>. Enter it below to authorize setting a new password.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    We have sent a 6-digit OTP code to your email <strong>{settingsForm.email}</strong>. Enter it below to authorize setting a new password.
-                  </p>
                   <div className="space-y-2">
                     <Input 
                       type="text"
@@ -1829,6 +1829,9 @@ export default function ProfilePage() {
               <DialogContent className="sm:max-w-md bg-background border-border/60 rounded-3xl">
                 <DialogHeader>
                   <DialogTitle className="font-serif text-xl">Order #{selectedOrderDetails?.order_number}</DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Items and price breakdown for this order.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mt-4">
                   {selectedOrderDetails && allOrderItems
@@ -1895,6 +1898,9 @@ export default function ProfilePage() {
                     <MapPin className="size-5 text-primary" />
                     {selectedAddressDetails?.label || "Address Details"}
                   </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    View full information for this saved address.
+                  </DialogDescription>
                 </DialogHeader>
                 {selectedAddressDetails && (
                   <div className="space-y-4 py-3">
@@ -1957,6 +1963,9 @@ export default function ProfilePage() {
                     <Pencil className="size-5 text-primary" />
                     Edit Address
                   </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Update your delivery address details.
+                  </DialogDescription>
                 </DialogHeader>
                 {editingAddress && (
                   <form onSubmit={handleUpdateAddress} className="space-y-4 py-3">

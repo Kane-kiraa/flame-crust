@@ -34,17 +34,19 @@ function CommandDialog({
   showCloseButton = true,
   ...props
 }) {
-  return /* @__PURE__ */ jsxs(Dialog, { ...props, children: [
-    /* @__PURE__ */ jsxs(DialogHeader, { className: "sr-only", children: [
-      /* @__PURE__ */ jsx(DialogTitle, { children: title }),
-      /* @__PURE__ */ jsx(DialogDescription, { children: description })
-    ] }),
-    /* @__PURE__ */ jsx(
+  return /* @__PURE__ */ jsx(Dialog, { ...props, children: [
+    /* @__PURE__ */ jsxs(
       DialogContent,
       {
         className: cn("overflow-hidden p-0", className),
         showCloseButton,
-        children: /* @__PURE__ */ jsx(Command, { className: "[&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5", children })
+        children: [
+          /* @__PURE__ */ jsxs(DialogHeader, { className: "sr-only", children: [
+            /* @__PURE__ */ jsx(DialogTitle, { children: title }),
+            /* @__PURE__ */ jsx(DialogDescription, { children: description })
+          ] }),
+          /* @__PURE__ */ jsx(Command, { className: "[&_[cmdk-group-heading]]:text-muted-foreground **:data-[slot=command-input-wrapper]:h-12 [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group]]:px-2 [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5", children })
+        ]
       }
     )
   ] });

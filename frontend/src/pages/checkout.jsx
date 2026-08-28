@@ -41,7 +41,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
 import { CartDrawer } from "@/components/food/cart-drawer";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
 import { useCart } from "@/lib/cart-store";
@@ -1311,6 +1311,9 @@ function CheckoutPage() {
             <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
               <Building className="size-5 text-primary" /> Select Delivery Address
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Choose one of your saved delivery addresses.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2.5 py-2 max-h-[55vh] overflow-y-auto no-scrollbar">
             {savedAddresses.map((addr) => {
@@ -1371,6 +1374,9 @@ function CheckoutPage() {
             <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
               <MapPin className="size-5 text-primary" /> Pin Delivery Location
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Drag the pin on the map to set your exact delivery location.
+            </DialogDescription>
           </DialogHeader>
           <div className="py-2">
             <MapPicker
@@ -1393,6 +1399,9 @@ function CheckoutPage() {
             <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
               <Ticket className="size-5 text-primary" /> Select Available Coupon
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Select a coupon code to apply to your order.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2.5 py-2 max-h-[55vh] overflow-y-auto no-scrollbar">
             {loadingCoupons ? (
@@ -1475,6 +1484,9 @@ function CheckoutPage() {
             <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
               <QrCode className="size-5 text-primary" /> Scan & Pay
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Scan the KHQR code using your banking app to complete payment.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center py-4 space-y-4">
             <div id="khqr-canvas-element" className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center relative group overflow-hidden">

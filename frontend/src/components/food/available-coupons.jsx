@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Ticket, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { list } from "@/lib/api";
 import { toast } from "sonner";
@@ -47,6 +47,9 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
       <DialogContent className="w-[92vw] sm:max-w-md max-h-[85vh] flex flex-col p-0 overflow-hidden bg-background rounded-3xl border border-border/80">
         <DialogHeader className="p-4 sm:p-6 pb-3 sm:pb-4 border-b border-border/60">
           <DialogTitle className="font-serif text-lg sm:text-xl">Available Coupons</DialogTitle>
+          <DialogDescription className="text-xs text-muted-foreground">
+            Select a coupon code or voucher to apply discount.
+          </DialogDescription>
         </DialogHeader>
         
         <div className="flex-1 overflow-hidden">

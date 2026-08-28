@@ -234,3 +234,27 @@ export function updateDriverLocation(latitude, longitude) {
     body: JSON.stringify({ latitude, longitude }),
   });
 }
+
+export async function getOrderMessages(orderId) {
+  try {
+    const res = await globalThis.fetch(`${API_URL}/auth/order-messages?orderId=${encodeURIComponent(orderId)}`);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    return [];
+  }
+}
+
+export async function sendOrderMessage(data) {
+  const res = await globalThis.fetch(`${API_URL}/auth/order-messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to send message");
+  }
+  return await res.json();
+}
+

@@ -25,7 +25,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { QRCodeCanvas } from "qrcode.react";
 import { BakongKHQR, IndividualInfo } from "bakong-khqr";
@@ -724,6 +724,9 @@ export function PaymentForm({
             <DialogTitle className="font-serif text-base font-bold flex items-center gap-2">
               <Ticket className="size-4 text-primary" /> Select Available Coupon
             </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Choose an available coupon code to apply to your checkout.
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col gap-2.5 py-2 max-h-[50vh] overflow-y-auto no-scrollbar">
             {loadingCoupons ? (
