@@ -373,27 +373,14 @@ function CheckoutPage() {
 
   const isAutoSubmittingRef = useRef(false);
 
-  const handleManualCheckPayment = async () => {
-    const isSuccess = await verifyPaymentWithBakong(true);
-    if (isSuccess && !isAutoSubmittingRef.current) {
-      isAutoSubmittingRef.current = true;
-      setIsPaymentVerified(true);
-      toast.success("🎉 ទទួលបានការផ្ទេរប្រាក់ជោគជ័យពី Bakong! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
-      setTimeout(() => {
-        setShowPaymentConfirmModal(false);
-        executeOrderCreation(true);
-      }, 1000);
-    }
-  };
-
-  // 100% Automatic Polling for KHQR / ABA_PAY when Modal is Open - 30s interval
+  // 100% Automatic Polling for KHQR / ABA_PAY when Modal is Open - 40s interval
   useEffect(() => {
     if (!showPaymentConfirmModal || isPaymentVerified || (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") || !qrCodeString) return;
 
     let pollCount = 0;
-    const maxPolls = 20; // 20 * 30s = 10 minutes
+    const maxPolls = 15; // 15 * 40s = 10 minutes
 
-    // Poll every 30 seconds (30000ms) to conserve Bakong API quota
+    // Poll automatically every 40 seconds (40000ms)
     const pollTimer = setInterval(async () => {
       if (isAutoSubmittingRef.current || isPaymentVerified) return;
       pollCount++;
@@ -411,7 +398,7 @@ function CheckoutPage() {
           executeOrderCreation(true);
         }, 1000);
       }
-    }, 30000);
+    }, 40000);
 
     return () => clearInterval(pollTimer);
   }, [showPaymentConfirmModal, qrCodeString, paymentMethod, isPaymentVerified]);
@@ -1546,27 +1533,10 @@ function CheckoutPage() {
                   <span>✅ ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ! កំពុងបញ្ចប់...</span>
                 </div>
               ) : (
-                <>
-                  <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
-                    <Loader2 className="size-3.5 animate-spin text-primary" />
-                    <span>កំពុងរង់ចាំការបាញ់លុយពី Bakong (30s)...</span>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    disabled={isCheckingPayment}
-                    onClick={handleManualCheckPayment}
-                    className="w-full rounded-full border-primary/30 text-primary hover:bg-primary/10 text-xs h-8 font-semibold"
-                  >
-                    {isCheckingPayment ? (
-                      <Loader2 className="size-3.5 animate-spin mr-1.5" />
-                    ) : (
-                      <RefreshCw className="size-3.5 mr-1.5" />
-                    )}
-                    ពិនិត្យការទូទាត់ឥឡូវនេះ (Check Now)
-                  </Button>
-                </>
+                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
+                  <Loader2 className="size-3.5 animate-spin text-primary" />
+                  <span>កំពុងរង់ចាំការទូទាត់ប្រាក់...</span>
+                </div>
               )}
             </div>
             
