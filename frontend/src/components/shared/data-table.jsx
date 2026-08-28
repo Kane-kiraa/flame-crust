@@ -14,7 +14,7 @@ import { TableSkeleton } from "./loading-skeleton";
 import { EmptyState } from "./empty-state";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZES = [5, 10, 20, 50];
+const PAGE_SIZES = [5, 10, 20, 50, "All"];
 
 export function DataTable({
   columns,
@@ -35,7 +35,7 @@ export function DataTable({
   const [sortKey, setSortKey] = useState(columns[0]?.key || "id");
   const [sortDir, setSortDir] = useState("asc");
   const [page, setPage] = useState(0);
-  const [pageSize, setPageSize] = useState(controlledPageSize || 10);
+  const [pageSize, setPageSize] = useState(controlledPageSize || 5);
 
   // Sync pageSize when controlledPageSize changes (e.g. products -> 5)
   useEffect(() => {
@@ -85,9 +85,10 @@ export function DataTable({
     });
   }, [filteredData, sortKey, sortDir]);
 
-  const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
+  const actualPageSize = pageSize === "All" ? Math.max(sortedData.length, 1) : Number(pageSize || 5);
+  const totalPages = Math.max(1, Math.ceil(sortedData.length / actualPageSize));
   const safePage = Math.min(page, totalPages - 1);
-  const pagedData = sortedData.slice(safePage * pageSize, (safePage + 1) * pageSize);
+  const pagedData = sortedData.slice(safePage * actualPageSize, (safePage + 1) * actualPageSize);
 
   if (loading) {
     return <TableSkeleton rows={5} cols={columns.length} className={className} />;
@@ -160,7 +161,8 @@ export function DataTable({
               <select
                 value={pageSize}
                 onChange={(e) => {
-                  setPageSize(Number(e.target.value));
+                  const val = e.target.value === "All" ? "All" : Number(e.target.value);
+                  setPageSize(val);
                   setPage(0);
                 }}
                 className="rounded-md border border-border/60 bg-background px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
@@ -172,7 +174,7 @@ export function DataTable({
             </div>
             <div className="flex items-center gap-1">
               <span className="mr-2">
-                {safePage * pageSize + 1}–{Math.min((safePage + 1) * pageSize, sortedData.length)} of {sortedData.length}
+                {sortedData.length === 0 ? "0 of 0" : `${safePage * actualPageSize + 1}–${Math.min((safePage + 1) * actualPageSize, sortedData.length)} of ${sortedData.length}`}
               </span>
               <Button
                 variant="outline"
