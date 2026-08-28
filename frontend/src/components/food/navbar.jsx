@@ -65,49 +65,61 @@ function Navbar() {
 
   const [activeOrders, setActiveOrders] = useState(cachedActiveOrders);
   const [ordersModalOpen, setOrdersModalOpen] = useState(false);
-  const [navbarChatOpen, setNavbarChatOpen] = useState(false);
-  const [chatDriver, setChatDriver] = useState(null);
-  const [unreadChatCount, setUnreadChatCount] = useState(0);
-  const lastKnownNavbarMsgIdRef = useRef(null);
+  const [chatListModalOpen, setChatListModalOpen] = useState(false);
+  const [selectedChatOrder, setSelectedChatOrder] = useState(null);
+  const [orderConversations, setOrderConversations] = useState([]);
 
-  const latestActiveOrder = activeOrders.length > 0 ? activeOrders[0] : null;
-
+  // Fetch drivers & last messages for all active orders
   useEffect(() => {
-    if (!latestActiveOrder) {
-      setChatDriver(null);
-      setUnreadChatCount(0);
+    if (activeOrders.length === 0) {
+      setOrderConversations([]);
       return;
     }
 
-    const loadDriverAndMessages = async () => {
+    const loadAllConversations = async () => {
       try {
-        const driverId = latestActiveOrder.driverId || latestActiveOrder.driver_id;
-        if (driverId) {
-          const dData = await get("drivers", driverId).catch(() => null);
-          setChatDriver(dData);
-        } else {
-          const allDrivers = (await list("drivers").catch(() => [])) || [];
-          const activeD = allDrivers.find(d => d.status === "ACTIVE" || d.status === "DELIVERING") || allDrivers[0];
-          if (activeD) setChatDriver(activeD);
-        }
-
-        const msgs = await getOrderMessages(latestActiveOrder.id);
-        if (Array.isArray(msgs) && msgs.length > 0) {
-          const lastMsg = msgs[msgs.length - 1];
-          if (lastKnownNavbarMsgIdRef.current !== null && lastMsg.id > lastKnownNavbarMsgIdRef.current) {
-            if (lastMsg.sender_type !== "CUSTOMER" && !navbarChatOpen) {
-              setUnreadChatCount(prev => prev + 1);
+        const allDrivers = (await list("drivers").catch(() => [])) || [];
+        
+        const convos = await Promise.all(
+          activeOrders.map(async (ord) => {
+            const driverId = ord.driverId || ord.driver_id;
+            let driver = null;
+            if (driverId) {
+              driver = allDrivers.find(d => String(d.id) === String(driverId)) || (await get("drivers", driverId).catch(() => null));
             }
-          }
-          lastKnownNavbarMsgIdRef.current = lastMsg.id;
-        }
+            if (!driver) {
+              driver = allDrivers.find(d => d.status === "ACTIVE" || d.status === "DELIVERING") || allDrivers[0] || null;
+            }
+
+            let msgs = [];
+            try {
+              msgs = await getOrderMessages(ord.id);
+            } catch (e) {}
+
+            const lastMsg = Array.isArray(msgs) && msgs.length > 0 ? msgs[msgs.length - 1] : null;
+            const unreadCount = Array.isArray(msgs) 
+              ? msgs.filter(m => m.sender_type !== "CUSTOMER" && !m.is_read).length 
+              : 0;
+
+            return {
+              order: ord,
+              driver,
+              lastMessage: lastMsg,
+              unreadCount
+            };
+          })
+        );
+
+        setOrderConversations(convos);
       } catch (e) {}
     };
 
-    loadDriverAndMessages();
-    const chatPoll = setInterval(loadDriverAndMessages, 4000);
+    loadAllConversations();
+    const chatPoll = setInterval(loadAllConversations, 4000);
     return () => clearInterval(chatPoll);
-  }, [latestActiveOrder, navbarChatOpen]);
+  }, [activeOrders]);
+
+  const totalUnreadChats = orderConversations.reduce((acc, curr) => acc + (curr.unreadCount || 0), 0);
 
   useEffect(() => {
     const checkActiveOrders = async () => {
@@ -526,23 +538,26 @@ function Navbar() {
               </Button>
             ) : null}
 
-            {/* Compact Chat Button for Active Ongoing Order */}
-            {latestActiveOrder && (
+            {/* Compact Chat Button for Active Ongoing Orders */}
+            {activeOrders.length > 0 && (
               <div className="relative flex items-center justify-center size-10 sm:size-11 shrink-0">
                 <button
                   type="button"
                   onClick={() => {
-                    setNavbarChatOpen(true);
-                    setUnreadChatCount(0);
+                    if (orderConversations.length === 1) {
+                      setSelectedChatOrder(orderConversations[0]);
+                    } else {
+                      setChatListModalOpen(true);
+                    }
                   }}
                   className="relative size-full rounded-full bg-secondary/80 hover:bg-secondary border border-border/70 hover:border-primary text-foreground flex items-center justify-center transition-all cursor-pointer shadow-xs active:scale-95"
-                  title="Chat with Delivery Partner"
-                  aria-label="Chat with Delivery Partner"
+                  title="Messages & Driver Chats"
+                  aria-label="Messages & Driver Chats"
                 >
-                  <MessageSquare className="size-4 sm:size-5 text-primary" />
-                  {unreadChatCount > 0 ? (
+                  <MessageSquare className="size-4.5 sm:size-5 text-primary" />
+                  {totalUnreadChats > 0 ? (
                     <span className="absolute -top-1 -right-1 min-w-4.5 sm:min-w-5 h-4.5 sm:h-5 px-1 rounded-full bg-red-600 text-white text-[10px] sm:text-[11px] font-black flex items-center justify-center ring-2 ring-background animate-bounce shadow-md">
-                      {unreadChatCount}
+                      {totalUnreadChats}
                     </span>
                   ) : (
                     <span className="absolute top-1.5 right-1.5 size-2 rounded-full bg-emerald-500 ring-1.5 ring-background animate-pulse" />
@@ -770,22 +785,110 @@ function Navbar() {
 
       <SearchModal isOpen={searchOpen} onClose={setSearchOpen} />
 
-      {/* Global Navbar Live Order Chat Modal */}
-      {latestActiveOrder && (
+      {/* Active Order Chats List Modal (shows who chatted and for which order) */}
+      <Dialog open={chatListModalOpen} onOpenChange={setChatListModalOpen}>
+        <DialogContent className="max-w-md w-[92vw] rounded-3xl p-5 border-border/60 z-[99]">
+          <DialogHeader className="pb-3 border-b border-border/60">
+            <DialogTitle className="font-serif text-lg sm:text-xl font-bold flex items-center gap-2">
+              <MessageSquare className="size-5 text-primary" /> Active Delivery Chats ({orderConversations.length})
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Select an ongoing delivery order to chat directly with your courier partner.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex flex-col gap-2.5 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
+            {orderConversations.map((convo, idx) => {
+              const driverName = convo.driver?.name || "Courier Partner";
+              const driverPhoto = convo.driver?.profilePhoto || convo.driver?.profile_photo;
+              const orderNum = convo.order?.order_number || convo.order?.id;
+              const hasLastMsg = Boolean(convo.lastMessage);
+
+              return (
+                <div
+                  key={convo.order.id}
+                  onClick={() => {
+                    setSelectedChatOrder(convo);
+                    setChatListModalOpen(false);
+                  }}
+                  className="p-3.5 rounded-2xl bg-secondary/30 hover:bg-secondary/60 border border-border/60 hover:border-primary/50 transition-all cursor-pointer flex items-center justify-between gap-3 group active:scale-98"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="relative shrink-0">
+                      {driverPhoto ? (
+                        <img 
+                          src={driverPhoto} 
+                          alt={driverName} 
+                          className="size-11 rounded-full object-cover border-2 border-primary/50" 
+                        />
+                      ) : (
+                        <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-red-600 text-white flex items-center justify-center font-bold">
+                          <Bike className="size-5" />
+                        </div>
+                      )}
+                      <span className="absolute bottom-0 right-0 size-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+                    </div>
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5 mb-0.5">
+                        <h4 className="font-bold text-xs sm:text-sm text-foreground truncate group-hover:text-primary transition-colors">
+                          {driverName}
+                        </h4>
+                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-primary border border-border/60 shrink-0">
+                          #{orderNum}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {hasLastMsg ? (
+                          <span className={cn(convo.unreadCount > 0 ? "font-bold text-foreground" : "")}>
+                            {convo.lastMessage.sender_type === "CUSTOMER" ? "You: " : `${driverName.split(" ")[0]}: `}
+                            {convo.lastMessage.message}
+                          </span>
+                        ) : (
+                          <span className="italic text-muted-foreground/80">Tap to start chatting with courier</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    {convo.unreadCount > 0 && (
+                      <span className="min-w-5 h-5 px-1.5 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center shadow-xs animate-pulse">
+                        {convo.unreadCount}
+                      </span>
+                    )}
+                    <Button 
+                      size="sm" 
+                      className="rounded-full h-8 px-3 text-xs font-semibold bg-primary text-primary-foreground pointer-events-none"
+                    >
+                      Chat
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Live Order Chat Modal for Selected Order */}
+      {selectedChatOrder && (
         <OrderChatModal
-          open={navbarChatOpen}
-          onOpenChange={setNavbarChatOpen}
-          orderId={latestActiveOrder.id}
-          orderNumber={latestActiveOrder.order_number || latestActiveOrder.id}
+          open={Boolean(selectedChatOrder)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedChatOrder(null);
+          }}
+          orderId={selectedChatOrder.order.id}
+          orderNumber={selectedChatOrder.order.order_number || selectedChatOrder.order.id}
           currentUser={{
             type: "CUSTOMER",
             name: customer?.name || customer?.phone || "Customer"
           }}
           recipient={{
-            name: chatDriver?.name || "Delivery Partner",
-            photo: chatDriver?.profilePhoto || chatDriver?.profile_photo,
-            role: chatDriver?.vehicleInfo || chatDriver?.vehicle_info || "Delivery Partner",
-            phone: chatDriver?.phone || "0965755963"
+            name: selectedChatOrder.driver?.name || "Delivery Partner",
+            photo: selectedChatOrder.driver?.profilePhoto || selectedChatOrder.driver?.profile_photo,
+            role: selectedChatOrder.driver?.vehicleInfo || selectedChatOrder.driver?.vehicle_info || "Delivery Partner",
+            phone: selectedChatOrder.driver?.phone || "0965755963"
           }}
         />
       )}

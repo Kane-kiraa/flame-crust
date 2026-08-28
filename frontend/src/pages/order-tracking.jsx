@@ -887,23 +887,6 @@ export default function OrderTrackingPage() {
           }}
         />
       )}
-
-      {/* Android Style Floating Chat Head */}
-      {order && !chatOpen && !chatHeadDismissed && (driver || unreadCount > 0 || lastMsgText) && (
-        <FloatingChatHead
-          visible={true}
-          photo={driver?.profilePhoto || driver?.profile_photo}
-          name={driver?.name || "Courier Partner"}
-          role={driver?.vehicleInfo || "Courier Partner"}
-          lastMessage={lastMsgText}
-          unreadCount={unreadCount}
-          onClick={() => {
-            setChatOpen(true);
-            setUnreadCount(0);
-          }}
-          onDismiss={() => setChatHeadDismissed(true)}
-        />
-      )}
     </div>
   );
 }

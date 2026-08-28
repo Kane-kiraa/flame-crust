@@ -1296,24 +1296,6 @@ export default function DriverDashboardPage() {
         />
       )}
 
-      {/* Android Style Floating Chat Head for Driver */}
-      {driverChatHead && !selectedChatOrder && (
-        <FloatingChatHead
-          visible={true}
-          photo={driverChatHead.order.customer?.avatar}
-          name={driverChatHead.order.customer?.name || "Customer"}
-          role="Customer"
-          lastMessage={driverChatHead.message}
-          unreadCount={unreadMap[driverChatHead.order.id] || 1}
-          onClick={() => {
-            setSelectedChatOrder(driverChatHead.order);
-            setUnreadMap(prev => ({ ...prev, [driverChatHead.order.id]: 0 }));
-            setDriverChatHead(null);
-          }}
-          onDismiss={() => setDriverChatHead(null)}
-        />
-      )}
-
     </div>
   );
 }
