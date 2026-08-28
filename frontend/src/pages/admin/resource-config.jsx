@@ -1,3 +1,5 @@
+import { formatDate } from "@/lib/utils";
+
 // Field definitions for each admin resource
 export const resourceConfig = {
   products: {
@@ -100,8 +102,8 @@ export const resourceConfig = {
           </div>
         );
       }},
-      { key: "total", label: "Total", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
-      { key: "created_at", label: "Created", sortable: true, className: "hidden lg:table-cell", render: (v) => v ? new Date(v).toLocaleDateString() : "—" },
+      { key: "total", label: "Total", sortable: true, className: "text-xs sm:text-sm font-semibold", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "created_at", label: "Order Time", sortable: true, className: "hidden sm:table-cell text-xs text-muted-foreground whitespace-nowrap", render: (v) => formatDate(v) || "—" },
     ],
     fields: [
       { name: "order_number", label: "Order Number", type: "text", required: true },

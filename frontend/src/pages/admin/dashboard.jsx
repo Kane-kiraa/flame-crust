@@ -17,7 +17,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatTime, formatDate } from "@/lib/utils";
 
 // SWR-style in-memory cache for instant dashboard rendering
 let memoryDashboardCache = null;
@@ -484,7 +484,7 @@ export default function AdminDashboard() {
                         </div>
                         <p className="text-[10px] sm:text-[11px] text-muted-foreground font-medium mt-0.5 flex items-center gap-1">
                           <Clock className="size-3 text-muted-foreground/70" />
-                          {order.created_at ? new Date(order.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently"}
+                          {formatTime(order.created_at || order.createdAt) || (order.created_at ? new Date(String(order.created_at).replace(" ", "T")).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Recently")}
                         </p>
                       </div>
                     </div>

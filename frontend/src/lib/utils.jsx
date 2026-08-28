@@ -8,11 +8,35 @@ function cn(...inputs) {
 function formatDate(dateInput) {
   if (!dateInput) return "";
   try {
-    const date = new Date(dateInput);
+    let formattedInput = dateInput;
+    if (typeof dateInput === "string") {
+      formattedInput = dateInput.replace(" ", "T");
+    }
+    const date = new Date(formattedInput);
+    if (isNaN(date.getTime())) return "";
     return new Intl.DateTimeFormat('en-US', { 
       month: 'short', 
       day: 'numeric', 
       year: 'numeric', 
+      hour: 'numeric', 
+      minute: '2-digit',
+      hour12: true 
+    }).format(date);
+  } catch(e) {
+    return "";
+  }
+}
+
+function formatTime(dateInput) {
+  if (!dateInput) return "";
+  try {
+    let formattedInput = dateInput;
+    if (typeof dateInput === "string") {
+      formattedInput = dateInput.replace(" ", "T");
+    }
+    const date = new Date(formattedInput);
+    if (isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat('en-US', { 
       hour: 'numeric', 
       minute: '2-digit',
       hour12: true 
@@ -30,5 +54,6 @@ function formatPrice(amount) {
 export {
   cn,
   formatDate,
+  formatTime,
   formatPrice
 };
