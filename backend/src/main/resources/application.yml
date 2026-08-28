@@ -6,7 +6,7 @@ spring:
   application:
     name: flame-crust-api
   flyway:
-    enabled: true
+    enabled: ${FLYWAY_ENABLED:true}
     baseline-on-migrate: true
     baseline-version: "0"
     validate-on-migrate: false
