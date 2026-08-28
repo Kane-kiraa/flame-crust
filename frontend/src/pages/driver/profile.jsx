@@ -766,95 +766,101 @@ export default function DriverProfilePage() {
               </button>
             </div>
 
-            <form onSubmit={handleSaveProfile} className="flex-1 overflow-y-auto p-5 space-y-4 custom-scrollbar">
+            <form onSubmit={handleSaveProfile} className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4 custom-scrollbar">
               <div>
-                <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
-                  Full Name (ឈ្មោះពេញ) *
+                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                  <span>Full Name</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">ឈ្មោះពេញ *</span>
                 </label>
                 <Input 
                   value={editForm.name}
                   onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
                   placeholder="Enter full name"
                   required
-                  className="h-11 rounded-xl"
+                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
-                  Phone Number (លេខទូរស័ព្ទ) *
+                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                  <span>Phone Number</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">លេខទូរស័ព្ទ *</span>
                 </label>
                 <Input 
                   value={editForm.phone}
                   onChange={(e) => setEditForm(prev => ({ ...prev, phone: e.target.value }))}
                   placeholder="e.g. 0888631805"
                   required
-                  className="h-11 rounded-xl"
+                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
-                    Vehicle Model (ម៉ូដែលម៉ូតូ)
+                  <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                    <span>Vehicle Model</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">ម៉ូដែលម៉ូតូ</span>
                   </label>
                   <Input 
                     value={editForm.vehicle_info}
                     onChange={(e) => setEditForm(prev => ({ ...prev, vehicle_info: e.target.value }))}
-                    placeholder="Honda Wave 125i"
-                    className="h-11 rounded-xl"
+                    placeholder="e.g. Honda Wave 125i"
+                    className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                   />
                 </div>
                 <div>
-                  <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
-                    License Plate (ផ្លាកលេខ)
+                  <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                    <span>License Plate</span>
+                    <span className="text-[11px] font-medium text-muted-foreground">ផ្លាកលេខ</span>
                   </label>
                   <Input 
                     value={editForm.license_plate}
                     onChange={(e) => setEditForm(prev => ({ ...prev, license_plate: e.target.value }))}
-                    placeholder="1A-2345"
-                    className="h-11 rounded-xl"
+                    placeholder="e.g. 1A-2345"
+                    className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary font-mono font-bold"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
-                  Emergency Contact (លេខទំនាក់ទំនងបន្ទាន់)
+                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                  <span>Emergency Contact</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">លេខទំនាក់ទំនងបន្ទាន់</span>
                 </label>
                 <Input 
                   value={editForm.emergency_contact}
                   onChange={(e) => setEditForm(prev => ({ ...prev, emergency_contact: e.target.value }))}
-                  placeholder="Family or friend phone"
-                  className="h-11 rounded-xl"
+                  placeholder="Family or friend phone number"
+                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                 />
               </div>
 
               <div>
-                <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
-                  Operating Address / Area (តំបន់ដឹកជញ្ជូន)
+                <label className="text-xs font-bold text-foreground/90 mb-1.5 flex items-center justify-between">
+                  <span>Operating Area</span>
+                  <span className="text-[11px] font-medium text-muted-foreground">តំបន់ដឹកជញ្ជូន</span>
                 </label>
                 <Input 
                   value={editForm.address}
                   onChange={(e) => setEditForm(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="Phnom Penh, Toul Kork, etc."
-                  className="h-11 rounded-xl"
+                  placeholder="Phnom Penh, Toul Kork, BKK, etc."
+                  className="h-11 rounded-xl bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
+              <div className="pt-3 flex gap-3">
                 <Button 
                   type="button" 
                   variant="outline"
                   onClick={() => setIsEditModalOpen(false)}
-                  className="flex-1 h-12 rounded-2xl font-bold text-xs uppercase"
+                  className="flex-1 h-12 rounded-2xl font-bold text-xs uppercase cursor-pointer hover:bg-secondary border-border"
                 >
                   Cancel
                 </Button>
                 <Button 
                   type="submit"
                   disabled={isSavingProfile}
-                  className="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase shadow-md shadow-primary/20"
+                  className="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase shadow-md shadow-primary/20 cursor-pointer active:scale-95 transition-all"
                 >
                   {isSavingProfile ? (
                     <>
@@ -902,9 +908,9 @@ export default function DriverProfilePage() {
               </button>
             </div>
 
-            <form onSubmit={handleUpdatePassword} className="p-5 space-y-4">
+            <form onSubmit={handleUpdatePassword} className="p-5 sm:p-6 space-y-4">
               <div>
-                <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
+                <label className="text-xs font-bold text-foreground/90 block mb-1.5">
                   New Password *
                 </label>
                 <div className="relative">
@@ -914,12 +920,12 @@ export default function DriverProfilePage() {
                     onChange={(e) => setPasswordForm(prev => ({ ...prev, newPassword: e.target.value }))}
                     placeholder="At least 6 characters"
                     required
-                    className="h-11 rounded-xl pr-10"
+                    className="h-11 rounded-xl pr-10 bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                   >
                     {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
@@ -927,7 +933,7 @@ export default function DriverProfilePage() {
               </div>
 
               <div>
-                <label className="text-xs font-black text-foreground uppercase tracking-wider block mb-1.5">
+                <label className="text-xs font-bold text-foreground/90 block mb-1.5">
                   Confirm Password *
                 </label>
                 <div className="relative">
@@ -937,31 +943,31 @@ export default function DriverProfilePage() {
                     onChange={(e) => setPasswordForm(prev => ({ ...prev, confirmPassword: e.target.value }))}
                     placeholder="Repeat new password"
                     required
-                    className="h-11 rounded-xl pr-10"
+                    className="h-11 rounded-xl pr-10 bg-secondary/40 border-border/80 text-xs sm:text-sm px-3.5 focus-visible:ring-primary"
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                   >
                     {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                   </button>
                 </div>
               </div>
 
-              <div className="pt-2 flex gap-3">
+              <div className="pt-3 flex gap-3">
                 <Button 
                   type="button" 
                   variant="outline"
                   onClick={() => setIsPasswordModalOpen(false)}
-                  className="flex-1 h-12 rounded-2xl font-bold text-xs uppercase"
+                  className="flex-1 h-12 rounded-2xl font-bold text-xs uppercase cursor-pointer hover:bg-secondary border-border"
                 >
                   Cancel
                 </Button>
                 <Button 
                   type="submit"
                   disabled={isUpdatingPassword}
-                  className="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase shadow-md shadow-primary/20"
+                  className="flex-[2] h-12 rounded-2xl bg-gradient-to-r from-primary to-amber-600 hover:from-primary/90 hover:to-amber-600/90 text-primary-foreground font-bold text-xs uppercase shadow-md shadow-primary/20 cursor-pointer active:scale-95 transition-all"
                 >
                   {isUpdatingPassword ? (
                     <>
