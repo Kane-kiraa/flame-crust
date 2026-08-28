@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { LogOut, MapPin, PhoneCall, CheckCircle2, Package, RefreshCw, Navigation, Wifi, WifiOff, User, Bike, Clock, AlertCircle, Check, ChevronRight, Sun, Moon, Map, Menu } from "lucide-react";
+import { 
+  LogOut, MapPin, PhoneCall, CheckCircle2, Package, RefreshCw, Navigation, 
+  Wifi, WifiOff, User, Bike, Clock, AlertCircle, Check, ChevronRight, 
+  Sun, Moon, Map, Menu, ArrowLeft, ArrowRight, X, Phone, MessageSquare, 
+  Star, ShieldCheck, DollarSign, Bell, Sparkles, Store
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { list, get, update, getDriverMe, updateDriverLocation } from "@/lib/api";
@@ -20,6 +25,9 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
+const STORE_COORDS = [11.5564, 104.9282]; // Flame & Crust central location
+const LOCATION_INTERVAL = 5_000;
+
 function MapUpdater({ center }) {
   const map = useMap();
   useEffect(() => {
@@ -30,60 +38,74 @@ function MapUpdater({ center }) {
   return null;
 }
 
-const LOCATION_INTERVAL = 5_000;
-
-// ----------------- SUBCOMPONENTS -----------------
-
-function DriverHeader({ driver, locationActive, theme, toggleTheme }) {
+// ----------------- HEADER -----------------
+function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, refreshing }) {
   return (
-    <header className="shrink-0 h-[calc(env(safe-area-inset-top)+4rem)] pt-[env(safe-area-inset-top)] bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between px-4 lg:px-6 transition-colors z-40 relative shadow-sm">
-      <div className="flex items-center gap-4">
-        <div className="size-10 rounded-xl bg-slate-900 dark:bg-white flex items-center justify-center shadow-sm shrink-0 transition-colors">
-          <FlameIcon className="size-5 text-white dark:text-zinc-900" />
+    <header className="shrink-0 h-[calc(env(safe-area-inset-top)+4rem)] pt-[env(safe-area-inset-top)] bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between px-4 lg:px-6 transition-colors z-40 relative shadow-xs">
+      <div className="flex items-center gap-3">
+        <div className="size-10 rounded-2xl bg-amber-400 dark:bg-amber-400 flex items-center justify-center shadow-md shadow-amber-400/20 shrink-0 text-black">
+          <Bike className="size-5.5 stroke-[2.5]" />
         </div>
-        <div className="hidden sm:block">
-          <h1 className="font-black text-xl text-slate-900 dark:text-zinc-100 tracking-tight leading-none">Flame & Crust</h1>
-          <p className="text-xs font-bold text-slate-500 dark:text-zinc-400 mt-1 uppercase tracking-widest">Driver Dashboard</p>
-        </div>
-        <div className="sm:hidden">
-          <h1 className="font-black text-lg text-slate-900 dark:text-zinc-100 tracking-tight">Dashboard</h1>
+        <div>
+          <div className="flex items-center gap-1.5">
+            <h1 className="font-black text-lg sm:text-xl text-slate-950 dark:text-white tracking-tight leading-none">
+              Flame & Crust
+            </h1>
+            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-amber-400/20 text-amber-600 dark:text-amber-400 rounded-md border border-amber-400/30">
+              Driver
+            </span>
+          </div>
+          <p className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mt-0.5 flex items-center gap-1.5">
+            <span className={cn("size-2 rounded-full inline-block", locationActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+            {locationActive ? "GPS Active • Ready for orders" : "GPS Connecting..."}
+          </p>
         </div>
       </div>
 
-      <div className="flex items-center gap-3 sm:gap-6">
-        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-slate-100 dark:bg-zinc-900 rounded-full border border-slate-200/60 dark:border-white/5 transition-colors">
-          <div className={cn("size-2.5 rounded-full shadow-sm", locationActive ? "bg-green-500 animate-pulse" : "bg-slate-400 dark:bg-zinc-600")} />
-          <span className={cn("text-xs font-bold uppercase tracking-wider", locationActive ? "text-green-700 dark:text-green-400" : "text-slate-600 dark:text-zinc-400")}>
-            {locationActive ? "Online" : "Offline"}
-          </span>
-        </div>
-
+      <div className="flex items-center gap-2.5 sm:gap-4">
+        {/* Refresh Button */}
         <button 
-          onClick={toggleTheme}
-          className="p-2.5 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 transition-colors active:scale-95"
-          title="Toggle theme"
+          onClick={onRefresh}
+          disabled={refreshing}
+          className={cn(
+            "p-2.5 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5",
+            refreshing && "opacity-60 cursor-not-allowed"
+          )}
+          title="Refresh Feed"
         >
-          {theme === 'dark' ? <Sun className="size-5" /> : <Moon className="size-5" />}
+          <RefreshCw className={cn("size-4.5", refreshing && "animate-spin text-amber-500")} />
         </button>
 
-        <div className="w-px h-8 bg-slate-200 dark:bg-zinc-800 hidden sm:block mx-1 transition-colors" />
+        {/* Theme Toggle */}
+        <button 
+          onClick={toggleTheme}
+          className="p-2.5 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5"
+          title="Toggle Theme"
+        >
+          {theme === 'dark' ? <Sun className="size-4.5 text-amber-400" /> : <Moon className="size-4.5" />}
+        </button>
 
-        <Link to="/driver/profile" className="flex items-center gap-3 group hover:opacity-80 transition-opacity">
-          <div className="hidden sm:block text-right">
-            <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">{driver?.name?.split(' ')[0]}</p>
-            <p className="text-[10px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-widest">Profile ▾</p>
+        <div className="w-px h-6 bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
+
+        {/* Driver Profile */}
+        <Link to="/driver/profile" className="flex items-center gap-2.5 group pl-1">
+          <div className="hidden md:block text-right">
+            <p className="text-xs font-black text-slate-900 dark:text-zinc-100 group-hover:text-amber-500 transition-colors">
+              {driver?.name || "Driver"}
+            </p>
+            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+              ★ 4.9 • Online
+            </p>
           </div>
           <div className="relative">
             {driver?.profile_photo ? (
-              <img src={driver.profile_photo} alt={driver.name} className="size-10 sm:size-11 rounded-full object-cover border-2 border-slate-100 dark:border-zinc-800 shadow-sm" />
+              <img src={driver.profile_photo} alt={driver.name} className="size-9.5 rounded-full object-cover ring-2 ring-amber-400/80 shadow-sm" />
             ) : (
-              <div className="size-10 sm:size-11 rounded-full bg-slate-100 dark:bg-zinc-800 border-2 border-slate-100 dark:border-zinc-800 flex items-center justify-center">
-                <User className="size-5 text-slate-400 dark:text-zinc-500" />
+              <div className="size-9.5 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-700 dark:text-amber-300">
+                <User className="size-5" />
               </div>
             )}
-            <div className="md:hidden absolute -bottom-1 -right-1 size-4 bg-white dark:bg-zinc-950 rounded-full flex items-center justify-center border-2 border-white dark:border-zinc-950">
-              <div className={cn("size-2 rounded-full", locationActive ? "bg-green-500" : "bg-slate-400 dark:bg-zinc-600")} />
-            </div>
+            <span className="absolute -bottom-0.5 -right-0.5 size-3 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-950" />
           </div>
         </Link>
       </div>
@@ -91,54 +113,47 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme }) {
   );
 }
 
-// Simple flame icon SVG
-function FlameIcon(props) {
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
-      <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />
-    </svg>
-  );
-}
-
+// ----------------- TABS COMPONENT -----------------
 function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
   return (
-    <div className="px-5 py-4 bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 shrink-0 transition-colors z-20">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight">Deliveries</h2>
-      </div>
-      <div className="flex p-1 bg-slate-100 dark:bg-zinc-900 rounded-xl transition-colors">
+    <div className="p-3.5 bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 shrink-0 z-20">
+      <div className="flex p-1 bg-slate-100 dark:bg-zinc-900/80 rounded-2xl border border-slate-200/60 dark:border-white/5">
         <button 
           onClick={() => setActiveTab("available")}
           className={cn(
-            "flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
+            "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2",
             activeTab === "available" 
-              ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 shadow-sm" 
-              : "text-slate-500 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
+              ? "bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25" 
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
           )}
         >
-          <span>Available</span>
+          <span>New Requests</span>
           {availableCount > 0 && (
             <span className={cn(
-              "text-[10px] px-1.5 py-0.5 rounded-full transition-colors",
-              activeTab === "available" ? "bg-orange-100 dark:bg-orange-500/20 text-orange-700 dark:text-orange-400" : "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400"
-            )}>{availableCount}</span>
+              "text-[10px] font-black px-1.5 py-0.5 rounded-md",
+              activeTab === "available" ? "bg-black text-amber-400" : "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+            )}>
+              {availableCount}
+            </span>
           )}
         </button>
         <button 
           onClick={() => setActiveTab("my_deliveries")}
           className={cn(
-            "flex-1 py-2.5 px-4 rounded-lg text-sm font-bold transition-all duration-200 flex items-center justify-center gap-2",
+            "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2",
             activeTab === "my_deliveries" 
-              ? "bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 shadow-sm" 
-              : "text-slate-500 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300"
+              ? "bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25" 
+              : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
           )}
         >
           <span>My Deliveries</span>
           {activeCount > 0 && (
             <span className={cn(
-              "text-[10px] px-1.5 py-0.5 rounded-full transition-colors",
-              activeTab === "my_deliveries" ? "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400" : "bg-slate-200 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400"
-            )}>{activeCount}</span>
+              "text-[10px] font-black px-1.5 py-0.5 rounded-md",
+              activeTab === "my_deliveries" ? "bg-black text-amber-400" : "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+            )}>
+              {activeCount}
+            </span>
           )}
         </button>
       </div>
@@ -146,247 +161,578 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
   );
 }
 
-function DeliveryProgress({ status }) {
-  const steps = [
-    { id: "READY", label: "Ready" },
-    { id: "OUT_FOR_DELIVERY", label: "En Route" },
-    { id: "DELIVERED", label: "Done" },
-  ];
-  
-  const currentIdx = steps.findIndex(s => s.id === status);
-  const activeIdx = currentIdx >= 0 ? currentIdx : 0;
+// ----------------- SCREEN 1: NEW RIDE/DELIVERY REQUEST CARD -----------------
+function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
+  const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
+  const customerName = order.customer?.name || "Customer";
+  const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
+  const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
+  const paymentMethod = order.payment_method || "CASH";
 
   return (
-    <div className="py-3 px-1 mb-2">
-      <div className="flex items-center justify-between relative">
-        <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[3px] bg-slate-100 dark:bg-zinc-800 rounded-full z-0 transition-colors" />
-        <div 
-          className="absolute left-6 top-1/2 -translate-y-1/2 h-[3px] bg-blue-600 dark:bg-blue-500 rounded-full z-0 transition-all duration-500 ease-in-out" 
-          style={{ width: `calc(${activeIdx * 50}% - 24px)` }}
-        />
-        
-        {steps.map((step, idx) => {
-          const isCompleted = idx <= activeIdx;
-          const isCurrent = idx === activeIdx;
-          return (
-            <div key={step.id} className="relative z-10 flex flex-col items-center gap-2 bg-white dark:bg-zinc-900 px-2 transition-colors">
-              <div className={cn(
-                "size-4 rounded-full border-2 transition-all duration-300",
-                isCompleted ? "border-blue-600 dark:border-blue-500 bg-blue-600 dark:bg-blue-500" : "border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-900",
-                isCurrent && "ring-4 ring-blue-100 dark:ring-blue-900/30 scale-125"
-              )} />
-              <span className={cn(
-                "text-[10px] font-bold uppercase tracking-wider absolute top-7 whitespace-nowrap transition-colors",
-                isCurrent ? "text-blue-600 dark:text-blue-400" : isCompleted ? "text-slate-700 dark:text-zinc-300" : "text-slate-400 dark:text-zinc-600"
-              )}>
-                {step.label}
-              </span>
-            </div>
-          );
-        })}
+    <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm hover:shadow-md transition-all duration-300 border border-slate-200/80 dark:border-white/10 relative overflow-hidden group">
+      
+      {/* Top Banner Tag */}
+      <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100 dark:border-white/5">
+        <div className="flex items-center gap-2">
+          <span className="size-2 rounded-full bg-amber-400 animate-ping" />
+          <h3 className="font-black text-sm uppercase tracking-wider text-slate-950 dark:text-white">
+            New Delivery Request
+          </h3>
+        </div>
+        <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-lg border border-amber-400/30">
+          Order #{order.order_number || order.id}
+        </span>
       </div>
-      <div className="h-8" /> 
+
+      {/* Customer Preview Row */}
+      <div className="flex items-center gap-3.5 mb-4 p-3 bg-slate-50 dark:bg-zinc-950/60 rounded-2xl border border-slate-100 dark:border-white/5">
+        <img 
+          src={customerAvatar} 
+          alt={customerName} 
+          className="size-11 rounded-full object-cover ring-2 ring-amber-400 shadow-sm shrink-0" 
+        />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between">
+            <h4 className="font-black text-sm text-slate-900 dark:text-zinc-100 truncate">
+              {customerName}
+            </h4>
+            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+              ★ 4.9
+            </span>
+          </div>
+          <p className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
+            {order.address?.address_line || "Phnom Penh delivery area"}
+          </p>
+        </div>
+      </div>
+
+      {/* Key Metrics Grid (ETA, Distance, Fare, Payment) */}
+      <div className="grid grid-cols-2 gap-2.5 mb-4">
+        {/* ETA Box */}
+        <div className="bg-slate-950 dark:bg-black text-white p-3 rounded-2xl flex items-center gap-2.5 shadow-sm">
+          <div className="p-1.5 bg-amber-400 text-black rounded-lg shrink-0">
+            <Clock className="size-4 stroke-[2.5]" />
+          </div>
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block leading-none">
+              Est. Prep/ETA
+            </span>
+            <span className="text-sm font-black text-white mt-0.5 block leading-tight">
+              15 - 20 MIN
+            </span>
+          </div>
+        </div>
+
+        {/* Distance Box */}
+        <div className="bg-slate-100 dark:bg-zinc-800/80 p-3 rounded-2xl flex items-center gap-2.5 border border-slate-200/50 dark:border-white/5">
+          <div className="p-1.5 bg-slate-200 dark:bg-zinc-700 text-slate-700 dark:text-zinc-300 rounded-lg shrink-0">
+            <Navigation className="size-4 stroke-[2.5]" />
+          </div>
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block leading-none">
+              Distance
+            </span>
+            <span className="text-sm font-black text-slate-900 dark:text-white mt-0.5 block leading-tight">
+              1.5 - 3.2 km
+            </span>
+          </div>
+        </div>
+
+        {/* Fare Estimate */}
+        <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3 rounded-2xl flex items-center gap-2.5 border border-emerald-200/60 dark:border-emerald-500/20">
+          <div className="p-1.5 bg-emerald-500 text-white rounded-lg shrink-0">
+            <DollarSign className="size-4 stroke-[2.5]" />
+          </div>
+          <div>
+            <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block leading-none">
+              Driver Earnings
+            </span>
+            <span className="text-base font-black text-emerald-700 dark:text-emerald-300 mt-0.5 block leading-tight">
+              ${fareEstimate}
+            </span>
+          </div>
+        </div>
+
+        {/* Payment Type */}
+        <div className="bg-slate-50 dark:bg-zinc-950/60 p-3 rounded-2xl flex items-center gap-2.5 border border-slate-200/50 dark:border-white/5">
+          <div className="p-1.5 bg-slate-900 dark:bg-zinc-800 text-white rounded-lg shrink-0">
+            <Package className="size-4 stroke-[2.5]" />
+          </div>
+          <div className="min-w-0">
+            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400 block leading-none">
+              Payment
+            </span>
+            <span className="text-xs font-black text-slate-900 dark:text-white mt-0.5 block leading-tight truncate uppercase">
+              {paymentMethod}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Food Items Preview Bar */}
+      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-1 mb-4">
+        {order.items?.map((item, idx) => (
+          <div key={idx} className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200/80 dark:border-white/5 overflow-hidden shadow-xs">
+            {item.product_image ? (
+              <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
+            ) : (
+              <Package className="size-5 text-slate-400" />
+            )}
+            {item.quantity > 1 && (
+              <span className="absolute bottom-0.5 right-0.5 bg-black/85 text-amber-400 text-[9px] font-black px-1.5 py-0.2 rounded-md">
+                x{item.quantity}
+              </span>
+            )}
+          </div>
+        ))}
+        {totalItems > 0 && (
+          <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 pl-1 shrink-0">
+            {totalItems} items (${Number(order.total_amount || 0).toFixed(2)})
+          </span>
+        )}
+      </div>
+
+      {/* Action Buttons: DECLINE & ACCEPT (matching Uber/Grab UI) */}
+      <div className="flex gap-2.5 pt-1">
+        <Button 
+          variant="outline"
+          onClick={() => onSelectDetails(order)}
+          className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-wider border-2 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 active:scale-95 transition-all"
+        >
+          Details
+        </Button>
+        <Button 
+          onClick={() => onAccept(order.id)}
+          className="flex-[2] h-12 rounded-2xl bg-amber-400 hover:bg-amber-500 text-black font-black text-sm uppercase tracking-wider shadow-md shadow-amber-400/25 active:scale-95 transition-all border-none flex items-center justify-center gap-2"
+        >
+          <Check className="size-4.5 stroke-[3]" />
+          Accept Order
+        </Button>
+      </div>
+
     </div>
   );
 }
 
-function OrderCard({ order, activeTab, onAccept, onUpdateStatus }) {
+// ----------------- SCREEN 2 & 3: ACTIVE DELIVERY / PASSENGER & ORDER DETAILS -----------------
+function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
-  
-  return (
-    <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.05)] dark:shadow-none border border-slate-200/60 dark:border-white/10 mb-4 card-lift transition-all relative overflow-hidden group">
-      
-      {/* Decorative side border */}
-      <div className={cn(
-        "absolute left-0 top-0 bottom-0 w-1.5 transition-colors",
-        activeTab === "available" ? "bg-orange-500" : "bg-blue-500"
-      )} />
+  const customerName = order.customer?.name || "Customer";
+  const customerPhone = order.customer?.phone || order.customer_phone || "";
+  const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
+  const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
 
-      {/* Header Info */}
-      <div className="flex items-start justify-between mb-5 pl-2">
-        <div>
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest block mb-1">
-            Order ID
+  const isEnRoute = order.status === "OUT_FOR_DELIVERY";
+  const isReady = order.status === "READY";
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm border-2 border-amber-400/40 dark:border-amber-400/30 relative overflow-hidden transition-all">
+      
+      {/* Active Trip Header */}
+      <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-slate-100 dark:border-white/5">
+        <div className="flex items-center gap-2">
+          <span className="size-2.5 rounded-full bg-emerald-500 animate-pulse" />
+          <span className="text-xs font-black uppercase tracking-wider text-slate-900 dark:text-white">
+            Active Delivery #{order.order_number || order.id}
           </span>
-          <h3 className="text-xl font-black text-slate-900 dark:text-zinc-100 tracking-tight leading-none">
-            #{order.order_number || order.id}
-          </h3>
         </div>
-        <div className="text-right">
-          <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-widest block mb-1">
-            Delivery Fee
-          </span>
-          <div className="text-xl font-black text-green-600 dark:text-green-400 tracking-tight leading-none">
-            ${Number(order.delivery_fee || 0).toFixed(2)}
+        <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full">
+          Earn ${fareEstimate}
+        </span>
+      </div>
+
+      {/* Customer Card with Call & Message Action */}
+      <div className="bg-slate-50 dark:bg-zinc-950 rounded-2xl p-3.5 mb-4 border border-slate-100 dark:border-white/5 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <img 
+            src={customerAvatar} 
+            alt={customerName} 
+            className="size-12 rounded-full object-cover ring-2 ring-amber-400 shadow-sm shrink-0" 
+          />
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <h4 className="font-black text-sm text-slate-900 dark:text-zinc-100 truncate">
+                {customerName}
+              </h4>
+              <span className="text-[10px] font-black text-amber-500">★ 4.9</span>
+            </div>
+            <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400 truncate">
+              {customerPhone ? customerPhone : "Customer phone on file"}
+            </p>
           </div>
+        </div>
+
+        {/* Action Buttons: Phone & View */}
+        <div className="flex items-center gap-2 shrink-0">
+          {customerPhone && (
+            <a 
+              href={`tel:${customerPhone}`} 
+              className="size-10 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-sm active:scale-95 transition-transform"
+              title="Call Customer"
+            >
+              <Phone className="size-4.5 stroke-[2.5]" />
+            </a>
+          )}
+          <button
+            onClick={() => onSelectDetails(order)}
+            className="size-10 rounded-full bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-95 transition-transform"
+            title="View Full Details"
+          >
+            <ChevronRight className="size-5" />
+          </button>
         </div>
       </div>
 
-      {/* Locations */}
-      <div className="bg-slate-50 dark:bg-zinc-950/50 rounded-2xl p-4 mb-5 border border-slate-100 dark:border-white/5 transition-colors relative">
-        {/* Timeline line */}
-        <div className="absolute left-[29px] top-[32px] bottom-[32px] w-[2px] bg-slate-200 dark:bg-zinc-800" />
-        
-        {/* Restaurant */}
-        <div className="flex gap-4 mb-4 relative z-10">
-          <div className="size-8 rounded-full bg-orange-100 dark:bg-orange-500/20 flex items-center justify-center shrink-0 border border-orange-200 dark:border-orange-500/20">
-            <FlameIcon className="size-4 text-orange-600 dark:text-orange-400" />
+      {/* Pickup & Dropoff Route Map Visual */}
+      <div className="space-y-3 mb-4 pl-1">
+        {/* Pickup Pin */}
+        <div className="flex items-start gap-3 relative">
+          <div className="size-6 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5 ring-4 ring-emerald-500/20">
+            <Store className="size-3.5 stroke-[2.5]" />
           </div>
-          <div className="flex-1 pt-0.5">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">Pickup</p>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100">Flame & Crust</h4>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+              Pickup Point
+            </p>
+            <p className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+              Flame & Crust Store (Main Kitchen)
+            </p>
           </div>
         </div>
 
-        {/* Customer */}
-        <div className="flex gap-4 relative z-10">
-          <div className="size-8 rounded-full bg-blue-100 dark:bg-blue-500/20 flex items-center justify-center shrink-0 border border-blue-200 dark:border-blue-500/20">
-            <MapPin className="size-4 text-blue-600 dark:text-blue-400" />
+        {/* Route Connecting Line */}
+        <div className="w-0.5 h-4 bg-slate-200 dark:bg-zinc-700 ml-3" />
+
+        {/* Dropoff Pin */}
+        <div className="flex items-start gap-3 relative">
+          <div className="size-6 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0 mt-0.5 ring-4 ring-red-500/20">
+            <MapPin className="size-3.5 stroke-[2.5]" />
           </div>
-          <div className="flex-1 pt-0.5 min-w-0">
-            <p className="text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider mb-0.5">Dropoff</p>
-            <h4 className="text-sm font-bold text-slate-900 dark:text-zinc-100 truncate">{order.customer?.name || "Customer"}</h4>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 truncate mt-0.5">
-              {order.address?.address_line || "No address provided"}
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-black uppercase tracking-wider text-red-500">
+              Drop Location
+            </p>
+            <p className="text-xs font-bold text-slate-900 dark:text-zinc-100 truncate">
+              {order.address?.address_line || "Customer Delivery Address"}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Order Items Gallery */}
-      <div className="flex items-center gap-2 overflow-x-auto custom-scrollbar pb-2 mb-4">
-        {order.items?.map((item, idx) => (
-          <div key={idx} className="relative shrink-0 flex items-center justify-center size-12 rounded-xl bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-white/5 overflow-hidden shadow-sm transition-transform hover:scale-105">
-            {item.product_image ? (
-               <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
-            ) : (
-               <Package className="size-5 text-slate-400" />
-            )}
-            {item.quantity > 1 && (
-               <div className="absolute bottom-0.5 right-0.5 bg-slate-900/80 dark:bg-black/80 backdrop-blur-sm text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md z-10 border border-white/20">
-                 x{item.quantity}
-               </div>
-            )}
-          </div>
-        ))}
-        {totalItems > 0 && (
-           <div className="shrink-0 flex items-center gap-1 ml-2 text-sm text-slate-500 dark:text-zinc-400 font-medium">
-             <span className="font-bold text-slate-700 dark:text-zinc-300">{totalItems}</span> items
-           </div>
+      {/* Progress Flow Steps */}
+      <div className="grid grid-cols-3 gap-1.5 mb-4 py-2 border-y border-slate-100 dark:border-white/5 text-center">
+        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
+          1. Ready
+        </div>
+        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-amber-400/20 text-amber-700 dark:text-amber-300" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
+          2. En Route
+        </div>
+        <div className="py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-zinc-800 text-slate-400">
+          3. Delivered
+        </div>
+      </div>
+
+      {/* Big Action Buttons Matching Uber/Grab UI */}
+      <div className="space-y-2.5">
+        {!isEnRoute ? (
+          <>
+            <a 
+              href="https://www.google.com/maps/dir/?api=1&destination=11.5564,104.9282"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-12 w-full rounded-2xl bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-900 dark:text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition-colors"
+            >
+              <Navigation className="size-4" />
+              Navigate to Kitchen
+            </a>
+
+            <Button 
+              onClick={() => onUpdateStatus(order.id, "OUT_FOR_DELIVERY")}
+              disabled={order.status !== "READY"}
+              className={cn(
+                "h-13 w-full rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition-all border-none flex items-center justify-center gap-2",
+                order.status === "READY" 
+                  ? "bg-amber-400 hover:bg-amber-500 text-black shadow-amber-400/30 active:scale-98"
+                  : "bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-600 cursor-not-allowed"
+              )}
+            >
+              <span>{order.status === "READY" ? "Pick Up & Start Trip" : "Waiting for Kitchen..."}</span>
+              <ArrowRight className="size-4.5 stroke-[3]" />
+            </Button>
+          </>
+        ) : (
+          <>
+            <a 
+              href={order.address?.latitude ? `https://www.google.com/maps/dir/?api=1&destination=${order.address.latitude},${order.address.longitude}` : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(order.address?.address_line || "Phnom Penh")}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="h-12 w-full rounded-2xl bg-blue-500 hover:bg-blue-600 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-md shadow-blue-500/25 transition-all active:scale-98"
+            >
+              <Navigation className="size-4 stroke-[2.5]" />
+              Open GPS Navigation
+            </a>
+
+            <Button 
+              onClick={() => onUpdateStatus(order.id, "DELIVERED")}
+              className="h-13 w-full rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2"
+            >
+              <CheckCircle2 className="size-5 stroke-[2.5]" />
+              Complete Delivery
+            </Button>
+          </>
         )}
       </div>
 
-      {/* Primary Actions */}
-      <div>
-        {activeTab === "available" ? (
-          <div className="flex gap-3">
-            <Button 
-              variant="outline"
-              className="flex-1 h-12 rounded-xl font-bold bg-white dark:bg-zinc-900 border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800"
+    </div>
+  );
+}
+
+// ----------------- MODAL: FULL ORDER / PASSENGER DETAILS SHEET (Screen 2 & 3) -----------------
+function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, isAvailable }) {
+  if (!isOpen || !order) return null;
+
+  const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
+  const customerName = order.customer?.name || "Customer";
+  const customerPhone = order.customer?.phone || order.customer_phone || "";
+  const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
+  const fareEstimate = Number(order.delivery_fee || 2.50).toFixed(2);
+  const paymentMethod = order.payment_method || "CASH";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+      <div className="bg-white dark:bg-zinc-950 w-full sm:max-w-lg rounded-t-[32px] sm:rounded-[32px] max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl animate-in slide-in-from-bottom duration-300">
+        
+        {/* Top Header */}
+        <div className="p-5 border-b border-slate-100 dark:border-white/10 flex items-center justify-between shrink-0 bg-slate-50/50 dark:bg-zinc-900/50">
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={onClose} 
+              className="size-9 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 hover:bg-slate-300 dark:hover:bg-zinc-700 transition-colors"
             >
-              Details
-            </Button>
-            <Button 
-              onClick={() => onAccept(order.id)}
-              className="flex-[2] h-12 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-slate-800 dark:hover:bg-zinc-200 font-bold text-base shadow-sm active:scale-[0.98] transition-all border-none"
-            >
-              Accept Delivery
-            </Button>
-          </div>
-        ) : (
-          <div>
-            <DeliveryProgress status={order.status} />
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              
-              {order.status !== "OUT_FOR_DELIVERY" && order.status !== "DELIVERED" ? (
-                <>
-                  <a 
-                    href="https://www.google.com/maps/dir/?api=1&destination=11.5564,104.9282"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="col-span-2 h-12 rounded-xl bg-orange-50 dark:bg-orange-500/10 text-orange-700 dark:text-orange-400 hover:bg-orange-100 dark:hover:bg-orange-500/20 transition-colors text-sm font-bold flex items-center justify-center gap-2"
-                  >
-                    <Navigation className="size-4" />
-                    Navigate to Restaurant
-                  </a>
-                  
-                  <Button 
-                    variant="outline"
-                    onClick={() => onUpdateStatus(order.id, "OUT_FOR_DELIVERY")}
-                    disabled={order.status !== "READY"}
-                    className={cn(
-                      "col-span-2 h-12 rounded-xl font-bold text-sm border-2 transition-all",
-                      order.status !== "READY" 
-                        ? "border-slate-100 dark:border-zinc-800 bg-slate-50 dark:bg-zinc-950 text-slate-400 dark:text-zinc-600 cursor-not-allowed" 
-                        : "border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-900 text-slate-700 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 active:scale-[0.98]"
-                    )}
-                  >
-                    {order.status === "READY" ? "Confirm Pick Up" : "Waiting for Kitchen..."}
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <a 
-                    href={order.address?.latitude ? `https://www.google.com/maps/dir/?api=1&destination=${order.address.latitude},${order.address.longitude}` : "#"}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="col-span-2 h-12 rounded-xl bg-blue-50 dark:bg-blue-500/10 text-blue-700 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition-colors text-sm font-bold flex items-center justify-center gap-2"
-                  >
-                    <Navigation className="size-4" />
-                    Navigate to Customer
-                  </a>
-                  
-                  <Button 
-                    onClick={() => onUpdateStatus(order.id, "DELIVERED")}
-                    disabled={order.status !== "OUT_FOR_DELIVERY"}
-                    className={cn(
-                      "col-span-2 h-12 rounded-xl font-bold text-sm shadow-sm transition-all border-none",
-                      order.status === "OUT_FOR_DELIVERY"
-                        ? "bg-green-600 hover:bg-green-700 text-white active:scale-[0.98]"
-                        : "bg-slate-100 dark:bg-zinc-800 text-slate-400 dark:text-zinc-600 cursor-not-allowed"
-                    )}
-                  >
-                    Delivered
-                  </Button>
-                </>
-              )}
+              <ArrowLeft className="size-4.5 stroke-[2.5]" />
+            </button>
+            <div>
+              <h2 className="text-base sm:text-lg font-black text-slate-950 dark:text-white uppercase tracking-tight">
+                {isAvailable ? "Accept Request?" : "Passenger & Order Details"}
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-zinc-400 font-bold">
+                Order #{order.order_number || order.id}
+              </p>
             </div>
           </div>
-        )}
+          <button 
+            onClick={onClose}
+            className="size-8 rounded-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white"
+          >
+            <X className="size-4" />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-5 space-y-5 custom-scrollbar">
+          
+          {/* Customer Profile Card */}
+          <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <img 
+                src={customerAvatar} 
+                alt={customerName} 
+                className="size-13 rounded-full object-cover ring-3 ring-amber-400 shadow-sm shrink-0" 
+              />
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="font-black text-base text-slate-900 dark:text-zinc-100 truncate">
+                    {customerName}
+                  </h3>
+                  <span className="text-xs font-black text-amber-500">★ 4.9</span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 font-semibold mt-0.5">
+                  {customerPhone || "Flame & Crust Valued Member"}
+                </p>
+              </div>
+            </div>
+
+            {customerPhone && (
+              <a 
+                href={`tel:${customerPhone}`}
+                className="size-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 active:scale-95 transition-all shrink-0"
+                title="Call Customer"
+              >
+                <Phone className="size-5 stroke-[2.5]" />
+              </a>
+            )}
+          </div>
+
+          {/* Pickup & Drop Route Information */}
+          <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-4 border border-slate-200/60 dark:border-white/5 space-y-4">
+            
+            {/* Pickup */}
+            <div className="flex items-start gap-3">
+              <div className="size-7 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0 mt-0.5 ring-4 ring-emerald-500/20">
+                <Store className="size-4 stroke-[2.5]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-emerald-600 dark:text-emerald-400">
+                    Pickup Location
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">0.0 km</span>
+                </div>
+                <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  Flame & Crust Restaurant
+                </p>
+                <p className="text-xs text-slate-500 dark:text-zinc-400">
+                  Street 240, Phnom Penh (Central Kitchen)
+                </p>
+              </div>
+            </div>
+
+            <div className="w-0.5 h-5 bg-slate-200 dark:bg-zinc-800 ml-3.5" />
+
+            {/* Drop Location */}
+            <div className="flex items-start gap-3">
+              <div className="size-7 rounded-full bg-red-500 text-white flex items-center justify-center shrink-0 mt-0.5 ring-4 ring-red-500/20">
+                <MapPin className="size-4 stroke-[2.5]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-red-500">
+                    Drop Location
+                  </span>
+                  <span className="text-[10px] font-bold text-slate-400">~2.4 km</span>
+                </div>
+                <p className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                  {order.address?.label || "Customer Location"}
+                </p>
+                <p className="text-xs text-slate-600 dark:text-zinc-300 mt-0.5">
+                  {order.address?.address_line || "No street address specified"}
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Pricing & Earnings Summary */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-slate-50 dark:bg-zinc-900 rounded-2xl p-3.5 border border-slate-200/60 dark:border-white/5">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-1">
+                Estimated Time
+              </span>
+              <p className="text-base font-black text-slate-950 dark:text-white">
+                15 - 20 Mins
+              </p>
+            </div>
+            <div className="bg-emerald-50 dark:bg-emerald-950/40 rounded-2xl p-3.5 border border-emerald-200/60 dark:border-emerald-500/20">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400 block mb-1">
+                Delivery Fee (Yours)
+              </span>
+              <p className="text-base font-black text-emerald-600 dark:text-emerald-300">
+                ${fareEstimate}
+              </p>
+            </div>
+          </div>
+
+          {/* Product Items Details List */}
+          <div>
+            <div className="flex items-center justify-between mb-2.5">
+              <h4 className="font-black text-xs uppercase tracking-wider text-slate-400 dark:text-zinc-500">
+                Order Items ({totalItems})
+              </h4>
+              <span className="text-xs font-black text-slate-900 dark:text-white">
+                Total: ${Number(order.total_amount || 0).toFixed(2)}
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {order.items?.map((item, idx) => (
+                <div key={idx} className="flex items-center gap-3 p-2.5 bg-slate-50 dark:bg-zinc-900/60 rounded-2xl border border-slate-200/40 dark:border-white/5">
+                  <div className="size-12 rounded-xl bg-slate-100 dark:bg-zinc-800 overflow-hidden shrink-0 border border-slate-200/50 dark:border-white/5">
+                    {item.product_image ? (
+                      <img src={getImageUrl(item.product_image)} alt={item.product_name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-400">
+                        <Package className="size-5" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h5 className="font-bold text-xs sm:text-sm text-slate-900 dark:text-zinc-100 truncate">
+                      {item.product_name || `Item #${item.product_id}`}
+                    </h5>
+                    <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                      Qty: <span className="font-bold text-slate-900 dark:text-zinc-100">{item.quantity}</span> • ${Number(item.price || 0).toFixed(2)}
+                    </p>
+                  </div>
+                  <span className="font-black text-xs text-slate-900 dark:text-zinc-100 shrink-0">
+                    ${(Number(item.price || 0) * (item.quantity || 1)).toFixed(2)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+        </div>
+
+        {/* Bottom CTA */}
+        <div className="p-5 border-t border-slate-100 dark:border-white/10 shrink-0 bg-white dark:bg-zinc-950">
+          {isAvailable ? (
+            <Button 
+              onClick={() => {
+                onAccept(order.id);
+                onClose();
+              }}
+              className="w-full h-14 rounded-2xl bg-amber-400 hover:bg-amber-500 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-amber-400/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2"
+            >
+              <span>Accept Ride & Delivery</span>
+              <ArrowRight className="size-5 stroke-[3]" />
+            </Button>
+          ) : (
+            <Button 
+              onClick={onClose}
+              className="w-full h-13 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black text-sm uppercase tracking-wider active:scale-98 transition-all border-none"
+            >
+              Close
+            </Button>
+          )}
+        </div>
+
       </div>
     </div>
   );
 }
 
+// ----------------- EMPTY STATE -----------------
 function EmptyState({ tab, onRefresh }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-card-fade-in">
-      <div className="size-20 bg-slate-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mb-6 transition-colors shadow-inner border border-slate-200/50 dark:border-white/5">
-        {tab === "available" ? <Package className="size-8 text-slate-400 dark:text-zinc-500" /> : <Bike className="size-8 text-slate-400 dark:text-zinc-500" />}
+      <div className="size-20 bg-amber-400/15 rounded-full flex items-center justify-center mb-5 border border-amber-400/30 text-amber-600 dark:text-amber-400 shadow-inner">
+        {tab === "available" ? <Package className="size-9 stroke-[2.5]" /> : <Bike className="size-9 stroke-[2.5]" />}
       </div>
-      <h3 className="text-xl font-black text-slate-900 dark:text-zinc-100 mb-2">
-        {tab === "available" ? "No new deliveries" : "No active deliveries"}
+      <h3 className="text-xl font-black text-slate-950 dark:text-white mb-1.5 tracking-tight">
+        {tab === "available" ? "No new requests right now" : "No active deliveries"}
       </h3>
-      <p className="text-slate-500 dark:text-zinc-400 text-sm max-w-[250px] leading-relaxed mb-6 font-medium">
+      <p className="text-slate-500 dark:text-zinc-400 text-xs sm:text-sm max-w-[280px] leading-relaxed mb-6 font-semibold">
         {tab === "available" 
-          ? "You're all caught up. We'll notify you when new orders arrive." 
-          : "You don't have any assigned deliveries right now."}
+          ? "Stay online! New orders from Flame & Crust kitchen will pop up here instantly." 
+          : "Pick an available delivery from the New Requests tab to get started."}
       </p>
       {tab === "available" && (
-        <Button onClick={onRefresh} className="rounded-xl h-12 px-6 bg-slate-900 dark:bg-white text-white dark:text-zinc-900 hover:bg-slate-800 dark:hover:bg-zinc-200 active:scale-95 transition-all font-bold border-none shadow-sm">
-          <RefreshCw className="size-4 mr-2" />
-          Refresh Feed
+        <Button 
+          onClick={onRefresh} 
+          className="rounded-2xl h-12 px-6 bg-amber-400 hover:bg-amber-500 text-black active:scale-95 transition-all font-black text-xs uppercase tracking-wider border-none shadow-md shadow-amber-400/20 flex items-center gap-2"
+        >
+          <RefreshCw className="size-4 stroke-[2.5]" />
+          Refresh Now
         </Button>
       )}
     </div>
   );
 }
 
-// ----------------- MAIN PAGE COMPONENT -----------------
-
+// ----------------- MAIN COMPONENT -----------------
 export default function DriverDashboardPage() {
   const navigate = useNavigate();
-
   const [theme, setTheme] = useState(localStorage.getItem("driverTheme") || "light");
 
   const toggleTheme = () => {
@@ -397,12 +743,11 @@ export default function DriverDashboardPage() {
     localStorage.setItem("driverTheme", theme);
     if (theme === "dark") {
       document.documentElement.classList.add("dark");
-      document.body.style.backgroundColor = '#09090b'; // zinc-950
+      document.body.style.backgroundColor = '#09090b';
     } else {
       document.documentElement.classList.remove("dark");
-      document.body.style.backgroundColor = '#f8fafc'; // slate-50
+      document.body.style.backgroundColor = '#f8fafc';
     }
-    
     return () => {
       document.body.style.backgroundColor = '';
       document.documentElement.classList.remove("dark");
@@ -410,14 +755,13 @@ export default function DriverDashboardPage() {
   }, [theme]);
 
   const [driver, setDriver] = useState(null);
-  
-  // Navigation
   const [activeTab, setActiveTab] = useState("available"); // "available" or "my_deliveries"
-  const [mobileView, setMobileView] = useState("list"); // "list" or "map" on mobile only
-  
+  const [mobileView, setMobileView] = useState("list"); // "list" or "map"
+
   const [myOrders, setMyOrders] = useState([]);
   const [availableOrders, setAvailableOrders] = useState([]);
-  
+  const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [locationActive, setLocationActive] = useState(false);
@@ -493,7 +837,7 @@ export default function DriverDashboardPage() {
     };
   }, [driver, sendLocation]);
 
-  // ── Fetch Assignments & Pool ──
+  // ── Fetch Orders & Real Customer / Product Details ──
   const fetchAllData = async () => {
     if (!driver) return;
     try {
@@ -521,20 +865,28 @@ export default function DriverDashboardPage() {
         const address = allAddresses.find(a => String(a.id) === String(o.address_id)) || null;
         const customer = allCustomers.find(c => String(c.id) === String(o.customer_id)) || null;
         const items = allOrderItems.filter(item => String(item.order_id) === String(o.id)).map(item => {
-           const product = allProducts.find(p => String(p.id) === String(item.product_id));
-           return {
-             ...item,
-             product_name: product?.name || item.product_name,
-             product_image: product?.image || null
-           };
+          const product = allProducts.find(p => String(p.id) === String(item.product_id));
+          return {
+            ...item,
+            product_name: product?.name || item.product_name,
+            product_image: product?.image || null
+          };
         });
         return { ...o, address, customer, items };
       });
       
-      setMyOrders(enrich(assigned).sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
-      setAvailableOrders(enrich(available).sort((a, b) => new Date(a.created_at) - new Date(b.created_at)));
+      const enrichedAssigned = enrich(assigned).sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      const enrichedAvailable = enrich(available).sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+
+      setMyOrders(enrichedAssigned);
+      setAvailableOrders(enrichedAvailable);
+
+      // Automatically switch to active deliveries if driver has active orders
+      if (enrichedAssigned.length > 0 && activeTab === "available" && enrichedAvailable.length === 0) {
+        setActiveTab("my_deliveries");
+      }
     } catch (err) {
-      toast.error("Failed to load orders");
+      toast.error("Failed to load delivery orders");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -543,6 +895,10 @@ export default function DriverDashboardPage() {
 
   useEffect(() => {
     if (driver) fetchAllData();
+    const interval = setInterval(() => {
+      if (driver) fetchAllData();
+    }, 10000);
+    return () => clearInterval(interval);
   }, [driver]);
 
   const handleRefresh = () => {
@@ -553,7 +909,7 @@ export default function DriverDashboardPage() {
   const updateOrderStatus = async (orderId, newStatus) => {
     try {
       await update("orders", orderId, { status: newStatus });
-      toast.success(`Updated to ${newStatus.replace(/_/g, " ")}`);
+      toast.success(`Status updated: ${newStatus.replace(/_/g, " ")}`);
       fetchAllData();
     } catch (err) {
       toast.error("Failed to update status");
@@ -562,8 +918,8 @@ export default function DriverDashboardPage() {
 
   const acceptOrder = async (orderId) => {
     try {
-      await update("orders", orderId, { driver_id: driver.id });
-      toast.success("Delivery accepted!");
+      await update("orders", orderId, { driver_id: driver.id, status: "READY" });
+      toast.success("Delivery accepted! Ready for pickup.");
       setActiveTab("my_deliveries");
       fetchAllData();
     } catch (err) {
@@ -576,22 +932,24 @@ export default function DriverDashboardPage() {
   const currentDisplayOrders = activeTab === "available" ? availableOrders : myOrders;
 
   return (
-    <div className="w-full h-[100dvh] flex flex-col font-sans transition-colors selection:bg-blue-100 dark:selection:bg-blue-900/50 bg-white dark:bg-zinc-950 overflow-hidden">
+    <div className="w-full h-[100dvh] flex flex-col font-sans transition-colors selection:bg-amber-200 dark:selection:bg-amber-900/50 bg-slate-50 dark:bg-zinc-950 overflow-hidden">
       
-      {/* Full-width Header */}
+      {/* Header */}
       <DriverHeader 
         driver={driver} 
         locationActive={locationActive} 
         theme={theme}
         toggleTheme={toggleTheme}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
       />
 
-      {/* Main Full-Width Content Area */}
+      {/* Main Full-Width Split Layout */}
       <main className="flex-1 flex flex-col lg:flex-row w-full overflow-hidden relative z-10">
         
-        {/* Left Column (Deliveries) - 35% on Desktop */}
+        {/* Left Column (Orders List) - 38% on Desktop */}
         <div className={cn(
-          "w-full lg:w-[35%] xl:w-[400px] h-full flex flex-col bg-slate-50 dark:bg-zinc-950 border-r border-slate-200/80 dark:border-white/10 transition-colors z-20 shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] dark:shadow-[4px_0_24px_-12px_rgba(0,0,0,0.5)]",
+          "w-full lg:w-[420px] xl:w-[460px] h-full flex flex-col bg-slate-50/70 dark:bg-zinc-950 border-r border-slate-200/80 dark:border-white/10 transition-colors z-20 shadow-lg",
           mobileView === "map" && "hidden lg:flex"
         )}>
           
@@ -603,120 +961,151 @@ export default function DriverDashboardPage() {
           />
 
           <div className="flex-1 overflow-y-auto p-4 sm:p-5 custom-scrollbar relative">
-            
-            {/* Refresh action overlay */}
-            <div className="absolute top-4 right-4 z-10 lg:hidden">
-               <button 
-                onClick={handleRefresh}
-                className={cn("p-2 rounded-full bg-white dark:bg-zinc-900 shadow-sm border border-slate-200 dark:border-white/10 text-slate-600 dark:text-zinc-400 transition-colors active:scale-95", refreshing && "opacity-50 cursor-not-allowed")}
-                disabled={refreshing}
-              >
-                <RefreshCw className={cn("size-4", refreshing && "animate-spin text-blue-600 dark:text-blue-400")} />
-              </button>
-            </div>
-
             {loading ? (
               <div className="animate-pulse space-y-4">
-                <div className="h-64 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5" />
-                <div className="h-64 bg-white dark:bg-zinc-900 rounded-3xl border border-slate-200 dark:border-white/5" />
+                <div className="h-64 bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/50 dark:border-white/5" />
+                <div className="h-64 bg-white dark:bg-zinc-900 rounded-[28px] border border-slate-200/50 dark:border-white/5" />
               </div>
             ) : currentDisplayOrders.length === 0 ? (
               <EmptyState tab={activeTab} onRefresh={handleRefresh} />
             ) : (
-              <div className="space-y-4 pb-20 lg:pb-0">
+              <div className="space-y-4 pb-24 lg:pb-6">
                 {currentDisplayOrders.map(order => (
-                  <OrderCard 
-                    key={order.id} 
-                    order={order} 
-                    activeTab={activeTab} 
-                    onAccept={acceptOrder} 
-                    onUpdateStatus={updateOrderStatus} 
-                  />
+                  activeTab === "available" ? (
+                    <NewDeliveryRequestCard 
+                      key={order.id} 
+                      order={order} 
+                      onAccept={acceptOrder}
+                      onSelectDetails={(o) => setSelectedOrderDetails(o)}
+                    />
+                  ) : (
+                    <ActiveDeliveryCard 
+                      key={order.id} 
+                      order={order} 
+                      onUpdateStatus={updateOrderStatus}
+                      onSelectDetails={(o) => setSelectedOrderDetails(o)}
+                    />
+                  )
                 ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Column (Large Map View) - 65% on Desktop */}
+        {/* Right Column (Live Route Map) - 62% on Desktop */}
         <div className={cn(
-          "flex-1 h-full w-full relative bg-slate-100 dark:bg-zinc-900",
+          "flex-1 h-full w-full relative bg-slate-200 dark:bg-zinc-900",
           mobileView === "list" && "hidden lg:block"
         )}>
-          {/* Refresh Action (Desktop Map Overlay) */}
-          <div className="absolute top-6 right-6 z-[400] hidden lg:block">
+          {/* Refresh Action Overlay */}
+          <div className="absolute top-5 right-5 z-[400] hidden lg:block">
             <Button 
               variant="outline"
               onClick={handleRefresh}
               disabled={refreshing}
-              className="rounded-xl h-12 px-5 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md border-slate-200/80 dark:border-white/10 text-slate-700 dark:text-zinc-300 font-bold shadow-lg hover:bg-white dark:hover:bg-zinc-900 transition-all"
+              className="rounded-2xl h-11 px-4 bg-white/95 dark:bg-zinc-900/95 backdrop-blur-md border-slate-200/80 dark:border-white/10 text-slate-800 dark:text-zinc-200 font-black text-xs uppercase tracking-wider shadow-lg hover:bg-white dark:hover:bg-zinc-900 active:scale-95 transition-all"
             >
-              <RefreshCw className={cn("size-4 mr-2", refreshing && "animate-spin text-blue-600 dark:text-blue-400")} />
-              Refresh Data
+              <RefreshCw className={cn("size-3.5 mr-2 stroke-[2.5]", refreshing && "animate-spin text-amber-500")} />
+              Refresh Map
             </Button>
           </div>
 
-          {lastLocation ? (
-            <MapContainer 
-              key={theme} // Force re-render on theme change to update tiles
-              center={[lastLocation.lat, lastLocation.lng]} 
-              zoom={15} 
-              className="w-full h-full z-0" 
-              zoomControl={false}
-            >
-              <TileLayer url={`https://{s}.basemaps.cartocdn.com/${theme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`} />
-              <Marker position={[lastLocation.lat, lastLocation.lng]}>
-                <Popup className="font-sans font-medium text-slate-900">You are here</Popup>
-              </Marker>
-              
-              {/* Plot active orders on map */}
-              {activeTab === "my_deliveries" && myOrders.map(order => {
-                if (order.address?.latitude && order.address?.longitude) {
-                  return (
-                    <Marker key={order.id} position={[order.address.latitude, order.address.longitude]}>
-                      <Popup className="font-sans font-medium">Order #{order.order_number || order.id}</Popup>
-                    </Marker>
-                  );
-                }
-                return null;
-              })}
-
-              <MapUpdater center={[lastLocation.lat, lastLocation.lng]} />
-            </MapContainer>
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-zinc-600 bg-slate-100 dark:bg-zinc-900">
-              <MapPin className="size-10 mb-4 opacity-30" />
-              <p className="text-sm font-bold uppercase tracking-widest">Waiting for GPS Signal...</p>
+          {/* Active Orders Count Badge on Map */}
+          <div className="absolute top-5 left-5 z-[400] pointer-events-none">
+            <div className="px-4 py-2 rounded-2xl bg-white/95 dark:bg-zinc-950/95 backdrop-blur-md border border-slate-200/80 dark:border-white/10 shadow-lg flex items-center gap-2">
+              <span className="size-2.5 rounded-full bg-amber-400 animate-pulse" />
+              <span className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">
+                {myOrders.length} Active • {availableOrders.length} Available
+              </span>
             </div>
-          )}
+          </div>
+
+          <MapContainer 
+            key={theme} 
+            center={lastLocation ? [lastLocation.lat, lastLocation.lng] : STORE_COORDS} 
+            zoom={14} 
+            className="w-full h-full z-0" 
+            zoomControl={false}
+          >
+            <TileLayer url={`https://{s}.basemaps.cartocdn.com/${theme === 'dark' ? 'dark_all' : 'light_all'}/{z}/{x}/{y}{r}.png`} />
+            
+            {/* Store Central Kitchen Marker */}
+            <Marker position={STORE_COORDS}>
+              <Popup className="font-sans font-bold text-xs">
+                🍕 Flame & Crust Central Store
+              </Popup>
+            </Marker>
+
+            {/* Driver Location Marker */}
+            {lastLocation && (
+              <Marker position={[lastLocation.lat, lastLocation.lng]}>
+                <Popup className="font-sans font-bold text-xs">
+                  🛵 Your Location (Driver)
+                </Popup>
+              </Marker>
+            )}
+            
+            {/* Plot customer drop locations */}
+            {myOrders.map(order => {
+              if (order.address?.latitude && order.address?.longitude) {
+                return (
+                  <Marker key={order.id} position={[order.address.latitude, order.address.longitude]}>
+                    <Popup className="font-sans">
+                      <div className="p-1">
+                        <p className="font-black text-xs">#{order.order_number || order.id} • {order.customer?.name || "Customer"}</p>
+                        <p className="text-[11px] text-slate-500">{order.address?.address_line}</p>
+                      </div>
+                    </Popup>
+                  </Marker>
+                );
+              }
+              return null;
+            })}
+
+            {lastLocation && <MapUpdater center={[lastLocation.lat, lastLocation.lng]} />}
+          </MapContainer>
         </div>
       </main>
 
-      {/* Minimal Mobile Bottom Navigation (Floating) */}
+      {/* Floating Bottom Nav for Mobile */}
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 lg:hidden">
-        <div className="flex items-center gap-1 bg-slate-900 dark:bg-white p-1.5 rounded-full shadow-xl">
+        <div className="flex items-center gap-1 bg-black/90 dark:bg-white text-white dark:text-black p-1.5 rounded-full shadow-2xl backdrop-blur-md border border-white/10 dark:border-black/10">
           <button 
             onClick={() => setMobileView("list")}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all",
-              mobileView === "list" ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100" : "text-slate-400 dark:text-zinc-500 hover:text-slate-300 dark:hover:text-zinc-600"
+              "flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-wider transition-all",
+              mobileView === "list" 
+                ? "bg-amber-400 text-black shadow-md shadow-amber-400/30" 
+                : "text-slate-400 dark:text-zinc-600 hover:text-white dark:hover:text-black"
             )}
           >
-            <Menu className="size-4" />
-            List
+            <Menu className="size-4 stroke-[2.5]" />
+            Orders ({currentDisplayOrders.length})
           </button>
           <button 
             onClick={() => setMobileView("map")}
             className={cn(
-              "flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all",
-              mobileView === "map" ? "bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100" : "text-slate-400 dark:text-zinc-500 hover:text-slate-300 dark:hover:text-zinc-600"
+              "flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-wider transition-all",
+              mobileView === "map" 
+                ? "bg-amber-400 text-black shadow-md shadow-amber-400/30" 
+                : "text-slate-400 dark:text-zinc-600 hover:text-white dark:hover:text-black"
             )}
           >
-            <Map className="size-4" />
-            Map
+            <Map className="size-4 stroke-[2.5]" />
+            Live Map
           </button>
         </div>
       </div>
+
+      {/* Full Screen / Sheet Details Modal */}
+      <OrderDetailsModal 
+        order={selectedOrderDetails}
+        isOpen={Boolean(selectedOrderDetails)}
+        onClose={() => setSelectedOrderDetails(null)}
+        onAccept={acceptOrder}
+        onUpdateStatus={updateOrderStatus}
+        isAvailable={activeTab === "available"}
+      />
 
     </div>
   );

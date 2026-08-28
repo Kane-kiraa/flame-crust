@@ -154,7 +154,11 @@ function AdminResourcePage({ resource }) {
     try {
       const item = await get(resource, id);
       setEditingId(id);
-      setFormData(item || {});
+      const initialData = { ...(item || {}) };
+      delete initialData.passwordHash;
+      delete initialData.password_hash;
+      initialData.password = "";
+      setFormData(initialData);
       setFormErrors({});
       setFormOpen(true);
     } catch (err) {
@@ -188,7 +192,9 @@ function AdminResourcePage({ resource }) {
       // Clean up form data - convert types
       const cleanData = {};
       config.fields.forEach((f) => {
-        if (f.type === "boolean" || f.type === "checkbox") {
+        if (f.name === "password") {
+          cleanData[f.name] = formData[f.name] ? String(formData[f.name]).trim() : "";
+        } else if (f.type === "boolean" || f.type === "checkbox") {
           cleanData[f.name] = Boolean(formData[f.name]);
         } else if (f.type === "number") {
           cleanData[f.name] = formData[f.name] !== "" && formData[f.name] != null

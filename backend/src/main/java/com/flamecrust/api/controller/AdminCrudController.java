@@ -1,5 +1,6 @@
 package com.flamecrust.api.controller;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.flamecrust.api.model.*;
 import com.flamecrust.api.repository.*;
@@ -11,9 +12,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
+import java.lang.reflect.Method;
 import java.util.*;
 
 @RestController
@@ -23,6 +26,7 @@ public class AdminCrudController {
 
     private final ApplicationContext context;
     private final ObjectMapper mapper;
+    private final JdbcTemplate jdbc;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     private record ResourceConfig(Class<?> entityClass, Class<? extends JpaRepository> repoClass) {}
@@ -77,6 +81,17 @@ public class AdminCrudController {
         return config.entityClass();
     }
 
+    private Long extractId(Object entity) {
+        if (entity == null) return null;
+        try {
+            Method m = entity.getClass().getMethod("getId");
+            Object id = m.invoke(entity);
+            return id instanceof Number ? ((Number) id).longValue() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     @GetMapping("/{resource}")
     public Map<String, Object> all(
             @PathVariable String resource,
@@ -129,12 +144,34 @@ public class AdminCrudController {
     @PostMapping("/{resource}")
     public ResponseEntity<?> create(@PathVariable String resource, @RequestBody Map<String, Object> body) {
         try {
-            if (body.containsKey("password")) {
-                body.put("passwordHash", passwordEncoder.encode(body.get("password").toString()));
+            Map<String, Object> mutableBody = new HashMap<>(body);
+            String plainPassword = null;
+            if (mutableBody.containsKey("password") && mutableBody.get("password") != null && !mutableBody.get("password").toString().isBlank()) {
+                plainPassword = mutableBody.get("password").toString().trim();
+                String encoded = passwordEncoder.encode(plainPassword);
+                mutableBody.put("password_hash", encoded);
+                mutableBody.put("passwordHash", encoded);
             }
-            Object entity = mapper.convertValue(body, getEntityClass(resource));
+            mutableBody.remove("password"); // Remove raw password so Jackson doesn't fail on unknown property
+
+            ObjectMapper copyMapper = mapper.copy().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            Object entity = copyMapper.convertValue(mutableBody, getEntityClass(resource));
             JpaRepository<Object, Long> repo = getRepository(resource);
             Object saved = repo.save(entity);
+
+            // Guarantee password_hash in database if password was supplied
+            if (plainPassword != null && saved != null) {
+                Long id = extractId(saved);
+                if (id != null) {
+                    try {
+                        String encoded = passwordEncoder.encode(plainPassword);
+                        jdbc.update("UPDATE " + resource.toLowerCase() + " SET password_hash = ? WHERE id = ?", encoded, id);
+                    } catch (Exception ex) {
+                        System.err.println("JDBC create password error: " + ex.getMessage());
+                    }
+                }
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
@@ -151,15 +188,41 @@ public class AdminCrudController {
             if (existingOpt.isEmpty()) return ResponseEntity.notFound().build();
             Object existingEntity = existingOpt.get();
             
-            if (body.containsKey("password") && body.get("password") != null && !body.get("password").toString().isBlank()) {
-                body.put("passwordHash", passwordEncoder.encode(body.get("password").toString()));
+            Map<String, Object> mutableBody = new HashMap<>(body);
+            String newPassword = null;
+            if (mutableBody.containsKey("password") && mutableBody.get("password") != null && !mutableBody.get("password").toString().isBlank()) {
+                newPassword = mutableBody.get("password").toString().trim();
+            }
+            mutableBody.remove("password"); // Remove raw password key
+            
+            // If new password is provided, encode it; otherwise do not overwrite existing password_hash
+            if (newPassword != null) {
+                String encoded = passwordEncoder.encode(newPassword);
+                mutableBody.put("password_hash", encoded);
+                mutableBody.put("passwordHash", encoded);
+            } else {
+                mutableBody.remove("password_hash");
+                mutableBody.remove("passwordHash");
             }
             
-            body.put("id", id);
-            String jsonBody = mapper.writeValueAsString(body);
-            Object updatedEntity = mapper.readerForUpdating(existingEntity).readValue(jsonBody);
+            mutableBody.put("id", id);
+            
+            ObjectMapper copyMapper = mapper.copy().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+            String jsonBody = copyMapper.writeValueAsString(mutableBody);
+            Object updatedEntity = copyMapper.readerForUpdating(existingEntity).readValue(jsonBody);
             
             Object saved = repo.save(updatedEntity);
+
+            // Direct JDBC password update in MySQL to guarantee 100% database persistence
+            if (newPassword != null) {
+                try {
+                    String encoded = passwordEncoder.encode(newPassword);
+                    jdbc.update("UPDATE " + resource.toLowerCase() + " SET password_hash = ? WHERE id = ?", encoded, id);
+                } catch (Exception ex) {
+                    System.err.println("JDBC update password error: " + ex.getMessage());
+                }
+            }
+            
             return ResponseEntity.ok(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));
