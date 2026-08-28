@@ -4,6 +4,7 @@ import {
   MessageSquare, 
   Phone, 
   PhoneCall,
+  PhoneOff,
   X, 
   Loader2, 
   Bike, 
@@ -295,6 +296,32 @@ export function OrderChatModal({
           ) : (
             messages.map((m) => {
               const isMe = m.sender_type === currentUser.type;
+              const isCallMsg = typeof m.message === "string" && (m.message.startsWith("📞") || m.message.includes("Voice Call"));
+
+              if (isCallMsg) {
+                const isMissed = m.message.toLowerCase().includes("missed") || m.message.toLowerCase().includes("cancelled");
+                return (
+                  <div key={m.id} className="flex justify-center my-2 animate-in fade-in-50 duration-150">
+                    <div className="flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-secondary/80 border border-border/70 shadow-xs backdrop-blur-xs text-xs">
+                      <div className={cn(
+                        "size-7 rounded-full flex items-center justify-center shrink-0",
+                        isMissed ? "bg-red-500/15 text-red-500" : "bg-emerald-500/15 text-emerald-500"
+                      )}>
+                        {isMissed ? <PhoneOff className="size-3.5" /> : <PhoneCall className="size-3.5" />}
+                      </div>
+                      <div className="flex flex-col text-left">
+                        <span className="font-bold text-foreground text-[11px] leading-tight flex items-center gap-1.5">
+                          {m.message.replace("📞", "").trim()}
+                        </span>
+                        <span className="text-[9px] text-muted-foreground">
+                          {m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Just now"}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div 
                   key={m.id} 

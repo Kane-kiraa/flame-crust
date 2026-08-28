@@ -224,6 +224,35 @@ export function OnlineCallModal({
     return () => clearInterval(timer);
   }, [callStatus]);
 
+  const secondsElapsedRef = useRef(0);
+  const hasLoggedCallRef = useRef(false);
+
+  useEffect(() => {
+    secondsElapsedRef.current = secondsElapsed;
+  }, [secondsElapsed]);
+
+  const logCallRecord = async (finalDuration) => {
+    if (hasLoggedCallRef.current || !orderId) return;
+    hasLoggedCallRef.current = true;
+
+    try {
+      const { sendOrderMessage } = await import("@/lib/api");
+      let msgText = "";
+      if (finalDuration > 0) {
+        msgText = `📞 Voice Call • ${formatTimer(finalDuration)}`;
+      } else {
+        msgText = isIncoming ? "📞 Missed Voice Call" : "📞 Cancelled Call";
+      }
+
+      await sendOrderMessage({
+        order_id: orderId,
+        sender_type: callerType,
+        sender_name: currentUser.name || "System",
+        message: msgText
+      });
+    } catch (e) {}
+  };
+
   const handleLocalEnd = () => {
     stopAllRingtones();
     if (stopRingRef.current) {
@@ -233,6 +262,13 @@ export function OnlineCallModal({
     playEndCallTone();
     setCallStatus("ended");
     setIsMinimized(false);
+
+    // Save call record to chat thread
+    const dur = secondsElapsedRef.current;
+    if (!isIncoming || dur > 0) {
+      logCallRecord(dur);
+    }
+
     setTimeout(() => {
       onOpenChange(false);
     }, 600);
