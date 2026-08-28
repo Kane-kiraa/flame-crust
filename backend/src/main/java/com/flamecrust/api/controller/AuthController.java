@@ -307,9 +307,8 @@ public class AuthController {
 
         // 1. Check users (Staff / Admin / Manager)
         List<Map<String, Object>> users = jdbc.queryForList(
-                "SELECT u.id, u.name, u.email, u.status, u.password_hash, u.failed_attempts, u.locked_until, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE u.email = ? AND u.status = 'ACTIVE' LIMIT 1",
-                email);
-        System.out.println("users found: " + users.size());
+                "SELECT u.id, u.name, u.email, u.status, u.password_hash, u.failed_attempts, u.locked_until, r.name as role FROM users u JOIN roles r ON u.role_id = r.id WHERE (u.email = ? OR u.email = ?) AND u.status = 'ACTIVE' LIMIT 1",
+                email, email);
 
         if (!users.isEmpty()) {
             Map<String, Object> user = users.getFirst();
@@ -331,14 +330,61 @@ public class AuthController {
                         "token", token
                 ));
             }
-            System.out.println("verifyPassword failed for user");
-            return handleFailedLogin("users", user);
         }
 
-        // 2. Check customers
+        // 2. Check drivers (Driver) - Prioritize over general customer
+        List<Map<String, Object>> drivers = jdbc.queryForList(
+                "SELECT * FROM drivers WHERE (email = ? OR phone = ?) AND status != 'SUSPENDED' LIMIT 1", email, email);
+
+        if (!drivers.isEmpty()) {
+            Map<String, Object> driver = drivers.getFirst();
+            ResponseEntity<?> lockoutResp = checkAccountLockout(driver);
+            if (lockoutResp != null) {
+                return lockoutResp;
+            }
+
+            if (verifyPassword(password, (String) driver.get("password_hash"), "drivers", driver.get("id"))) {
+                resetAccountLockout("drivers", driver.get("id"));
+                String driverEmail = (String) driver.get("email");
+                String token = jwtUtil.generateToken(driverEmail != null ? driverEmail : email, "DRIVER");
+                driver.remove("password_hash");
+                return ResponseEntity.ok(Map.of(
+                        "type", "DRIVER",
+                        "role", "DRIVER",
+                        "driver", driver,
+                        "token", token
+                ));
+            }
+        }
+
+        // 3. Check kitchen staff
+        List<Map<String, Object>> kitchenStaffList = jdbc.queryForList(
+                "SELECT * FROM kitchen_staff WHERE (email = ? OR phone = ?) LIMIT 1", email, email);
+
+        if (!kitchenStaffList.isEmpty()) {
+            Map<String, Object> staff = kitchenStaffList.getFirst();
+            ResponseEntity<?> lockoutResp = checkAccountLockout(staff);
+            if (lockoutResp != null) {
+                return lockoutResp;
+            }
+
+            if (verifyPassword(password, (String) staff.get("password_hash"), "kitchen_staff", staff.get("id"))) {
+                resetAccountLockout("kitchen_staff", staff.get("id"));
+                String staffEmail = (String) staff.get("email");
+                String token = jwtUtil.generateToken(staffEmail != null ? staffEmail : email, "KITCHEN_STAFF");
+                staff.remove("password_hash");
+                return ResponseEntity.ok(Map.of(
+                        "type", "KITCHEN_STAFF",
+                        "role", "KITCHEN_STAFF",
+                        "user", staff,
+                        "token", token
+                ));
+            }
+        }
+
+        // 4. Check customers
         List<Map<String, Object>> customers = jdbc.queryForList(
-                "SELECT * FROM customers WHERE email = ? AND status = 'ACTIVE' LIMIT 1", email);
-        System.out.println("customers found: " + customers.size());
+                "SELECT * FROM customers WHERE (email = ? OR phone = ?) AND status = 'ACTIVE' LIMIT 1", email, email);
 
         if (!customers.isEmpty()) {
             Map<String, Object> customer = customers.getFirst();
@@ -350,7 +396,8 @@ public class AuthController {
             String passwordHash = (String) customer.get("password_hash");
             if (verifyPassword(password, passwordHash, "customers", customer.get("id"))) {
                 resetAccountLockout("customers", customer.get("id"));
-                String token = jwtUtil.generateToken(email, "CUSTOMER");
+                String customerEmail = (String) customer.get("email");
+                String token = jwtUtil.generateToken(customerEmail != null ? customerEmail : email, "CUSTOMER");
                 customer.remove("password_hash");
                 return ResponseEntity.ok(Map.of(
                         "type", "CUSTOMER",
@@ -359,66 +406,18 @@ public class AuthController {
                         "token", token
                 ));
             }
-            System.out.println("verifyPassword failed for customer");
             return handleFailedLogin("customers", customer);
         }
 
-        // 3. Check drivers
-        List<Map<String, Object>> drivers = jdbc.queryForList(
-                "SELECT * FROM drivers WHERE email = ? AND status != 'SUSPENDED' LIMIT 1", email);
-        System.out.println("drivers found: " + drivers.size());
-
         if (!drivers.isEmpty()) {
-            Map<String, Object> driver = drivers.getFirst();
-            ResponseEntity<?> lockoutResp = checkAccountLockout(driver);
-            if (lockoutResp != null) {
-                return lockoutResp;
-            }
-
-            if (verifyPassword(password, (String) driver.get("password_hash"), "drivers", driver.get("id"))) {
-                resetAccountLockout("drivers", driver.get("id"));
-                String token = jwtUtil.generateToken(email, "DRIVER");
-                driver.remove("password_hash");
-                return ResponseEntity.ok(Map.of(
-                        "type", "DRIVER",
-                        "role", "DRIVER",
-                        "driver", driver,
-                        "token", token
-                ));
-            }
-            System.out.println("verifyPassword failed for driver");
-            return handleFailedLogin("drivers", driver);
+            return handleFailedLogin("drivers", drivers.getFirst());
         }
 
-        // 4. Check kitchen staff
-        List<Map<String, Object>> kitchenStaffList = jdbc.queryForList(
-                "SELECT * FROM kitchen_staff WHERE email = ? LIMIT 1", email);
-        System.out.println("kitchen staff found: " + kitchenStaffList.size());
-
-        if (!kitchenStaffList.isEmpty()) {
-            Map<String, Object> staff = kitchenStaffList.getFirst();
-            ResponseEntity<?> lockoutResp = checkAccountLockout(staff);
-            if (lockoutResp != null) {
-                return lockoutResp;
-            }
-
-            if (verifyPassword(password, (String) staff.get("password_hash"), "kitchen_staff", staff.get("id"))) {
-                resetAccountLockout("kitchen_staff", staff.get("id"));
-                String token = jwtUtil.generateToken(email, "KITCHEN_STAFF");
-                staff.remove("password_hash");
-                return ResponseEntity.ok(Map.of(
-                        "type", "KITCHEN_STAFF",
-                        "role", "KITCHEN_STAFF",
-                        "user", staff,
-                        "token", token
-                ));
-            }
-            System.out.println("verifyPassword failed for kitchen staff");
-            return handleFailedLogin("kitchen_staff", staff);
+        if (!users.isEmpty()) {
+            return handleFailedLogin("users", users.getFirst());
         }
 
-        System.out.println("Returning 401 Unauthorized");
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email or password"));
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid email/phone or password"));
     }
 
     @PostMapping("/google-login")
