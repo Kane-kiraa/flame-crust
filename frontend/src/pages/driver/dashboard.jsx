@@ -331,7 +331,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoad
 }
 
 // ----------------- SCREEN 2 & 3: ACTIVE DELIVERY / PASSENGER & ORDER DETAILS -----------------
-function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, isActionLoading }) {
+function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, onOpenChat, isActionLoading }) {
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
   const customerName = order.customer?.name || "Customer";
   const customerPhone = order.customer?.phone || order.customer_phone || "";
@@ -378,8 +378,16 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, isActionLo
           </div>
         </div>
 
-        {/* Action Buttons: Phone & View */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Action Buttons: Chat, Phone & View */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            type="button"
+            onClick={() => onOpenChat(order)}
+            className="size-10 rounded-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center shadow-sm active:scale-95 transition-transform cursor-pointer"
+            title="Chat with Customer"
+          >
+            <MessageSquare className="size-4.5 stroke-[2.5]" />
+          </button>
           {customerPhone && (
             <a 
               href={`tel:${customerPhone}`} 
@@ -390,8 +398,9 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, isActionLo
             </a>
           )}
           <button
+            type="button"
             onClick={() => onSelectDetails(order)}
-            className="size-10 rounded-full bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-95 transition-transform"
+            className="size-10 rounded-full bg-slate-200 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 flex items-center justify-center hover:bg-slate-300 dark:hover:bg-zinc-700 active:scale-95 transition-transform cursor-pointer"
             title="View Full Details"
           >
             <ChevronRight className="size-5" />
@@ -844,6 +853,7 @@ export default function DriverDashboardPage() {
   const [myOrders, setMyOrders] = useState([]);
   const [availableOrders, setAvailableOrders] = useState([]);
   const [selectedOrderDetails, setSelectedOrderDetails] = useState(null);
+  const [selectedChatOrder, setSelectedChatOrder] = useState(null);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -1078,6 +1088,7 @@ export default function DriverDashboardPage() {
                       order={order} 
                       onUpdateStatus={updateOrderStatus}
                       onSelectDetails={(o) => setSelectedOrderDetails(o)}
+                      onOpenChat={(o) => setSelectedChatOrder(o)}
                       isActionLoading={actionLoadingId === order.id}
                     />
                   )
@@ -1203,6 +1214,29 @@ export default function DriverDashboardPage() {
         isAvailable={activeTab === "available"}
         isActionLoading={Boolean(selectedOrderDetails && actionLoadingId === selectedOrderDetails.id)}
       />
+
+      {/* Live Order Chat Modal for Driver */}
+      {selectedChatOrder && (
+        <OrderChatModal
+          open={Boolean(selectedChatOrder)}
+          onOpenChange={(open) => {
+            if (!open) setSelectedChatOrder(null);
+          }}
+          orderId={selectedChatOrder.id}
+          orderNumber={selectedChatOrder.order_number || selectedChatOrder.id}
+          currentUser={{
+            type: "DRIVER",
+            name: driver?.name || "Driver",
+            id: driver?.id
+          }}
+          recipient={{
+            name: selectedChatOrder.customer?.name || "Customer",
+            photo: selectedChatOrder.customer?.avatar,
+            role: "Customer",
+            phone: selectedChatOrder.customer?.phone || selectedChatOrder.customer_phone
+          }}
+        />
+      )}
 
     </div>
   );
