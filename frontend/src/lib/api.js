@@ -107,8 +107,23 @@ export function getDashboard(options = {}) {
   return request("/dashboard", options);
 }
 
-export function list(resource, options = {}) {
-  return request(`/admin/${encodeURIComponent(resource)}`, options);
+export function list(resource, params = {}, options = {}) {
+  let query = "";
+  if (params && typeof params === "object") {
+    if (params.headers || params.signal || params.method) {
+      options = params;
+    } else {
+      const searchParams = new URLSearchParams();
+      Object.entries(params).forEach(([k, v]) => {
+        if (v !== undefined && v !== null && v !== "") {
+          searchParams.append(k, v);
+        }
+      });
+      const qs = searchParams.toString();
+      if (qs) query = `?${qs}`;
+    }
+  }
+  return request(`/admin/${encodeURIComponent(resource)}${query}`, options);
 }
 
 export function get(resource, id, options = {}) {

@@ -81,10 +81,10 @@ public class AdminCrudController {
     public List<?> all(
             @PathVariable String resource,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "150") int limit,
+            @RequestParam(required = false) Integer limit,
             @RequestParam(required = false) Integer size) {
-        int pageSize = size != null ? size : limit;
-        if (pageSize <= 0) pageSize = 150;
+        int pageSize = size != null ? size : (limit != null ? limit : ("products".equalsIgnoreCase(resource) ? 5 : 50));
+        if (pageSize <= 0) pageSize = 5;
         if (pageSize > 500) pageSize = 500;
         JpaRepository<Object, Long> repo = getRepository(resource);
         return repo.findAll(PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "id"))).getContent();
