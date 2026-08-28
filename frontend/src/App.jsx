@@ -31,6 +31,7 @@ import("./pages/menu.jsx");
 import("./pages/product-detail.jsx");
 import("./pages/cart.jsx");
 import("./pages/profile.jsx");
+import("./pages/admin/layout.jsx");
 
 function PageLoader() {
   return (

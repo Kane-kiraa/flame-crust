@@ -57,6 +57,7 @@ function AdminResourcePage({ resource }) {
 
   useEffect(() => {
     async function loadDynamicOptions() {
+      if (!config || !Array.isArray(config.fields)) return;
       const selectFields = config.fields.filter(f => f.type === "select" && f.optionsResource);
       for (const field of selectFields) {
         try {
