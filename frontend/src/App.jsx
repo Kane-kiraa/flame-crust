@@ -103,8 +103,8 @@ export default function App() {
         if (c.phone) params.set("phone", String(c.phone));
         if (c.email) params.set("email", String(c.email));
 
-        const res = await fetch(`${API_URL}/auth/customer-profile-data?${params.toString()}`);
-        if (res.ok) {
+        const res = await fetch(`${API_URL}/auth/customer-profile-data?${params.toString()}`).catch(() => null);
+        if (res && res.ok) {
           const data = await res.json();
           if (data && data.customer) {
             const dbCustomer = data.customer;

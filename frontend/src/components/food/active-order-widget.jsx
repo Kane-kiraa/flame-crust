@@ -299,18 +299,18 @@ export function ActiveOrderWidget() {
 
       {/* Multi-Order Live Tracking Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-[28px] bg-card border border-border/80 shadow-2xl z-50 max-h-[85vh] flex flex-col">
-          <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-secondary/30 shrink-0">
+        <DialogContent showCloseButton={false} className="w-[calc(100%-2rem)] max-w-lg p-0 overflow-hidden rounded-[28px] bg-card border border-border/80 shadow-2xl z-50 max-h-[85vh] flex flex-col mx-auto">
+          <DialogHeader className="p-5 pb-3.5 border-b border-border/60 bg-secondary/30 shrink-0">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="size-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
+              <div className="flex items-center gap-2.5">
+                <div className="size-10 rounded-2xl bg-primary/15 text-primary flex items-center justify-center shrink-0">
                   <Package className="size-5" />
                 </div>
                 <div>
                   <DialogTitle className="font-serif text-lg font-bold text-foreground">
                     Active Orders ({activeOrders.length})
                   </DialogTitle>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground font-medium mt-0.5">
                     Track your orders in real-time
                   </p>
                 </div>
@@ -318,36 +318,37 @@ export function ActiveOrderWidget() {
               <button 
                 type="button"
                 onClick={() => setModalOpen(false)}
-                className="size-8 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                className="size-8.5 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                title="Close"
               >
                 <X className="size-4" />
               </button>
             </div>
           </DialogHeader>
 
-          <div className="p-4 space-y-3 flex-1 overflow-y-auto divide-y divide-border/40 custom-scrollbar pb-6">
+          <div className="p-4 space-y-2.5 flex-1 overflow-y-auto custom-scrollbar pb-6">
             {activeOrders.map((order) => {
               const info = getStatusInfo(order.status);
               const Icon = info.icon;
               return (
                 <div
                   key={order.id}
-                  className="pt-3 first:pt-0 flex items-center justify-between gap-3 group"
+                  className="p-3 sm:p-3.5 rounded-2xl bg-secondary/25 hover:bg-secondary/50 border border-border/50 transition-colors flex items-center justify-between gap-3 group"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className={cn("size-10 rounded-xl flex items-center justify-center shrink-0 shadow-xs", info.badgeColor)}>
-                      <Icon className="size-5 animate-pulse" />
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className={cn("size-10 sm:size-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs", info.badgeColor)}>
+                      <Icon className="size-5 sm:size-5.5 animate-pulse" />
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-xs sm:text-sm text-foreground truncate">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs sm:text-sm text-foreground truncate">
                           Order #{order.order_number || order.id}
                         </span>
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-foreground/80 border border-border/50">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-secondary text-foreground/90 border border-border/60 whitespace-nowrap shrink-0">
                           {info.statusText}
                         </span>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate mt-0.5">
+                      <p className="text-xs text-muted-foreground truncate mt-0.5 font-medium">
                         {formatPrice(order.total || order.total_amount || 0)}{" "}
                         {order.delivery_address ? `• ${order.delivery_address}` : ""}
                       </p>
@@ -360,7 +361,7 @@ export function ActiveOrderWidget() {
                       setModalOpen(false);
                       navigate(`/track/${order.id}`);
                     }}
-                    className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
                   >
                     <span>Track</span>
                     <ArrowRight className="size-3.5" />
