@@ -59,6 +59,8 @@ server.log
 # Skills directory
 /skills/
 
+/z-folder1/
+z-folder1/
 /z-folder1backend/
 __pycache__/
 run_tunnels.py
