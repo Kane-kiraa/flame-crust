@@ -114,6 +114,11 @@ export function OnlineCallModal({
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const [isMinimized, setIsMinimized] = useState(false);
   const stopRingRef = useRef(null);
+  const callStatusRef = useRef(callStatus);
+
+  useEffect(() => {
+    callStatusRef.current = callStatus;
+  }, [callStatus]);
 
   // 1. Initiate or Join Call
   useEffect(() => {
@@ -154,19 +159,21 @@ export function OnlineCallModal({
       try {
         const res = await getActiveCall(orderId);
         if (!res.active) {
-          // Call was ended by other party
-          if (callStatus === "connected" || callStatus === "ringing") {
+          // Call was ended or does not exist in DB -> disconnect immediately
+          if (callStatusRef.current !== "ended") {
             handleLocalEnd();
           }
         } else if (res.call) {
-          if (res.call.status === "ACCEPTED" && callStatus !== "connected") {
+          if (res.call.status === "ACCEPTED" && callStatusRef.current !== "connected") {
             if (stopRingRef.current) {
               stopRingRef.current();
               stopRingRef.current = null;
             }
             setCallStatus("connected");
           } else if (res.call.status === "ENDED" || res.call.status === "REJECTED") {
-            handleLocalEnd();
+            if (callStatusRef.current !== "ended") {
+              handleLocalEnd();
+            }
           }
         }
       } catch (e) {}
