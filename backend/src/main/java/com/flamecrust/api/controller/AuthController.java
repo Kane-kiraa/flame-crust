@@ -19,6 +19,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -58,11 +59,12 @@ public class AuthController {
 
     @PostMapping("/send-otp")
     public ResponseEntity<?> sendOtp(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        if (email == null || email.isBlank()) {
+        String rawEmail = body.get("email");
+        if (rawEmail == null || rawEmail.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
         }
 
+        String email = rawEmail.toLowerCase().trim();
         Bucket bucket = getOtpBucket(email);
         if (!bucket.tryConsume(1)) {
             return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(Map.of("error", "Too many OTP requests. Please wait."));
@@ -74,25 +76,31 @@ public class AuthController {
         jdbc.update("INSERT INTO otps (target, otp_code, is_used, expires_at) VALUES (?, ?, ?, ?)",
                 email, otp, false, expiresAt);
 
-        // For local development, log the OTP code so we can test without SMTP
         log.info("Generated OTP for {}: {}", email, otp);
-        try {
-            emailService.sendOtpEmail(email, otp);
-        } catch (Exception e) {
-            log.warn("Could not send OTP email (SMTP not configured). OTP is printed above for local testing. Error: {}", e.getMessage());
+        boolean emailSent = emailService.sendOtpEmail(email, otp);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("message", "OTP generated successfully");
+        resp.put("emailSent", emailSent);
+        if (!emailSent) {
+            resp.put("dev_otp", otp);
+            resp.put("hint", "Email service is offline or SMTP unconfigured. Code: " + otp);
         }
 
-        return ResponseEntity.ok(Map.of("message", "OTP generated successfully"));
+        return ResponseEntity.ok(resp);
     }
 
     @PostMapping("/verify-otp")
     public ResponseEntity<?> verifyOtp(@RequestBody Map<String, String> body) {
-        String email = body.get("email");
-        String otp = body.get("otp");
+        String rawEmail = body.get("email");
+        String rawOtp = body.get("otp");
 
-        if (email == null || otp == null) {
+        if (rawEmail == null || rawOtp == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email and OTP are required"));
         }
+
+        String email = rawEmail.toLowerCase().trim();
+        String otp = rawOtp.trim();
 
         Bucket bucket = getLoginBucket(email);
         if (!bucket.tryConsume(1)) {
@@ -100,23 +108,23 @@ public class AuthController {
         }
 
         List<Map<String, Object>> rows = jdbc.queryForList(
-                "SELECT id FROM otps WHERE target = ? AND otp_code = ? AND is_used = false AND expires_at > ? ORDER BY id DESC LIMIT 1",
+                "SELECT id FROM otps WHERE LOWER(target) = ? AND otp_code = ? AND is_used = false AND expires_at > ? ORDER BY id DESC LIMIT 1",
                 email, otp, Timestamp.from(Instant.now()));
 
         if (rows.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired OTP"));
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired OTP code"));
         }
 
         long otpId = ((Number) rows.get(0).get("id")).longValue();
         jdbc.update("UPDATE otps SET is_used = true WHERE id = ?", otpId);
 
         // Fetch or Create Customer
-        List<Map<String, Object>> customers = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email);
+        List<Map<String, Object>> customers = jdbc.queryForList("SELECT * FROM customers WHERE LOWER(email) = ? LIMIT 1", email);
         Map<String, Object> customer;
         if (customers.isEmpty()) {
             String name = email.contains("@") ? email.substring(0, email.indexOf("@")) : "User";
             jdbc.update("INSERT INTO customers (name, email) VALUES (?, ?)", name, email);
-            customer = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email).getFirst();
+            customer = jdbc.queryForList("SELECT * FROM customers WHERE LOWER(email) = ? LIMIT 1", email).getFirst();
         } else {
             customer = customers.getFirst();
         }
@@ -686,6 +694,16 @@ public class AuthController {
                 updates.put(key, value);
             }
         });
+
+        if (body.containsKey("password") && body.get("password") != null) {
+            String newPass = body.get("password").toString().trim();
+            if (!newPass.isEmpty()) {
+                if (newPass.length() < 6) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
+                }
+                updates.put("password_hash", passwordEncoder.encode(newPass));
+            }
+        }
 
         if (updates.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "No valid fields to update"));

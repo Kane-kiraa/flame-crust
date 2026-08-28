@@ -176,130 +176,131 @@ export function ActiveOrderWidget() {
   return (
     <>
       <AnimatePresence>
-        {/* If user clicked X to minimize, show a sleek mini floating bubble */}
-        {isDismissed ? (
-          <motion.div
-            key="minimized-pill"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            onClick={() => {
-              setIsDismissed(false);
-              try {
-                localStorage.setItem("flame_active_order_minimized", "false");
-              } catch (err) { }
-            }}
-            className="fixed z-[65] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] right-3 lg:bottom-6 lg:right-6 select-none cursor-pointer"
-            title="Open Live Order Tracking"
-          >
-            <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
-              <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
-              <StatusIcon className="size-4 text-primary animate-pulse" />
-              <span>#{currentOrder.order_number || currentOrder.id}</span>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key={isMultiple ? `multi-orders-${activeOrders.length}` : `active-order-${currentOrder.id}`}
-            initial={{ opacity: 0, y: 30, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            transition={{ type: "spring", stiffness: 350, damping: 28 }}
-            className="fixed z-[65] bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 max-w-md mx-auto lg:bottom-6 lg:right-6 lg:left-auto lg:mx-0 lg:max-w-sm lg:w-full select-none"
-          >
-            <div
-              onClick={handleWidgetClick}
-              className="relative overflow-hidden bg-card/95 backdrop-blur-xl border border-primary/30 rounded-2xl p-3 sm:p-3.5 shadow-2xl shadow-primary/10 hover:border-primary/60 transition-all cursor-pointer group flex items-center justify-between gap-3"
+        {!modalOpen && (
+          isDismissed ? (
+            <motion.div
+              key="minimized-pill"
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              onClick={() => {
+                setIsDismissed(false);
+                try {
+                  localStorage.setItem("flame_active_order_minimized", "false");
+                } catch (err) { }
+              }}
+              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] right-3 lg:bottom-6 lg:right-6 select-none cursor-pointer"
+              title="Open Live Order Tracking"
             >
-              {/* Ambient Glow */}
-              <div className="absolute -right-8 -top-8 size-24 rounded-full bg-primary/10 blur-xl pointer-events-none" />
-
-              {/* Left Icon with Live Pulse */}
-              <div className="relative shrink-0 flex items-center justify-center">
-                {isMultiple ? (
-                  <div className="size-10 sm:size-11 rounded-xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md">
-                    <Layers className="size-5 sm:size-5.5 animate-pulse" />
-                  </div>
-                ) : (
-                  <div className={cn("size-10 sm:size-11 rounded-xl flex items-center justify-center shadow-md", statusInfo.badgeColor)}>
-                    <StatusIcon className="size-5 sm:size-5.5 animate-pulse" />
-                  </div>
-                )}
-                <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background animate-ping", statusInfo.dotColor)} />
-                <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background", statusInfo.dotColor)} />
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
+                <span className="size-2 rounded-full bg-emerald-500 animate-ping" />
+                <StatusIcon className="size-4 text-primary animate-pulse" />
+                <span>#{currentOrder.order_number || currentOrder.id}</span>
               </div>
+            </motion.div>
+          ) : (
+            <motion.div
+              key={isMultiple ? `multi-orders-${activeOrders.length}` : `active-order-${currentOrder.id}`}
+              initial={{ opacity: 0, y: 30, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: "spring", stiffness: 350, damping: 28 }}
+              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 max-w-md mx-auto lg:bottom-6 lg:right-6 lg:left-auto lg:mx-0 lg:max-w-sm lg:w-full select-none"
+            >
+              <div
+                onClick={handleWidgetClick}
+                className="relative overflow-hidden bg-card/95 backdrop-blur-xl border border-primary/30 rounded-2xl p-3 sm:p-3.5 shadow-2xl shadow-primary/10 hover:border-primary/60 transition-all cursor-pointer group flex items-center justify-between gap-3"
+              >
+                {/* Ambient Glow */}
+                <div className="absolute -right-8 -top-8 size-24 rounded-full bg-primary/10 blur-xl pointer-events-none" />
 
-              {/* Middle Details */}
-              <div className="flex-1 min-w-0">
-                {isMultiple ? (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
-                        {activeOrders.length} Active Orders
-                      </span>
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-primary/15 text-primary border border-primary/25">
-                        Live
-                      </span>
+                {/* Left Icon with Live Pulse */}
+                <div className="relative shrink-0 flex items-center justify-center">
+                  {isMultiple ? (
+                    <div className="size-10 sm:size-11 rounded-xl bg-gradient-to-tr from-primary to-amber-500 flex items-center justify-center text-white shadow-md">
+                      <Layers className="size-5 sm:size-5.5 animate-pulse" />
                     </div>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
-                      Tap to track all ongoing deliveries
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
-                        {statusInfo.title}
-                      </span>
-                      <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50">
-                        #{currentOrder.order_number || currentOrder.id}
-                      </span>
+                  ) : (
+                    <div className={cn("size-10 sm:size-11 rounded-xl flex items-center justify-center shadow-md", statusInfo.badgeColor)}>
+                      <StatusIcon className="size-5 sm:size-5.5 animate-pulse" />
                     </div>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
-                      {statusInfo.sub}
-                    </p>
-                  </>
-                )}
-              </div>
+                  )}
+                  <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background animate-ping", statusInfo.dotColor)} />
+                  <span className={cn("absolute -top-1 -right-1 size-3 rounded-full border-2 border-background", statusInfo.dotColor)} />
+                </div>
 
-              {/* Right Action Button & Dismiss */}
-              <div className="flex items-center gap-1.5 shrink-0">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleWidgetClick();
-                  }}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs group-hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
-                >
-                  <span>{isMultiple ? `View (${activeOrders.length})` : "Track"}</span>
-                  <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
-                </button>
+                {/* Middle Details */}
+                <div className="flex-1 min-w-0">
+                  {isMultiple ? (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
+                          {activeOrders.length} Active Orders
+                        </span>
+                        <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-md bg-primary/15 text-primary border border-primary/25">
+                          Live
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
+                        Tap to track all ongoing deliveries
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-serif font-bold text-xs sm:text-sm text-foreground tracking-tight truncate">
+                          {statusInfo.title}
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold px-1.5 py-0.2 rounded-md bg-secondary text-foreground/80 border border-border/50">
+                          #{currentOrder.order_number || currentOrder.id}
+                        </span>
+                      </div>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground font-medium truncate mt-0.5">
+                        {statusInfo.sub}
+                      </p>
+                    </>
+                  )}
+                </div>
 
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsDismissed(true);
-                    try {
-                      localStorage.setItem("flame_active_order_minimized", "true");
-                    } catch (err) { }
-                  }}
-                  className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
-                  title="Minimize"
-                >
-                  <X className="size-3.5" />
-                </button>
+                {/* Right Action Button & Dismiss */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleWidgetClick();
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold shadow-xs group-hover:bg-primary/90 transition-all cursor-pointer active:scale-95"
+                  >
+                    <span>{isMultiple ? `View (${activeOrders.length})` : "Track"}</span>
+                    <ChevronRight className="size-3.5 group-hover:translate-x-0.5 transition-transform" />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDismissed(true);
+                      try {
+                        localStorage.setItem("flame_active_order_minimized", "true");
+                      } catch (err) { }
+                    }}
+                    className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
+                    title="Minimize"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          )
         )}
       </AnimatePresence>
 
       {/* Multi-Order Live Tracking Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl bg-card border border-border/80 shadow-2xl">
-          <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-secondary/30">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-[28px] bg-card border border-border/80 shadow-2xl z-50 max-h-[85vh] flex flex-col">
+          <DialogHeader className="p-5 pb-3 border-b border-border/60 bg-secondary/30 shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="size-9 rounded-xl bg-primary/15 text-primary flex items-center justify-center">
@@ -314,10 +315,17 @@ export function ActiveOrderWidget() {
                   </p>
                 </div>
               </div>
+              <button 
+                type="button"
+                onClick={() => setModalOpen(false)}
+                className="size-8 rounded-full bg-secondary hover:bg-secondary/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <X className="size-4" />
+              </button>
             </div>
           </DialogHeader>
 
-          <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto divide-y divide-border/40">
+          <div className="p-4 space-y-3 flex-1 overflow-y-auto divide-y divide-border/40 custom-scrollbar pb-6">
             {activeOrders.map((order) => {
               const info = getStatusInfo(order.status);
               const Icon = info.icon;
@@ -352,7 +360,7 @@ export function ActiveOrderWidget() {
                       setModalOpen(false);
                       navigate(`/track/${order.id}`);
                     }}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
+                    className="inline-flex items-center gap-1 px-3.5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-bold hover:bg-primary/90 transition-all shrink-0 cursor-pointer shadow-xs active:scale-95"
                   >
                     <span>Track</span>
                     <ArrowRight className="size-3.5" />

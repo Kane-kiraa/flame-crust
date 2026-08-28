@@ -60,6 +60,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState("");
+  const [devOtp, setDevOtp] = useState("");
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -325,7 +326,14 @@ export default function LoginPage() {
         throw new Error(err.error || "Failed to send code.");
       }
 
-      toast.success("Verification code sent to " + email);
+      const data = await response.json().catch(() => ({}));
+      if (data.dev_otp) {
+        setDevOtp(data.dev_otp);
+        toast.success(`Verification code generated! (Code: ${data.dev_otp})`, { duration: 10000 });
+      } else {
+        setDevOtp("");
+        toast.success("Verification code sent to " + email);
+      }
       setStep("OTP_VERIFY");
     } catch (err) {
       toast.error(err.message || "Failed to send code.");
@@ -899,6 +907,19 @@ export default function LoginPage() {
                         />
                       </div>
                     </div>
+
+                    {devOtp && (
+                      <div 
+                        onClick={() => setOtp(devOtp)}
+                        className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between text-xs cursor-pointer hover:bg-amber-500/20 transition-all text-amber-700 dark:text-amber-300 font-semibold"
+                      >
+                        <div className="flex items-center gap-2">
+                          <span className="size-2 rounded-full bg-amber-500 animate-ping" />
+                          <span>Code: <strong className="font-mono text-sm tracking-wider">{devOtp}</strong></span>
+                        </div>
+                        <span className="text-[11px] underline font-bold">Auto fill</span>
+                      </div>
+                    )}
 
                     <Button
                       type="submit"

@@ -195,7 +195,7 @@ export default function DriverLoginPage() {
       >
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div className="size-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
+          <div className="size-16 rounded-2xl bg-gradient-to-br from-red-600 to-amber-600 flex items-center justify-center shadow-lg shadow-orange-500/30">
             <Bike className="size-8 text-white" />
           </div>
         </div>
@@ -211,7 +211,7 @@ export default function DriverLoginPage() {
               <div className={cn(
                 "size-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300",
                 i <= stepIndex
-                  ? "bg-gradient-to-br from-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/30"
+                  ? "bg-gradient-to-br from-red-600 to-amber-600 text-white shadow-lg shadow-orange-500/30"
                   : "bg-zinc-800 text-zinc-500"
               )}>
                 {i < stepIndex ? <CheckCircle2 className="size-4" /> : i + 1}
@@ -250,7 +250,7 @@ export default function DriverLoginPage() {
                       className={cn(
                         "flex-1 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200",
                         authTab === tab
-                          ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg"
+                          ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-lg"
                           : "text-zinc-500 hover:text-zinc-300"
                       )}
                     >
@@ -291,7 +291,7 @@ export default function DriverLoginPage() {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold shadow-lg shadow-orange-500/20 transition-all mt-2"
+                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold shadow-lg shadow-orange-500/20 transition-all mt-2"
                     >
                       {loading ? <Loader2 className="size-6 animate-spin" /> : (
                         <span className="flex items-center gap-2">ចូលគណនី <ArrowRight className="size-5" /></span>
@@ -350,7 +350,7 @@ export default function DriverLoginPage() {
                     <Button
                       type="submit"
                       disabled={loading}
-                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold shadow-lg shadow-orange-500/20 transition-all mt-2"
+                      className="w-full h-16 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold shadow-lg shadow-orange-500/20 transition-all mt-2"
                     >
                       {loading ? <Loader2 className="size-6 animate-spin" /> : (
                         <span className="flex items-center gap-2">ចុះឈ្មោះ <ArrowRight className="size-5" /></span>
@@ -483,7 +483,7 @@ export default function DriverLoginPage() {
                   <Button
                     type="submit"
                     disabled={profileLoading}
-                    className="w-full h-16 rounded-2xl bg-gradient-to-r from-orange-500 to-red-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold shadow-lg shadow-orange-500/20 transition-all mt-4"
+                    className="w-full h-16 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-orange-600 hover:to-red-700 text-white text-xl font-bold shadow-lg shadow-orange-500/20 transition-all mt-4"
                   >
                     {profileLoading ? <Loader2 className="size-6 animate-spin" /> : (
                       <span className="flex items-center gap-2">រក្សាទុក & បន្ត <ArrowRight className="size-5" /></span>

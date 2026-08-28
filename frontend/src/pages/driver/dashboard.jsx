@@ -4,7 +4,7 @@ import {
   LogOut, MapPin, PhoneCall, CheckCircle2, Package, RefreshCw, Navigation, 
   Wifi, WifiOff, User, Bike, Clock, AlertCircle, Check, ChevronRight, 
   Sun, Moon, Map, Menu, ArrowLeft, ArrowRight, X, Phone, MessageSquare, 
-  Star, ShieldCheck, DollarSign, Bell, Sparkles, Store
+  Star, ShieldCheck, DollarSign, Bell, Sparkles, Store, Loader2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
@@ -43,7 +43,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
   return (
     <header className="shrink-0 h-[calc(env(safe-area-inset-top)+4rem)] pt-[env(safe-area-inset-top)] bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between px-4 lg:px-6 transition-colors z-40 relative shadow-xs">
       <div className="flex items-center gap-3">
-        <div className="size-10 rounded-2xl bg-amber-400 dark:bg-amber-400 flex items-center justify-center shadow-md shadow-amber-400/20 shrink-0 text-black">
+        <div className="size-10 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 flex items-center justify-center shadow-md shadow-red-600/25 shrink-0 text-white">
           <Bike className="size-5.5 stroke-[2.5]" />
         </div>
         <div>
@@ -51,8 +51,8 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
             <h1 className="font-black text-lg sm:text-xl text-slate-950 dark:text-white tracking-tight leading-none">
               Flame & Crust
             </h1>
-            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-amber-400/20 text-amber-600 dark:text-amber-400 rounded-md border border-amber-400/30">
-              Driver
+            <span className="text-[10px] font-black uppercase px-1.5 py-0.5 bg-red-500/15 text-red-600 dark:text-red-400 rounded-md border border-red-500/30">
+              Rider Hub
             </span>
           </div>
           <p className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mt-0.5 flex items-center gap-1.5">
@@ -73,7 +73,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
           )}
           title="Refresh Feed"
         >
-          <RefreshCw className={cn("size-4.5", refreshing && "animate-spin text-amber-500")} />
+          <RefreshCw className={cn("size-4.5", refreshing && "animate-spin text-red-500")} />
         </button>
 
         {/* Theme Toggle */}
@@ -90,7 +90,7 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
         {/* Driver Profile */}
         <Link to="/driver/profile" className="flex items-center gap-2.5 group pl-1">
           <div className="hidden md:block text-right">
-            <p className="text-xs font-black text-slate-900 dark:text-zinc-100 group-hover:text-amber-500 transition-colors">
+            <p className="text-xs font-black text-slate-900 dark:text-zinc-100 group-hover:text-primary transition-colors">
               {driver?.name || "Driver"}
             </p>
             <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
@@ -99,9 +99,9 @@ function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, r
           </div>
           <div className="relative">
             {driver?.profile_photo ? (
-              <img src={driver.profile_photo} alt={driver.name} className="size-9.5 rounded-full object-cover ring-2 ring-amber-400/80 shadow-sm" />
+              <img src={driver.profile_photo} alt={driver.name} className="size-9.5 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm" />
             ) : (
-              <div className="size-9.5 rounded-full bg-amber-400/20 border border-amber-400/40 flex items-center justify-center text-amber-700 dark:text-amber-300">
+              <div className="size-9.5 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400">
                 <User className="size-5" />
               </div>
             )}
@@ -123,7 +123,7 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
           className={cn(
             "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2",
             activeTab === "available" 
-              ? "bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25" 
+              ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/25" 
               : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
           )}
         >
@@ -131,7 +131,7 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
           {availableCount > 0 && (
             <span className={cn(
               "text-[10px] font-black px-1.5 py-0.5 rounded-md",
-              activeTab === "available" ? "bg-black text-amber-400" : "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+              activeTab === "available" ? "bg-white/20 text-white" : "bg-red-500/15 text-red-600 dark:text-red-400"
             )}>
               {availableCount}
             </span>
@@ -142,7 +142,7 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
           className={cn(
             "flex-1 py-2.5 px-3 rounded-xl text-xs sm:text-sm font-black transition-all duration-200 flex items-center justify-center gap-2",
             activeTab === "my_deliveries" 
-              ? "bg-amber-400 text-slate-950 shadow-md shadow-amber-400/25" 
+              ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/25" 
               : "text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200"
           )}
         >
@@ -150,7 +150,7 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
           {activeCount > 0 && (
             <span className={cn(
               "text-[10px] font-black px-1.5 py-0.5 rounded-md",
-              activeTab === "my_deliveries" ? "bg-black text-amber-400" : "bg-amber-400/20 text-amber-600 dark:text-amber-400"
+              activeTab === "my_deliveries" ? "bg-white/20 text-white" : "bg-red-500/15 text-red-600 dark:text-red-400"
             )}>
               {activeCount}
             </span>
@@ -162,7 +162,7 @@ function OrderTabs({ activeTab, setActiveTab, availableCount, activeCount }) {
 }
 
 // ----------------- SCREEN 1: NEW RIDE/DELIVERY REQUEST CARD -----------------
-function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
+function NewDeliveryRequestCard({ order, onAccept, onSelectDetails, isActionLoading }) {
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
   const customerName = order.customer?.name || "Customer";
   const customerAvatar = order.customer?.avatar || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(customerName)}&backgroundColor=fef08a&textColor=854d0e`;
@@ -175,12 +175,12 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
       {/* Top Banner Tag */}
       <div className="flex items-center justify-between pb-3.5 mb-3.5 border-b border-slate-100 dark:border-white/5">
         <div className="flex items-center gap-2">
-          <span className="size-2 rounded-full bg-amber-400 animate-ping" />
+          <span className="size-2 rounded-full bg-red-500 animate-ping" />
           <h3 className="font-black text-sm uppercase tracking-wider text-slate-950 dark:text-white">
             New Delivery Request
           </h3>
         </div>
-        <span className="text-[11px] font-black text-amber-600 dark:text-amber-400 bg-amber-400/15 px-2 py-0.5 rounded-lg border border-amber-400/30">
+        <span className="text-[11px] font-black text-red-600 dark:text-red-400 bg-red-500/15 px-2 py-0.5 rounded-lg border border-red-500/30">
           Order #{order.order_number || order.id}
         </span>
       </div>
@@ -190,14 +190,14 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
         <img 
           src={customerAvatar} 
           alt={customerName} 
-          className="size-11 rounded-full object-cover ring-2 ring-amber-400 shadow-sm shrink-0" 
+          className="size-11 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" 
         />
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between">
             <h4 className="font-black text-sm text-slate-900 dark:text-zinc-100 truncate">
               {customerName}
             </h4>
-            <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+            <span className="text-[10px] font-black text-amber-500 flex items-center gap-0.5">
               ★ 4.9
             </span>
           </div>
@@ -211,7 +211,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
       <div className="grid grid-cols-2 gap-2.5 mb-4">
         {/* ETA Box */}
         <div className="bg-slate-950 dark:bg-black text-white p-3 rounded-2xl flex items-center gap-2.5 shadow-sm">
-          <div className="p-1.5 bg-amber-400 text-black rounded-lg shrink-0">
+          <div className="p-1.5 bg-red-500/20 text-red-400 rounded-lg shrink-0">
             <Clock className="size-4 stroke-[2.5]" />
           </div>
           <div>
@@ -298,16 +298,30 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
         <Button 
           variant="outline"
           onClick={() => onSelectDetails(order)}
+          disabled={isActionLoading}
           className="flex-1 h-12 rounded-2xl font-black text-xs uppercase tracking-wider border-2 border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-700 dark:text-zinc-300 active:scale-95 transition-all"
         >
           Details
         </Button>
         <Button 
           onClick={() => onAccept(order.id)}
-          className="flex-[2] h-12 rounded-2xl bg-amber-400 hover:bg-amber-500 text-black font-black text-sm uppercase tracking-wider shadow-md shadow-amber-400/25 active:scale-95 transition-all border-none flex items-center justify-center gap-2"
+          disabled={isActionLoading}
+          className={cn(
+            "flex-[2] h-12 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-sm uppercase tracking-wider shadow-md shadow-red-600/25 active:scale-95 transition-all border-none flex items-center justify-center gap-2",
+            isActionLoading && "opacity-75 cursor-not-allowed pointer-events-none"
+          )}
         >
-          <Check className="size-4.5 stroke-[3]" />
-          Accept Order
+          {isActionLoading ? (
+            <>
+              <Loader2 className="size-4.5 animate-spin stroke-[2.5]" />
+              <span>Accepting...</span>
+            </>
+          ) : (
+            <>
+              <Check className="size-4.5 stroke-[3]" />
+              <span>Accept Order</span>
+            </>
+          )}
         </Button>
       </div>
 
@@ -316,7 +330,7 @@ function NewDeliveryRequestCard({ order, onAccept, onSelectDetails }) {
 }
 
 // ----------------- SCREEN 2 & 3: ACTIVE DELIVERY / PASSENGER & ORDER DETAILS -----------------
-function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
+function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails, isActionLoading }) {
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
   const customerName = order.customer?.name || "Customer";
   const customerPhone = order.customer?.phone || order.customer_phone || "";
@@ -327,7 +341,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
   const isReady = order.status === "READY";
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm border-2 border-amber-400/40 dark:border-amber-400/30 relative overflow-hidden transition-all">
+    <div className="bg-white dark:bg-zinc-900 rounded-[28px] p-5 shadow-sm border-2 border-red-500/30 dark:border-red-500/20 relative overflow-hidden transition-all">
       
       {/* Active Trip Header */}
       <div className="flex items-center justify-between pb-3 mb-3.5 border-b border-slate-100 dark:border-white/5">
@@ -348,7 +362,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
           <img 
             src={customerAvatar} 
             alt={customerName} 
-            className="size-12 rounded-full object-cover ring-2 ring-amber-400 shadow-sm shrink-0" 
+            className="size-12 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" 
           />
           <div className="min-w-0">
             <div className="flex items-center gap-1.5">
@@ -425,7 +439,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
         <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", order.status === "READY" || isEnRoute ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
           1. Ready
         </div>
-        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-amber-400/20 text-amber-700 dark:text-amber-300" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
+        <div className={cn("py-1 rounded-lg text-[10px] font-black uppercase tracking-wider", isEnRoute ? "bg-red-500/15 text-red-600 dark:text-red-400" : "bg-slate-100 dark:bg-zinc-800 text-slate-400")}>
           2. En Route
         </div>
         <div className="py-1 rounded-lg text-[10px] font-black uppercase tracking-wider bg-slate-100 dark:bg-zinc-800 text-slate-400">
@@ -449,16 +463,25 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
 
             <Button 
               onClick={() => onUpdateStatus(order.id, "OUT_FOR_DELIVERY")}
-              disabled={order.status !== "READY"}
+              disabled={order.status !== "READY" || isActionLoading}
               className={cn(
                 "h-13 w-full rounded-2xl font-black text-sm uppercase tracking-wider shadow-lg transition-all border-none flex items-center justify-center gap-2",
-                order.status === "READY" 
-                  ? "bg-amber-400 hover:bg-amber-500 text-black shadow-amber-400/30 active:scale-98"
-                  : "bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-600 cursor-not-allowed"
+                order.status === "READY" && !isActionLoading
+                  ? "bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white shadow-red-600/30 active:scale-98 cursor-pointer"
+                  : "bg-slate-200 dark:bg-zinc-800 text-slate-400 dark:text-zinc-600 cursor-not-allowed opacity-75 pointer-events-none"
               )}
             >
-              <span>{order.status === "READY" ? "Pick Up & Start Trip" : "Waiting for Kitchen..."}</span>
-              <ArrowRight className="size-4.5 stroke-[3]" />
+              {isActionLoading ? (
+                <>
+                  <Loader2 className="size-5 animate-spin stroke-[2.5]" />
+                  <span>Starting Trip...</span>
+                </>
+              ) : (
+                <>
+                  <span>{order.status === "READY" ? "Pick Up & Start Trip" : "Waiting for Kitchen..."}</span>
+                  <ArrowRight className="size-4.5 stroke-[3]" />
+                </>
+              )}
             </Button>
           </>
         ) : (
@@ -475,10 +498,23 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
 
             <Button 
               onClick={() => onUpdateStatus(order.id, "DELIVERED")}
-              className="h-13 w-full rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2"
+              disabled={isActionLoading}
+              className={cn(
+                "h-13 w-full rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white font-black text-sm uppercase tracking-wider shadow-lg shadow-emerald-500/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2",
+                isActionLoading && "opacity-75 cursor-not-allowed pointer-events-none"
+              )}
             >
-              <CheckCircle2 className="size-5 stroke-[2.5]" />
-              Complete Delivery
+              {isActionLoading ? (
+                <>
+                  <Loader2 className="size-5 animate-spin stroke-[2.5]" />
+                  <span>Completing Delivery...</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 className="size-5 stroke-[2.5]" />
+                  <span>Complete Delivery</span>
+                </>
+              )}
             </Button>
           </>
         )}
@@ -489,7 +525,7 @@ function ActiveDeliveryCard({ order, onUpdateStatus, onSelectDetails }) {
 }
 
 // ----------------- MODAL: FULL ORDER / PASSENGER DETAILS SHEET (Screen 2 & 3) -----------------
-function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, isAvailable }) {
+function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, isAvailable, isActionLoading }) {
   if (!isOpen || !order) return null;
 
   const totalItems = order.items?.reduce((acc, curr) => acc + curr.quantity, 0) || 0;
@@ -508,6 +544,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
           <div className="flex items-center gap-3">
             <button 
               onClick={onClose} 
+              disabled={isActionLoading}
               className="size-9 rounded-full bg-slate-200 dark:bg-zinc-800 flex items-center justify-center text-slate-700 dark:text-zinc-300 hover:bg-slate-300 dark:hover:bg-zinc-700 transition-colors"
             >
               <ArrowLeft className="size-4.5 stroke-[2.5]" />
@@ -523,6 +560,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
           </div>
           <button 
             onClick={onClose}
+            disabled={isActionLoading}
             className="size-8 rounded-full bg-slate-100 dark:bg-zinc-900 flex items-center justify-center text-slate-500 hover:text-slate-900 dark:hover:text-white"
           >
             <X className="size-4" />
@@ -555,7 +593,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
 
             {customerPhone && (
               <a 
-                href={`tel:${customerPhone}`}
+                href={`tel:${customerPhone}`} 
                 className="size-11 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-md shadow-emerald-500/25 active:scale-95 transition-all shrink-0"
                 title="Call Customer"
               >
@@ -678,18 +716,32 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
         <div className="p-5 border-t border-slate-100 dark:border-white/10 shrink-0 bg-white dark:bg-zinc-950">
           {isAvailable ? (
             <Button 
-              onClick={() => {
-                onAccept(order.id);
+              onClick={async () => {
+                await onAccept(order.id);
                 onClose();
               }}
-              className="w-full h-14 rounded-2xl bg-amber-400 hover:bg-amber-500 text-black font-black text-base uppercase tracking-wider shadow-lg shadow-amber-400/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2"
+              disabled={isActionLoading}
+              className={cn(
+                "w-full h-14 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white font-black text-base uppercase tracking-wider shadow-lg shadow-red-600/30 active:scale-98 transition-all border-none flex items-center justify-center gap-2",
+                isActionLoading && "opacity-75 cursor-not-allowed pointer-events-none"
+              )}
             >
-              <span>Accept Ride & Delivery</span>
-              <ArrowRight className="size-5 stroke-[3]" />
+              {isActionLoading ? (
+                <>
+                  <Loader2 className="size-5 animate-spin stroke-[2.5]" />
+                  <span>Accepting Delivery...</span>
+                </>
+              ) : (
+                <>
+                  <span>Accept Ride & Delivery</span>
+                  <ArrowRight className="size-5 stroke-[3]" />
+                </>
+              )}
             </Button>
           ) : (
             <Button 
               onClick={onClose}
+              disabled={isActionLoading}
               className="w-full h-13 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-black text-sm uppercase tracking-wider active:scale-98 transition-all border-none"
             >
               Close
@@ -706,7 +758,7 @@ function OrderDetailsModal({ order, isOpen, onClose, onAccept, onUpdateStatus, i
 function EmptyState({ tab, onRefresh }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-card-fade-in">
-      <div className="size-20 bg-amber-400/15 rounded-full flex items-center justify-center mb-5 border border-amber-400/30 text-amber-600 dark:text-amber-400 shadow-inner">
+      <div className="size-20 bg-red-500/15 rounded-full flex items-center justify-center mb-5 border border-red-500/30 text-red-600 dark:text-red-400 shadow-inner">
         {tab === "available" ? <Package className="size-9 stroke-[2.5]" /> : <Bike className="size-9 stroke-[2.5]" />}
       </div>
       <h3 className="text-xl font-black text-slate-950 dark:text-white mb-1.5 tracking-tight">
@@ -720,7 +772,7 @@ function EmptyState({ tab, onRefresh }) {
       {tab === "available" && (
         <Button 
           onClick={onRefresh} 
-          className="rounded-2xl h-12 px-6 bg-amber-400 hover:bg-amber-500 text-black active:scale-95 transition-all font-black text-xs uppercase tracking-wider border-none shadow-md shadow-amber-400/20 flex items-center gap-2"
+          className="rounded-2xl h-12 px-6 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-700 hover:to-amber-700 text-white active:scale-95 transition-all font-black text-xs uppercase tracking-wider border-none shadow-md shadow-red-600/20 flex items-center gap-2"
         >
           <RefreshCw className="size-4 stroke-[2.5]" />
           Refresh Now
@@ -764,6 +816,7 @@ export default function DriverDashboardPage() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState(null);
   const [locationActive, setLocationActive] = useState(false);
   const [lastLocation, setLastLocation] = useState(null);
   const watchIdRef = useRef(null);
@@ -901,29 +954,38 @@ export default function DriverDashboardPage() {
     return () => clearInterval(interval);
   }, [driver]);
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
+    if (refreshing) return;
     setRefreshing(true);
-    fetchAllData();
+    await fetchAllData();
   };
 
   const updateOrderStatus = async (orderId, newStatus) => {
+    if (actionLoadingId) return;
+    setActionLoadingId(orderId);
     try {
       await update("orders", orderId, { status: newStatus });
       toast.success(`Status updated: ${newStatus.replace(/_/g, " ")}`);
-      fetchAllData();
+      await fetchAllData();
     } catch (err) {
       toast.error("Failed to update status");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
   const acceptOrder = async (orderId) => {
+    if (actionLoadingId) return;
+    setActionLoadingId(orderId);
     try {
       await update("orders", orderId, { driver_id: driver.id, status: "READY" });
       toast.success("Delivery accepted! Ready for pickup.");
       setActiveTab("my_deliveries");
-      fetchAllData();
+      await fetchAllData();
     } catch (err) {
       toast.error("Failed to accept delivery");
+    } finally {
+      setActionLoadingId(null);
     }
   };
 
@@ -977,6 +1039,7 @@ export default function DriverDashboardPage() {
                       order={order} 
                       onAccept={acceptOrder}
                       onSelectDetails={(o) => setSelectedOrderDetails(o)}
+                      isActionLoading={actionLoadingId === order.id}
                     />
                   ) : (
                     <ActiveDeliveryCard 
@@ -984,6 +1047,7 @@ export default function DriverDashboardPage() {
                       order={order} 
                       onUpdateStatus={updateOrderStatus}
                       onSelectDetails={(o) => setSelectedOrderDetails(o)}
+                      isActionLoading={actionLoadingId === order.id}
                     />
                   )
                 ))}
@@ -1075,7 +1139,7 @@ export default function DriverDashboardPage() {
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-wider transition-all",
               mobileView === "list" 
-                ? "bg-amber-400 text-black shadow-md shadow-amber-400/30" 
+                ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/30" 
                 : "text-slate-400 dark:text-zinc-600 hover:text-white dark:hover:text-black"
             )}
           >
@@ -1087,7 +1151,7 @@ export default function DriverDashboardPage() {
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-full font-black text-xs uppercase tracking-wider transition-all",
               mobileView === "map" 
-                ? "bg-amber-400 text-black shadow-md shadow-amber-400/30" 
+                ? "bg-gradient-to-r from-red-600 to-amber-600 text-white shadow-md shadow-red-600/30" 
                 : "text-slate-400 dark:text-zinc-600 hover:text-white dark:hover:text-black"
             )}
           >
@@ -1105,6 +1169,7 @@ export default function DriverDashboardPage() {
         onAccept={acceptOrder}
         onUpdateStatus={updateOrderStatus}
         isAvailable={activeTab === "available"}
+        isActionLoading={Boolean(selectedOrderDetails && actionLoadingId === selectedOrderDetails.id)}
       />
 
     </div>
