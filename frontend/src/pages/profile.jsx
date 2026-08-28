@@ -23,7 +23,6 @@ import {
   EyeOff,
   Check,
   X,
-  LayoutDashboard,
   ShieldCheck,
   Camera,
   Sun,
@@ -34,8 +33,7 @@ import {
   Crown,
   Loader2,
   Pencil,
-  Building2,
-  CheckCircle2
+  Building2
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -105,7 +103,7 @@ export default function ProfilePage() {
   
   const searchParams = new URLSearchParams(location.search);
   const tabParam = searchParams.get('tab');
-  const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "OVERVIEW");
+  const [activeTab, setActiveTab] = useState(tabParam ? tabParam.toUpperCase() : "MENU");
   
   // Settings & Coupons state
   const [coupons, setCoupons] = useState(() => profileMemoryCache.coupons || []);
@@ -303,14 +301,15 @@ export default function ProfilePage() {
     const params = new URLSearchParams(location.search);
     const tabParam = params.get('tab');
     if (tabParam) {
-      const normalized = tabParam.toUpperCase();
-      setActiveTab(normalized === "MENU" ? "OVERVIEW" : normalized);
+      setActiveTab(tabParam.toUpperCase());
+    } else {
+      setActiveTab("MENU");
     }
   }, [location.search]);
 
-  const handleTabChange = (newTab) => {
+  const handleNavigateToTab = (newTab) => {
     setActiveTab(newTab);
-    if (newTab === "OVERVIEW") {
+    if (newTab === "MENU") {
       navigate("/profile");
     } else {
       navigate(`/profile?tab=${newTab.toLowerCase()}`);
@@ -651,533 +650,103 @@ export default function ProfilePage() {
 
   const getMemberTier = () => {
     if (orders.length >= 30) {
-      return { label: "VIP Member", icon: Flame, color: "text-red-600 dark:text-red-400", bg: "bg-red-500/15 border-red-500/30" };
+      return { label: "VIP Member", icon: Flame, color: "text-red-200", bg: "bg-red-500/30 border-red-400/40" };
     }
     if (orders.length >= 15) {
-      return { label: "Gold Member", icon: Crown, color: "text-amber-600 dark:text-amber-400", bg: "bg-amber-500/15 border-amber-500/30" };
+      return { label: "Gold Member", icon: Crown, color: "text-amber-200", bg: "bg-amber-500/30 border-amber-400/40" };
     }
     if (orders.length >= 5) {
-      return { label: "Silver Member", icon: Star, color: "text-slate-600 dark:text-slate-300", bg: "bg-slate-500/15 border-slate-500/30" };
+      return { label: "Silver Member", icon: Star, color: "text-slate-100", bg: "bg-slate-400/30 border-slate-300/40" };
     }
-    return { label: "Member", icon: User, color: "text-primary", bg: "bg-primary/10 border-primary/20" };
+    return { label: "Member", icon: User, color: "text-white", bg: "bg-white/20 border-white/30" };
   };
 
   const memberTier = getMemberTier();
   const TierIcon = memberTier.icon;
 
-  const tabsConfig = [
-    { id: "OVERVIEW", label: "Overview", icon: LayoutDashboard },
-    { id: "ORDERS", label: "Orders", icon: ShoppingBag, count: orders.length },
-    { id: "COUPONS", label: "Coupons", icon: Ticket, count: coupons.length },
-    { id: "FAVORITES", label: "Favorites", icon: Heart, count: favorites.length },
-    { id: "ADDRESSES", label: "Addresses", icon: MapPin, count: addresses.length },
-    { id: "SETTINGS", label: "Settings", icon: Settings },
-  ];
-
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Navbar />
-      <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-18 lg:pt-20 pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-14">
+      <main className="flex-1 pt-14 sm:pt-16 lg:pt-18 pb-32 sm:pb-20">
         <PageTransition>
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+          <div className={cn(
+            "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",
+            activeTab === "MENU" ? "max-w-5xl" : "max-w-4xl"
+          )}>
             
-            {/* ========================================================================= */}
-            {/* 1. FACEBOOK-STYLE PROFILE HEADER CARD (COVER + AVATAR + STATS + NAV TABS) */}
-            {/* ========================================================================= */}
-            <div className="bg-card border border-border/70 rounded-[28px] overflow-hidden shadow-warm-lg transition-all duration-300">
-              
-              {/* LARGE PIZZA COVER PHOTO */}
-              <div className="relative w-full h-44 sm:h-64 md:h-76 lg:h-80 bg-muted overflow-hidden group">
-                <img 
-                  src={coverPhoto} 
-                  alt="Profile Cover" 
-                  className="w-full h-full object-cover object-center group-hover:scale-103 transition-transform duration-700 ease-out" 
-                />
+            {activeTab === "MENU" ? (
+              /* ========================================================================= */
+              /* 1. MAIN PROFILE HUB VIEW (COMPACT MOBILE COVER + AVATAR + 2-COL CARDS)    */
+              /* ========================================================================= */
+              <div className="space-y-3.5 sm:space-y-5">
                 
-                {/* Dark/Light Gradient Overlay for Depth and Contrast */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/25 to-black/10 pointer-events-none" />
-
-                {/* Floating "Edit Cover Photo" Pill Button */}
-                <label 
-                  className="absolute bottom-3 right-3 sm:bottom-5 sm:right-6 inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs font-semibold backdrop-blur-md bg-white/90 dark:bg-black/70 text-foreground dark:text-white border border-white/40 dark:border-white/15 shadow-md hover:bg-white dark:hover:bg-black/90 hover:scale-105 active:scale-95 transition-all cursor-pointer z-10"
-                  title="Change Cover Photo"
-                >
-                  {isUploadingCover ? (
-                    <Loader2 className="size-3.5 sm:size-4 animate-spin text-primary" />
-                  ) : (
-                    <Camera className="size-3.5 sm:size-4" />
-                  )}
-                  <span className="hidden sm:inline">{isUploadingCover ? "Uploading Cover..." : "Edit Cover Photo"}</span>
-                  <span className="sm:hidden">{isUploadingCover ? "..." : "Edit Cover"}</span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handleCoverFileChange} 
-                    disabled={isUploadingCover}
-                  />
-                </label>
-              </div>
-
-              {/* PROFILE AVATAR, USER INFO & STATISTICS ROW */}
-              <div className="px-5 sm:px-8 pb-5 pt-0">
-                <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
+                {/* Clean Facebook-Style Profile Header Card with Avatar & Name ON Cover */}
+                <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[28px] overflow-hidden shadow-warm transition-all duration-300">
                   
-                  {/* Left: Overlapping Avatar + Name, Phone, Badges */}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-end gap-4 sm:gap-6 text-center sm:text-left">
+                  {/* Pizza Cover Photo Banner */}
+                  <div className="relative w-full h-40 sm:h-52 md:h-60 lg:h-64 bg-muted overflow-hidden group">
+                    <img 
+                      src={coverPhoto} 
+                      alt="Profile Cover" 
+                      className="w-full h-full object-cover object-center group-hover:scale-102 transition-transform duration-700 ease-out" 
+                    />
                     
-                    {/* Overlapping Circular Avatar */}
-                    <div className="-mt-14 sm:-mt-20 md:-mt-24 relative shrink-0 z-20 group">
-                      <div className="size-28 sm:size-36 md:size-40 rounded-full p-1 sm:p-1.5 bg-background shadow-2xl ring-4 ring-background">
-                        <div className="size-full rounded-full overflow-hidden bg-primary/10 relative flex items-center justify-center border border-border/40">
-                          {customer.avatar ? (
-                            <img 
-                              src={customer.avatar} 
-                              alt="Profile Avatar" 
-                              className="w-full h-full object-cover" 
-                              referrerPolicy="no-referrer" 
-                            />
-                          ) : (
-                            <User className="size-12 sm:size-16 text-primary" />
-                          )}
-                          {isUploadingAvatar && (
-                            <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center text-white backdrop-blur-xs">
-                              <Loader2 className="size-6 animate-spin text-primary" />
-                              <span className="text-[10px] mt-1 font-semibold">Updating...</span>
+                    {/* Dark Gradient Overlay for Maximum Text Contrast */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/45 to-black/20 pointer-events-none" />
+
+                    {/* Floating "Edit Cover Photo" Pill Button */}
+                    <label 
+                      className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold backdrop-blur-md bg-black/60 hover:bg-black/80 text-white border border-white/25 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer z-20"
+                      title="Change Cover Photo"
+                    >
+                      {isUploadingCover ? (
+                        <Loader2 className="size-3 sm:size-3.5 animate-spin text-primary" />
+                      ) : (
+                        <Camera className="size-3 sm:size-3.5" />
+                      )}
+                      <span>{isUploadingCover ? "Uploading..." : "Edit Cover"}</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={handleCoverFileChange} 
+                        disabled={isUploadingCover}
+                      />
+                    </label>
+
+                    {/* AVATAR + NAME + BADGES ON THE BOTTOM-LEFT OF COVER */}
+                    <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-5 right-3 sm:right-5 flex items-center justify-between gap-3 z-10">
+                      <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                        
+                        {/* Circular Avatar */}
+                        <div className="relative shrink-0 group">
+                          <div className="size-16 sm:size-22 md:size-24 rounded-full p-0.5 sm:p-1 bg-white/40 backdrop-blur-xs shadow-xl ring-2 sm:ring-3 ring-white">
+                            <div className="size-full rounded-full overflow-hidden bg-background relative flex items-center justify-center">
+                              {customer.avatar ? (
+                                <img 
+                                  src={customer.avatar} 
+                                  alt="Profile Avatar" 
+                                  className="w-full h-full object-cover" 
+                                  referrerPolicy="no-referrer" 
+                                />
+                              ) : (
+                                <User className="size-8 sm:size-11 text-primary" />
+                              )}
+                              {isUploadingAvatar && (
+                                <div className="absolute inset-0 bg-black/65 flex flex-col items-center justify-center text-white backdrop-blur-xs">
+                                  <Loader2 className="size-4 animate-spin text-primary" />
+                                  <span className="text-[8px] mt-0.5 font-semibold">...</span>
+                                </div>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Camera Button on Avatar */}
-                      <label 
-                        className="absolute bottom-1 right-1 sm:bottom-2 sm:right-2 size-8 sm:size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-transform cursor-pointer"
-                        title="Change Profile Avatar"
-                      >
-                        <Camera className="size-3.5 sm:size-4" />
-                        <input 
-                          type="file" 
-                          accept="image/*" 
-                          className="hidden" 
-                          onChange={handleAvatarFileChange} 
-                          disabled={isUploadingAvatar}
-                        />
-                      </label>
-                    </div>
-
-                    {/* Profile Information: Name, Phone, Badges */}
-                    <div className="space-y-1.5 sm:pb-1">
-                      <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                        <h1 className="font-serif text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground tracking-tight">
-                          {customer.name || "Flame Foodie"}
-                        </h1>
-                        <span className="inline-flex items-center text-amber-500" title="Flame VIP Member">
-                          <Sparkles className="size-5 fill-amber-500" />
-                        </span>
-                      </div>
-
-                      <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-                        {customer.phone || customer.email}
-                      </p>
-
-                      {/* Badges: Member Tier + Verified + Admin */}
-                      <div className="flex items-center justify-center sm:justify-start gap-2 pt-1 flex-wrap">
-                        {/* Member Tier Badge */}
-                        <span className={cn("inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shadow-2xs", memberTier.bg, memberTier.color)}>
-                          <TierIcon className="size-3.5" />
-                          <span>{memberTier.label}</span>
-                        </span>
-
-                        {/* Verified Badge */}
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 shadow-2xs">
-                          <Check className="size-3.5" /> Verified
-                        </span>
-
-                        {/* Admin Badge */}
-                        {isAdmin && (
-                          <button
-                            type="button"
-                            onClick={() => navigate("/admin/dashboard")}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30 hover:bg-amber-500/25 transition-colors cursor-pointer shadow-2xs"
-                          >
-                            <ShieldCheck className="size-3.5" />
-                            Admin Panel →
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Profile Statistics (Horizontal on Desktop, 2x2 on Mobile) */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 w-full lg:w-auto lg:shrink-0 pt-2 lg:pt-0 sm:pb-1">
-                    
-                    {/* Stat: Orders */}
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("ORDERS")}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
-                        activeTab === "ORDERS" 
-                          ? "bg-primary/10 border-primary/50 text-primary shadow-warm" 
-                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-primary/40 text-foreground"
-                      )}
-                    >
-                      <span className="font-serif text-xl sm:text-2xl font-bold">
-                        {orders.length}
-                      </span>
-                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Orders</span>
-                    </button>
-
-                    {/* Stat: Coupons */}
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("COUPONS")}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
-                        activeTab === "COUPONS" 
-                          ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-600 dark:text-emerald-400 shadow-warm" 
-                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-emerald-500/40 text-foreground"
-                      )}
-                    >
-                      <span className="font-serif text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400">
-                        {coupons.length}
-                      </span>
-                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Coupons</span>
-                    </button>
-
-                    {/* Stat: Favorites */}
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("FAVORITES")}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
-                        activeTab === "FAVORITES" 
-                          ? "bg-rose-500/15 border-rose-500/50 text-rose-500 shadow-warm" 
-                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-rose-500/40 text-foreground"
-                      )}
-                    >
-                      <span className="font-serif text-xl sm:text-2xl font-bold text-rose-500">
-                        {favorites.length}
-                      </span>
-                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Favorites</span>
-                    </button>
-
-                    {/* Stat: Saved Addresses */}
-                    <button
-                      type="button"
-                      onClick={() => handleTabChange("ADDRESSES")}
-                      className={cn(
-                        "flex flex-col items-center justify-center p-3 rounded-2xl border transition-all duration-200 cursor-pointer active:scale-95 min-w-[76px] shadow-2xs",
-                        activeTab === "ADDRESSES" 
-                          ? "bg-sky-500/15 border-sky-500/50 text-sky-500 shadow-warm" 
-                          : "bg-secondary/40 hover:bg-secondary border-border/50 hover:border-sky-500/40 text-foreground"
-                      )}
-                    >
-                      <span className="font-serif text-xl sm:text-2xl font-bold text-sky-500">
-                        {addresses.length}
-                      </span>
-                      <span className="text-[11px] font-medium text-muted-foreground mt-0.5">Saved</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* FACEBOOK-STYLE PROFILE NAVIGATION TABS */}
-              <div className="border-t border-border/70 px-4 sm:px-8 bg-card/70 backdrop-blur-xs flex items-center justify-between overflow-hidden">
-                <nav className="flex items-center gap-1 sm:gap-2 overflow-x-auto no-scrollbar py-1.5 w-full">
-                  {tabsConfig.map((tab) => {
-                    const Icon = tab.icon;
-                    const isActive = activeTab === tab.id;
-
-                    return (
-                      <button
-                        key={tab.id}
-                        type="button"
-                        onClick={() => handleTabChange(tab.id)}
-                        className={cn(
-                          "relative px-3.5 sm:px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer shrink-0",
-                          isActive
-                            ? "text-primary bg-primary/10 dark:bg-primary/15"
-                            : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                        )}
-                      >
-                        <Icon className={cn("size-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                        <span>{tab.label}</span>
-                        {typeof tab.count === "number" && tab.count > 0 && (
-                          <span className={cn(
-                            "px-1.5 py-0.2 rounded-full text-[10px] font-bold leading-tight",
-                            isActive ? "bg-primary text-white" : "bg-secondary text-muted-foreground"
-                          )}>
-                            {tab.count}
-                          </span>
-                        )}
-                        {/* Active Indicator Bar */}
-                        {isActive && (
-                          <motion.div 
-                            layoutId="activeProfileTabIndicator" 
-                            className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary rounded-full" 
-                            transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </nav>
-              </div>
-            </div>
-
-            {/* ========================================================================= */}
-            {/* 2. PROFILE CONTENT SECTION (RESPONSIVE 2-COLUMN GRID IN OVERVIEW) */}
-            {/* ========================================================================= */}
-            
-            {activeTab === "OVERVIEW" ? (
-              /* OVERVIEW HUB: 2-COLUMN BALANCED GRID (55% / 45%) */
-              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start animate-fade-in">
-                
-                {/* COLUMN 1: Activities & Orders (~58% on Desktop) */}
-                <div className="lg:col-span-7 space-y-4">
-                  <div className="rounded-[24px] bg-card border border-border/70 p-4 sm:p-5 shadow-warm space-y-2">
-                    <div className="flex items-center justify-between px-2 pt-1 pb-1">
-                      <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                        <ShoppingBag className="size-3.5 text-primary" /> Activities &amp; Orders
-                      </p>
-                    </div>
-
-                    {/* Order History Item */}
-                    <button 
-                      type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
-                      onClick={() => handleTabChange("ORDERS")}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          <ShoppingBag className="size-5" />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-foreground text-sm block truncate">Order History</span>
-                          <span className="text-xs text-muted-foreground">Track and re-order previous meals</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {orders.length > 0 && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
-                            {orders.length} orders
-                          </span>
-                        )}
-                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-
-                    {/* My Coupons Item */}
-                    <button 
-                      type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
-                      onClick={() => handleTabChange("COUPONS")}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          <Ticket className="size-5" />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-foreground text-sm block truncate">My Coupons &amp; Rewards</span>
-                          <span className="text-xs text-muted-foreground">Discounts and promotions ready to use</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {coupons.length > 0 && (
-                          <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                            {coupons.length} Available
-                          </span>
-                        )}
-                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-
-                    {/* Favorite Pizzas Item */}
-                    <button 
-                      type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
-                      onClick={() => handleTabChange("FAVORITES")}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          <Heart className="size-5" />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-foreground text-sm block truncate">Favorite Pizzas</span>
-                          <span className="text-xs text-muted-foreground">Your most loved dishes &amp; sides</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {favorites.length > 0 && (
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500">
-                            {favorites.length}
-                          </span>
-                        )}
-                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* COLUMN 2: Account & Details + Preferences (~42% on Desktop) */}
-                <div className="lg:col-span-5 space-y-4">
-                  
-                  {/* Account & Details Card */}
-                  <div className="rounded-[24px] bg-card border border-border/70 p-4 sm:p-5 shadow-warm space-y-2">
-                    <p className="px-2 pt-1 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <User className="size-3.5 text-primary" /> Account &amp; Details
-                    </p>
-
-                    {/* Profile Settings */}
-                    <button 
-                      type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
-                      onClick={() => handleTabChange("SETTINGS")}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          <Settings className="size-5" />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-foreground text-sm block truncate">Profile Settings</span>
-                          <span className="text-xs text-muted-foreground">Name, phone, avatar &amp; password</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-
-                    {/* Saved Addresses */}
-                    <button 
-                      type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
-                      onClick={() => handleTabChange("ADDRESSES")}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          <MapPin className="size-5" />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-foreground text-sm block truncate">Saved Addresses</span>
-                          <span className="text-xs text-muted-foreground">Delivery drop-off locations</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2 shrink-0">
-                        {addresses.length > 0 && (
-                          <span className="text-xs font-medium text-muted-foreground">
-                            {addresses.length} saved
-                          </span>
-                        )}
-                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
-                      </div>
-                    </button>
-                  </div>
-
-                  {/* Preferences Card */}
-                  <div className="rounded-[24px] bg-card border border-border/70 p-4 sm:p-5 shadow-warm space-y-2">
-                    <p className="px-2 pt-1 pb-1 text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-                      <Sparkles className="size-3.5 text-primary" /> Preferences
-                    </p>
-
-                    {/* Appearance Theme Switcher */}
-                    <div className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm">
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
-                          {theme === "dark" ? <Moon className="size-5" /> : <Sun className="size-5" />}
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-foreground text-sm block">Appearance</span>
-                          <span className="text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                        className="h-8 px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-xs font-semibold text-foreground flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
-                      >
-                        {theme === "dark" ? <Moon className="size-3.5" /> : <Sun className="size-3.5" />}
-                        <span>{theme === "dark" ? "Dark" : "Light"}</span>
-                      </button>
-                    </div>
-
-                    {/* Sign Out Button */}
-                    <button 
-                      type="button"
-                      className="w-full flex items-center justify-between p-3.5 rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20 group"
-                      onClick={handleLogout}
-                    >
-                      <div className="flex items-center gap-3.5 min-w-0">
-                        <div className="size-11 rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
-                          <LogOut className="size-5" />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <span className="font-semibold text-destructive text-sm block">Sign Out</span>
-                          <span className="text-xs text-destructive/70">Log out from this device</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="size-4 text-destructive/40 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* SUB-PAGE TAB VIEWS (ORDERS, COUPONS, FAVORITES, ADDRESSES, SETTINGS) */
-              <div className="space-y-6 animate-fade-in">
-                
-                {/* Back to Overview Breadcrumb */}
-                <div className="flex items-center justify-between">
-                  <button 
-                    type="button"
-                    onClick={() => handleTabChange("OVERVIEW")} 
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-secondary/80 hover:bg-secondary border border-border/60 text-sm font-semibold text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs"
-                  >
-                    <ArrowLeft className="size-4" />
-                    Back to Overview
-                  </button>
-                </div>
-
-                {/* ---------------- SETTINGS TAB ---------------- */}
-                {activeTab === "SETTINGS" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="font-serif text-3xl font-bold text-foreground">Profile Settings</h2>
-                      <p className="text-sm text-muted-foreground mt-1">Manage your account credentials, avatar, and personal details</p>
-                    </div>
-
-                    {/* Card 1: Profile Information */}
-                    <div className="bg-card border border-border/70 rounded-[24px] p-6 sm:p-8 shadow-warm">
-                      <form onSubmit={handleUpdateProfile} className="space-y-6">
-                        {/* Circular Avatar Upload */}
-                        <div className="flex flex-col items-center justify-center text-center pb-6 border-b border-border/60">
-                          <div className="relative size-28 sm:size-32 group mb-3">
-                            <div className="size-full rounded-full ring-4 ring-primary/30 p-1 bg-background shadow-lg overflow-hidden">
-                              <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
-                                {settingsForm.avatar ? (
-                                  <img src={settingsForm.avatar} alt="Avatar" className="w-full h-full object-cover" />
-                                ) : (
-                                  <User className="size-14 text-primary" />
-                                )}
-                                {isUploadingAvatar && (
-                                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
-                                    <Loader2 className="size-6 animate-spin text-primary" />
-                                    <span className="text-[10px] mt-1 font-semibold">Uploading...</span>
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                            <label className="absolute bottom-0 right-0 size-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg border-2 border-background hover:scale-110 active:scale-95 transition-all cursor-pointer">
-                              <Camera className="size-4.5" />
-                              <input 
-                                type="file" 
-                                accept="image/*" 
-                                className="hidden" 
-                                onChange={handleAvatarFileChange} 
-                                disabled={isUploadingAvatar}
-                              />
-                            </label>
                           </div>
-                          <label className="text-xs font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
-                            <Camera className="size-3.5" /> Tap to change profile photo
+
+                          {/* Camera Button on Avatar */}
+                          <label 
+                            className="absolute bottom-0 right-0 size-5.5 sm:size-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-white hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+                            title="Change Profile Avatar"
+                          >
+                            <Camera className="size-2.5 sm:size-3.5" />
                             <input 
                               type="file" 
                               accept="image/*" 
@@ -1188,32 +757,392 @@ export default function ProfilePage() {
                           </label>
                         </div>
 
-                        <div className="grid sm:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                              <User className="size-4 text-primary" /> Full Name
+                        {/* Name, Phone, and Badges next to Avatar on Cover */}
+                        <div className="min-w-0 text-left space-y-0.5 sm:space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h1 className="font-serif text-base sm:text-xl md:text-2xl font-bold text-white tracking-tight drop-shadow-md truncate">
+                              {customer.name || "Flame Foodie"}
+                            </h1>
+                            <Sparkles className="size-3.5 sm:size-4 fill-amber-400 text-amber-400 shrink-0" />
+                          </div>
+
+                          <p className="text-[11px] sm:text-xs font-medium text-white/90 drop-shadow-xs truncate">
+                            {customer.phone || customer.email}
+                          </p>
+
+                          {/* Badges on Cover (High Contrast & Glassmorphism) */}
+                          <div className="flex items-center gap-1.5 pt-0.5 flex-wrap">
+                            {/* Member Tier Badge */}
+                            <span className={cn("inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-bold border backdrop-blur-md shadow-2xs", memberTier.bg, memberTier.color)}>
+                              <TierIcon className="size-2.5 sm:size-3" />
+                              <span>{memberTier.label}</span>
+                            </span>
+
+                            {/* Verified Badge */}
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-emerald-500/30 text-emerald-200 border border-emerald-400/40 backdrop-blur-md shadow-2xs">
+                              <Check className="size-2.5 sm:size-3" /> Verified
+                            </span>
+
+                            {/* Admin Badge */}
+                            {isAdmin && (
+                              <button
+                                type="button"
+                                onClick={() => navigate("/admin/dashboard")}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-amber-500/30 text-amber-200 border border-amber-400/40 hover:bg-amber-500/40 transition-colors cursor-pointer shadow-2xs backdrop-blur-md"
+                              >
+                                <ShieldCheck className="size-2.5 sm:size-3" />
+                                Admin →
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 4 Quick Stat Tiles Row below Cover */}
+                  <div className="p-2.5 sm:p-4">
+                    <div className="grid grid-cols-4 gap-2 sm:gap-3">
+                      
+                      {/* Stat: Orders */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("ORDERS")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-primary/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Orders"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold group-hover:text-primary transition-colors leading-tight">
+                          {orders.length}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Orders</span>
+                      </button>
+
+                      {/* Stat: Coupons */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("COUPONS")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-emerald-500/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Coupons"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 leading-tight">
+                          {coupons.length}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Coupons</span>
+                      </button>
+
+                      {/* Stat: Favorites */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("FAVORITES")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-rose-500/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Favorites"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold text-rose-500 leading-tight">
+                          {favorites.length}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Favorites</span>
+                      </button>
+
+                      {/* Stat: Saved Addresses */}
+                      <button
+                        type="button"
+                        onClick={() => handleNavigateToTab("ADDRESSES")}
+                        className="flex flex-col items-center justify-center py-2 px-1 sm:py-2.5 rounded-xl sm:rounded-2xl bg-secondary/40 hover:bg-secondary border border-border/50 hover:border-sky-500/40 text-foreground transition-all duration-200 cursor-pointer active:scale-95 shadow-2xs group"
+                        title="View Saved Addresses"
+                      >
+                        <span className="font-serif text-sm sm:text-xl font-bold text-sky-500 leading-tight">
+                          {addresses.length}
+                        </span>
+                        <span className="text-[10px] sm:text-xs font-medium text-muted-foreground mt-0.5">Saved</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Balanced 2-Column Menu Card Grid */}
+                <div className="grid sm:grid-cols-2 gap-3 sm:gap-4 lg:gap-6 items-start">
+                  
+                  {/* COLUMN 1: Activities & Orders */}
+                  <div className="rounded-2xl sm:rounded-[24px] bg-card border border-border/70 p-2.5 sm:p-4 shadow-warm space-y-1 sm:space-y-1.5 h-fit">
+                    <p className="px-2.5 pt-0.5 pb-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <ShoppingBag className="size-3.5 text-primary" /> Activities &amp; Orders
+                    </p>
+
+                    {/* Order History Item */}
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleNavigateToTab("ORDERS")}
+                    >
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-orange-500/15 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <ShoppingBag className="size-4 sm:size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Order History</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">Track and re-order meals</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {orders.length > 0 && (
+                          <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-primary/15 text-primary">
+                            {orders.length}
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+
+                    {/* My Coupons Item */}
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleNavigateToTab("COUPONS")}
+                    >
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Ticket className="size-4 sm:size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">My Coupons &amp; Rewards</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">Save on your pizza orders</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {coupons.length > 0 && (
+                          <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                            {coupons.length}
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+
+                    {/* Favorite Pizzas Item */}
+                    <button 
+                      type="button"
+                      className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                      onClick={() => handleNavigateToTab("FAVORITES")}
+                    >
+                      <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                        <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-rose-500/15 text-rose-500 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                          <Heart className="size-4 sm:size-5" />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Favorite Pizzas</span>
+                          <span className="text-[10px] sm:text-xs text-muted-foreground">Your most loved dishes</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                        {favorites.length > 0 && (
+                          <span className="text-[10px] sm:text-xs font-bold px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-500">
+                            {favorites.length}
+                          </span>
+                        )}
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* COLUMN 2: Account & Details + Preferences */}
+                  <div className="space-y-3 sm:space-y-4">
+                    
+                    {/* Account & Details Card */}
+                    <div className="rounded-2xl sm:rounded-[24px] bg-card border border-border/70 p-2.5 sm:p-4 shadow-warm space-y-1 sm:space-y-1.5">
+                      <p className="px-2.5 pt-0.5 pb-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <User className="size-3.5 text-primary" /> Account &amp; Details
+                      </p>
+
+                      {/* Profile Settings */}
+                      <button 
+                        type="button"
+                        className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                        onClick={() => handleNavigateToTab("SETTINGS")}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-violet-500/15 text-violet-600 dark:text-violet-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <Settings className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Profile Settings</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">Name, phone, avatar &amp; password</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+
+                      {/* Saved Addresses */}
+                      <button 
+                        type="button"
+                        className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-secondary/60 text-foreground border border-transparent hover:border-border/60 group"
+                        onClick={() => handleNavigateToTab("ADDRESSES")}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <MapPin className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block truncate">Saved Addresses</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">Delivery drop-off locations</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                          {addresses.length > 0 && (
+                            <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">
+                              {addresses.length} saved
+                            </span>
+                          )}
+                          <ChevronRight className="size-4 text-muted-foreground/60 group-hover:translate-x-0.5 transition-transform" />
+                        </div>
+                      </button>
+                    </div>
+
+                    {/* Preferences Card */}
+                    <div className="rounded-2xl sm:rounded-[24px] bg-card border border-border/70 p-2.5 sm:p-4 shadow-warm space-y-1 sm:space-y-1.5">
+                      <p className="px-2.5 pt-0.5 pb-0.5 text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <Sparkles className="size-3.5 text-primary" /> Preferences
+                      </p>
+
+                      {/* Theme Switcher */}
+                      <div className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm">
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0 shadow-2xs">
+                            {theme === "dark" ? <Moon className="size-4 sm:size-5" /> : <Sun className="size-4 sm:size-5" />}
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-foreground text-xs sm:text-sm block">Appearance</span>
+                            <span className="text-[10px] sm:text-xs text-muted-foreground">{theme === "dark" ? "Dark Mode" : "Light Mode"}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                          className="h-7 sm:h-8 px-2.5 sm:px-3.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/60 text-[10px] sm:text-xs font-semibold text-foreground flex items-center gap-1 sm:gap-1.5 transition-all active:scale-95 cursor-pointer shadow-2xs"
+                        >
+                          {theme === "dark" ? <Moon className="size-3 sm:size-3.5" /> : <Sun className="size-3 sm:size-3.5" />}
+                          <span>{theme === "dark" ? "Dark" : "Light"}</span>
+                        </button>
+                      </div>
+
+                      {/* Sign Out */}
+                      <button 
+                        type="button"
+                        className="w-full flex items-center justify-between p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl text-sm font-medium transition-all cursor-pointer hover:bg-destructive/10 text-destructive border border-transparent hover:border-destructive/20 group"
+                        onClick={handleLogout}
+                      >
+                        <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                          <div className="size-9 sm:size-11 rounded-xl sm:rounded-2xl bg-destructive/15 text-destructive flex items-center justify-center shrink-0 shadow-2xs group-hover:scale-105 transition-transform">
+                            <LogOut className="size-4 sm:size-5" />
+                          </div>
+                          <div className="text-left min-w-0">
+                            <span className="font-semibold text-destructive text-xs sm:text-sm block">Sign Out</span>
+                            <span className="text-[10px] sm:text-xs text-destructive/70">Log out from this device</span>
+                          </div>
+                        </div>
+                        <ChevronRight className="size-4 text-destructive/40 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              /* ========================================================================= */
+              /* 2. DEDICATED SUB-PAGE VIEWS WITH PROMINENT "← BACK TO PROFILE" BUTTON */
+              /* ========================================================================= */
+              <div className="space-y-4 sm:space-y-6 animate-fade-in">
+                
+                {/* Back to Profile Button & Header */}
+                <div className="space-y-2">
+                  <div>
+                    <button 
+                      type="button"
+                      onClick={() => handleNavigateToTab("MENU")} 
+                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/70 text-xs sm:text-sm font-semibold text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs"
+                    >
+                      <ArrowLeft className="size-3.5 sm:size-4" />
+                      Back to Profile
+                    </button>
+                  </div>
+                  <div>
+                    <h2 className="font-serif text-xl sm:text-3xl font-bold text-foreground">Profile Settings</h2>
+                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Manage your credentials, avatar, and personal details</p>
+                  </div>
+                </div>
+
+                {/* ---------------- SETTINGS TAB ---------------- */}
+                {activeTab === "SETTINGS" && (
+                  <div className="space-y-4 sm:space-y-6">
+                    
+                    {/* Card 1: Profile Information */}
+                    <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-7 shadow-warm">
+                      <form onSubmit={handleUpdateProfile} className="space-y-4 sm:space-y-6">
+                        {/* Circular Avatar Upload */}
+                        <div className="flex flex-col items-center justify-center text-center pb-4 sm:pb-6 border-b border-border/60">
+                          <div className="relative size-20 sm:size-28 group mb-2.5">
+                            <div className="size-full rounded-full ring-3 sm:ring-4 ring-primary/30 p-0.5 sm:p-1 bg-background shadow-lg overflow-hidden">
+                              <div className="size-full rounded-full overflow-hidden bg-primary/10 flex items-center justify-center relative">
+                                {settingsForm.avatar ? (
+                                  <img src={settingsForm.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                                ) : (
+                                  <User className="size-9 sm:size-14 text-primary" />
+                                )}
+                                {isUploadingAvatar && (
+                                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                                    <Loader2 className="size-5 sm:size-6 animate-spin text-primary" />
+                                    <span className="text-[9px] mt-0.5 font-semibold">...</span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            <label className="absolute bottom-0 right-0 size-7 sm:size-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-md border-2 border-background hover:scale-110 active:scale-95 transition-all cursor-pointer">
+                              <Camera className="size-3.5 sm:size-4" />
+                              <input 
+                                type="file" 
+                                accept="image/*" 
+                                className="hidden" 
+                                onChange={handleAvatarFileChange} 
+                                disabled={isUploadingAvatar}
+                              />
+                            </label>
+                          </div>
+                          <label className="text-[11px] sm:text-xs font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20">
+                            <Camera className="size-3 sm:size-3.5" /> Tap to change profile photo
+                            <input 
+                              type="file" 
+                              accept="image/*" 
+                              className="hidden" 
+                              onChange={handleAvatarFileChange} 
+                              disabled={isUploadingAvatar}
+                            />
+                          </label>
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                          <div className="space-y-1.5">
+                            <label className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5">
+                              <User className="size-3.5 sm:size-4 text-primary" /> Full Name
                             </label>
                             <Input 
                               required 
                               value={settingsForm.name} 
                               onChange={e => setSettingsForm(prev => ({...prev, name: e.target.value}))} 
-                              className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
+                              className="rounded-xl border-border/70 bg-background/50 h-11 sm:h-12 text-sm font-medium focus-visible:ring-primary/30" 
                             />
                           </div>
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                              <Phone className="size-4 text-primary" /> Phone Number
+                          <div className="space-y-1.5">
+                            <label className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5">
+                              <Phone className="size-3.5 sm:size-4 text-primary" /> Phone Number
                             </label>
                             <Input 
                               required 
                               value={settingsForm.phone} 
                               onChange={e => setSettingsForm(prev => ({...prev, phone: e.target.value}))} 
-                              className="rounded-xl border-border/70 bg-background/50 h-12 text-sm font-medium focus-visible:ring-primary/30" 
+                              className="rounded-xl border-border/70 bg-background/50 h-11 sm:h-12 text-sm font-medium focus-visible:ring-primary/30" 
                             />
                           </div>
-                          <div className="space-y-2 sm:col-span-2">
-                            <label className="text-sm font-semibold text-foreground flex items-center gap-2">
-                              <Mail className="size-4 text-primary" /> Email Address <span className="text-xs text-muted-foreground font-normal">(Locked)</span>
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <label className="text-xs sm:text-sm font-semibold text-foreground flex items-center gap-1.5">
+                              <Mail className="size-3.5 sm:size-4 text-primary" /> Email Address <span className="text-[10px] sm:text-xs text-muted-foreground font-normal">(Locked)</span>
                             </label>
                             <Input 
                               type="email" 
@@ -1221,7 +1150,7 @@ export default function ProfilePage() {
                               readOnly
                               disabled
                               autoComplete="off"
-                              className="rounded-xl border-border/60 bg-secondary/80 h-12 cursor-not-allowed opacity-80 text-sm" 
+                              className="rounded-xl border-border/60 bg-secondary/80 h-11 sm:h-12 cursor-not-allowed opacity-80 text-sm" 
                             />
                           </div>
                         </div>
@@ -1229,8 +1158,7 @@ export default function ProfilePage() {
                         <div className="flex justify-end pt-2">
                           <Button 
                             type="submit" 
-                            size="lg" 
-                            className="rounded-full px-8 font-semibold shadow-warm hover:shadow-warm-lg"
+                            className="w-full sm:w-auto rounded-full px-8 py-2.5 font-semibold text-sm shadow-warm hover:shadow-warm-lg"
                             disabled={isUpdatingSettings}
                           >
                             {isUpdatingSettings ? "Saving..." : "Save Profile Info"}
@@ -1240,18 +1168,18 @@ export default function ProfilePage() {
                     </div>
 
                     {/* Card 2: Security & Password Update */}
-                    <div className="bg-card border border-border/70 rounded-[24px] p-6 sm:p-8 shadow-warm">
-                      <h3 className="font-serif text-2xl font-bold text-foreground mb-2">Security</h3>
-                      <p className="text-sm text-muted-foreground mb-6">
+                    <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-7 shadow-warm">
+                      <h3 className="font-serif text-xl sm:text-2xl font-bold text-foreground mb-1">Security</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-6">
                         Update your login password. Leaving these fields blank keeps your current password unchanged.
                       </p>
-                      <form onSubmit={handleUpdateSecurity} className="space-y-6" autoComplete="off">
-                        <div className="space-y-4 max-w-md animate-fade-in">
+                      <form onSubmit={handleUpdateSecurity} className="space-y-4 sm:space-y-6" autoComplete="off">
+                        <div className="space-y-3 sm:space-y-4 max-w-md animate-fade-in">
                           {hasPassword && (
-                            <div className="space-y-2">
+                            <div className="space-y-1.5">
                               <div className="flex justify-between items-center">
-                                <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                  <Lock className="size-4" /> Current Password
+                                <label className="text-xs sm:text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                                  <Lock className="size-3.5 sm:size-4" /> Current Password
                                 </label>
                                 <button
                                   type="button"
@@ -1269,7 +1197,7 @@ export default function ProfilePage() {
                                   autoComplete="new-password"
                                   value={settingsForm.oldPassword} 
                                   onChange={e => setSettingsForm(prev => ({...prev, oldPassword: e.target.value}))} 
-                                  className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                  className="rounded-xl border-border/60 bg-background/50 h-11 sm:h-12 pr-10 text-sm" 
                                 />
                                 <button
                                   type="button"
@@ -1282,9 +1210,9 @@ export default function ProfilePage() {
                             </div>
                           )}
 
-                          <div className="space-y-2">
-                            <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                              <Lock className="size-4" /> {hasPassword ? "New Password" : "Create Password"}
+                          <div className="space-y-1.5">
+                            <label className="text-xs sm:text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                              <Lock className="size-3.5 sm:size-4" /> {hasPassword ? "New Password" : "Create Password"}
                             </label>
                             <div className="relative">
                               <Input 
@@ -1293,7 +1221,7 @@ export default function ProfilePage() {
                                 autoComplete="new-password"
                                 value={settingsForm.password} 
                                 onChange={e => setSettingsForm(prev => ({...prev, password: e.target.value}))} 
-                                className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                className="rounded-xl border-border/60 bg-background/50 h-11 sm:h-12 pr-10 text-sm" 
                               />
                               <button
                                 type="button"
@@ -1330,9 +1258,9 @@ export default function ProfilePage() {
                           </div>
 
                           {settingsForm.password && (
-                            <div className="space-y-2 animate-card-fade-in">
-                              <label className="text-sm font-semibold text-muted-foreground flex items-center gap-2">
-                                <Lock className="size-4" /> Confirm New Password
+                            <div className="space-y-1.5 animate-card-fade-in">
+                              <label className="text-xs sm:text-sm font-semibold text-muted-foreground flex items-center gap-1.5">
+                                <Lock className="size-3.5 sm:size-4" /> Confirm New Password
                               </label>
                               <div className="relative">
                                 <Input 
@@ -1341,7 +1269,7 @@ export default function ProfilePage() {
                                   autoComplete="new-password"
                                   value={settingsForm.confirmPassword} 
                                   onChange={e => setSettingsForm(prev => ({...prev, confirmPassword: e.target.value}))} 
-                                  className="rounded-xl border-border/60 bg-background/50 h-12 pr-10" 
+                                  className="rounded-xl border-border/60 bg-background/50 h-11 sm:h-12 pr-10 text-sm" 
                                 />
                                 <button
                                   type="button"
@@ -1354,11 +1282,10 @@ export default function ProfilePage() {
                             </div>
                           )}
                         </div>
-                        <div className="flex justify-end pt-4">
+                        <div className="flex justify-end pt-2 sm:pt-4">
                           <Button 
                             type="submit" 
-                            size="lg" 
-                            className="rounded-full px-8"
+                            className="w-full sm:w-auto rounded-full px-8 py-2.5 font-semibold text-sm"
                             disabled={isUpdatingSettings || (settingsForm.password && (settingsForm.password !== settingsForm.confirmPassword || settingsForm.password.length < 8))}
                           >
                             {isUpdatingSettings ? "Saving..." : "Update Password"}
@@ -1698,7 +1625,7 @@ export default function ProfilePage() {
                                   localStorage.setItem("customerFavorites", JSON.stringify(favs));
                                   window.dispatchEvent(new Event("favoritesChanged"));
                                 }}
-                                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/85 backdrop-blur-xs shadow-sm hover:scale-110 active:scale-95 transition-transform"
+                                className="absolute top-2 right-2 p-1.5 rounded-full bg-background/85 backdrop-blur-xs shadow-sm hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                                 title="Remove from Favorites"
                               >
                                 <Heart className="size-4 fill-red-500 text-red-500" />
