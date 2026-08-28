@@ -87,15 +87,10 @@ public class AdminCrudController {
             @RequestParam(required = false) String dir) {
         JpaRepository<Object, Long> repo = getRepository(resource);
         
-        // Products and categories start from ID 1 ascending (1, 2, 3...)
-        Sort.Direction sortDirection;
-        if (dir != null) {
-            sortDirection = "desc".equalsIgnoreCase(dir) ? Sort.Direction.DESC : Sort.Direction.ASC;
-        } else {
-            sortDirection = ("products".equalsIgnoreCase(resource) || "categories".equalsIgnoreCase(resource))
-                    ? Sort.Direction.ASC
-                    : Sort.Direction.DESC;
-        }
+        // All admin resources start from ID 1 ascending (1, 2, 3...)
+        Sort.Direction sortDirection = (dir != null && "desc".equalsIgnoreCase(dir))
+                ? Sort.Direction.DESC
+                : Sort.Direction.ASC;
         
         Sort sortObj = Sort.by(sortDirection, sort);
 

@@ -729,30 +729,29 @@ public class AuthController {
         Map<String, Object> result = new LinkedHashMap<>();
         
         List<Map<String, Object>> customers = List.of();
-        if (customerId != null) {
+        if (customerId != null && customerId > 0) {
             customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", customerId);
-        } else if (email != null && !email.isBlank()) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email);
-        } else if (phone != null && !phone.isBlank()) {
+        }
+        if (customers.isEmpty() && phone != null && !phone.isBlank()) {
             customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone);
         }
-
-        if (customers.isEmpty()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "Customer not found"));
+        if (customers.isEmpty() && email != null && !email.isBlank()) {
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email);
         }
 
-        Map<String, Object> customer = customers.getFirst();
-        long cid = ((Number) customer.get("id")).longValue();
-        String cPhone = (String) customer.get("phone");
+        Map<String, Object> customer = !customers.isEmpty() ? customers.getFirst() : new LinkedHashMap<>();
+        long cid = customer.containsKey("id") && customer.get("id") != null ? ((Number) customer.get("id")).longValue() : (customerId != null ? customerId : -1L);
+        String cPhone = customer.containsKey("phone") && customer.get("phone") != null ? (String) customer.get("phone") : (phone != null ? phone : "");
+        String cEmail = customer.containsKey("email") && customer.get("email") != null ? (String) customer.get("email") : (email != null ? email : "");
 
         // 1. Fetch only this customer's orders (last 50)
         List<Map<String, Object>> orders = jdbc.queryForList(
-                "SELECT * FROM orders WHERE customer_id = ? OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = ?) ORDER BY id DESC LIMIT 50",
-                cid, cPhone != null ? cPhone : "");
+                "SELECT * FROM orders WHERE customer_id = ? OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = ?) OR (customer_email IS NOT NULL AND customer_email != '' AND customer_email = ?) ORDER BY id DESC LIMIT 50",
+                cid, cPhone, cEmail);
 
         // 2. Fetch only this customer's addresses
-        List<Map<String, Object>> addresses = jdbc.queryForList(
-                "SELECT * FROM addresses WHERE customer_id = ? ORDER BY id DESC LIMIT 20", cid);
+        List<Map<String, Object>> addresses = cid > 0 ? jdbc.queryForList(
+                "SELECT * FROM addresses WHERE customer_id = ? ORDER BY id DESC LIMIT 20", cid) : List.of();
 
         // 3. Fetch active coupons
         List<Map<String, Object>> coupons = jdbc.queryForList(

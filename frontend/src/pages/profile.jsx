@@ -194,30 +194,55 @@ export default function ProfilePage() {
   const fetchProfileData = async (c) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_URL}/auth/customer-profile-data?customerId=${c.id || ""}&phone=${encodeURIComponent(c.phone || "")}&email=${encodeURIComponent(c.email || "")}`);
-      if (res.ok) {
+      let userOrders = [];
+      let userAddresses = [];
+      let activeCoupons = [];
+      let isPwdSet = false;
+
+      const res = await fetch(`${API_URL}/auth/customer-profile-data?customerId=${c.id || ""}&phone=${encodeURIComponent(c.phone || "")}&email=${encodeURIComponent(c.email || "")}`).catch(() => null);
+      if (res && res.ok) {
         const data = await res.json();
-        const userOrders = data.orders || [];
-        const userAddresses = data.addresses || [];
-        const activeCoupons = data.coupons || [];
-        const isPwdSet = Boolean(data.hasPassword);
-
-        setOrders(userOrders);
-        setAddresses(userAddresses);
-        setCoupons(activeCoupons);
-        setHasPassword(isPwdSet);
-
-        profileMemoryCache = {
-          ...profileMemoryCache,
-          orders: userOrders,
-          addresses: userAddresses,
-          coupons: activeCoupons,
-          hasPassword: isPwdSet,
-        };
-        try {
-          localStorage.setItem("flame_profile_cache", JSON.stringify(profileMemoryCache));
-        } catch (e) {}
+        userOrders = data.orders || [];
+        userAddresses = data.addresses || [];
+        activeCoupons = data.coupons || [];
+        isPwdSet = Boolean(data.hasPassword);
       }
+
+      // If endpoint returned empty or failed, fallback to list() queries
+      if (userOrders.length === 0) {
+        const [allOrders, allCoupons, allAddresses] = await Promise.all([
+          list("orders").catch(() => []),
+          list("coupons").catch(() => []),
+          list("addresses").catch(() => []),
+        ]);
+        const matchedOrders = (Array.isArray(allOrders) ? allOrders : (allOrders?.items || allOrders?.content || []))
+          .filter(o => String(o.customer_id) === String(c.id) || (c.phone && o.customer_phone === c.phone) || (c.email && o.customer_email === c.email));
+        if (matchedOrders.length > 0) userOrders = matchedOrders;
+        if (userAddresses.length === 0) {
+          userAddresses = (Array.isArray(allAddresses) ? allAddresses : (allAddresses?.items || []))
+            .filter(a => String(a.customer_id) === String(c.id));
+        }
+        if (activeCoupons.length === 0) {
+          activeCoupons = (Array.isArray(allCoupons) ? allCoupons : (allCoupons?.items || []))
+            .filter(cp => cp.active == 1 || cp.active === true);
+        }
+      }
+
+      setOrders(userOrders);
+      setAddresses(userAddresses);
+      setCoupons(activeCoupons);
+      setHasPassword(isPwdSet);
+
+      profileMemoryCache = {
+        ...profileMemoryCache,
+        orders: userOrders,
+        addresses: userAddresses,
+        coupons: activeCoupons,
+        hasPassword: isPwdSet,
+      };
+      try {
+        localStorage.setItem("flame_profile_cache", JSON.stringify(profileMemoryCache));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     } finally {

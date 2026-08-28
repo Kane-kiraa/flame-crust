@@ -280,13 +280,13 @@ function Navbar() {
           </div>
 
           {/* Mobile Page Titles in Top Navbar (Hidden when menu open or search focused) */}
-          {(location.pathname === "/cart" || location.pathname === "/profile" || location.pathname === "/checkout") && !searchFocused && !mobileOpen && (
+          {(location.pathname === "/cart" || location.pathname === "/checkout") && !searchFocused && !mobileOpen && (
             <div 
               key={location.pathname}
               className="sm:hidden flex-1 flex items-center justify-center text-center pointer-events-none px-2"
             >
               <span className="font-serif font-bold text-base sm:text-lg text-foreground tracking-tight truncate">
-                {location.pathname === "/cart" ? "Your Cart" : location.pathname === "/profile" ? "Account" : "Checkout"}
+                {location.pathname === "/cart" ? "Your Cart" : "Checkout"}
               </span>
             </div>
           )}
