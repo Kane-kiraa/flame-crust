@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { list, get, update, getDriverMe, updateDriverLocation, getOrderMessages } from "@/lib/api";
+import { list, get, update, getDriverMe, updateDriverLocation, getOrderMessages, getActiveCall } from "@/lib/api";
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
 import { cn } from "@/lib/utils";
@@ -901,11 +901,21 @@ export default function DriverDashboardPage() {
             lastKnownDriverMsgsRef.current[ord.id] = lastMsg.id;
           }
         } catch (e) {}
+
+        // Check for incoming voice call
+        try {
+          const callRes = await getActiveCall(ord.id);
+          if (callRes.active && callRes.call?.status === "RINGING" && callRes.call?.receiver_type === "DRIVER") {
+            if (!selectedChatOrder || String(selectedChatOrder.id) !== String(ord.id)) {
+              setSelectedChatOrder(ord);
+            }
+          }
+        } catch (e) {}
       }
     };
 
     checkDriverIncomingMessages();
-    const chatInterval = setInterval(checkDriverIncomingMessages, 3000);
+    const chatInterval = setInterval(checkDriverIncomingMessages, 2000);
     return () => clearInterval(chatInterval);
   }, [driver, myOrders, selectedChatOrder]);
 

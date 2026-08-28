@@ -13,6 +13,7 @@ import {
   Wifi
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { startActiveCall, getActiveCall, answerActiveCall, endActiveCall } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 // Tone synthesizers using Web Audio API for ringing & connect sounds
@@ -101,8 +102,11 @@ function playEndCallTone() {
 export function OnlineCallModal({
   open,
   onOpenChange,
+  orderId,
   recipient = { name: "Partner", role: "Driver", photo: "" },
-  callerType = "CUSTOMER" // "CUSTOMER" or "DRIVER"
+  callerType = "CUSTOMER", // "CUSTOMER" or "DRIVER"
+  currentUser = { name: "User" },
+  isIncoming = false
 }) {
   const [callStatus, setCallStatus] = useState("connecting"); // "connecting", "ringing", "connected", "ended"
   const [isMuted, setIsMuted] = useState(false);
@@ -110,8 +114,9 @@ export function OnlineCallModal({
   const [secondsElapsed, setSecondsElapsed] = useState(0);
   const stopRingRef = useRef(null);
 
+  // 1. Initiate or Join Call
   useEffect(() => {
-    if (!open) {
+    if (!open || !orderId) {
       if (stopRingRef.current) {
         stopRingRef.current();
         stopRingRef.current = null;
@@ -121,20 +126,58 @@ export function OnlineCallModal({
       return;
     }
 
-    // 1. Initial Connecting (1.2s)
-    const connectTimer = setTimeout(() => {
+    if (isIncoming) {
       setCallStatus("ringing");
       stopRingRef.current = startRingtone();
-    }, 1200);
+    } else {
+      // Caller initiates
+      setCallStatus("connecting");
+      startActiveCall({
+        order_id: orderId,
+        caller_type: callerType,
+        caller_name: currentUser.name || "User",
+        receiver_type: callerType === "CUSTOMER" ? "DRIVER" : "CUSTOMER",
+        receiver_name: recipient.name || "Partner"
+      }).then(() => {
+        setCallStatus("ringing");
+        stopRingRef.current = startRingtone();
+      }).catch(() => {
+        setCallStatus("ringing");
+        stopRingRef.current = startRingtone();
+      });
+    }
+
+    // Polling call status every 1.5s for real-time answer / end sync
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await getActiveCall(orderId);
+        if (!res.active) {
+          // Call was ended by other party
+          if (callStatus === "connected" || callStatus === "ringing") {
+            handleLocalEnd();
+          }
+        } else if (res.call) {
+          if (res.call.status === "ACCEPTED" && callStatus !== "connected") {
+            if (stopRingRef.current) {
+              stopRingRef.current();
+              stopRingRef.current = null;
+            }
+            setCallStatus("connected");
+          } else if (res.call.status === "ENDED" || res.call.status === "REJECTED") {
+            handleLocalEnd();
+          }
+        }
+      } catch (e) {}
+    }, 1500);
 
     return () => {
-      clearTimeout(connectTimer);
+      clearInterval(pollInterval);
       if (stopRingRef.current) {
         stopRingRef.current();
         stopRingRef.current = null;
       }
     };
-  }, [open]);
+  }, [open, orderId, isIncoming]);
 
   // Call Duration Counter
   useEffect(() => {
@@ -145,7 +188,7 @@ export function OnlineCallModal({
     return () => clearInterval(timer);
   }, [callStatus]);
 
-  const handleEndCall = () => {
+  const handleLocalEnd = () => {
     if (stopRingRef.current) {
       stopRingRef.current();
       stopRingRef.current = null;
@@ -157,10 +200,20 @@ export function OnlineCallModal({
     }, 600);
   };
 
-  const handleAnswerCall = () => {
+  const handleEndCall = async () => {
+    if (orderId) {
+      endActiveCall(orderId).catch(() => {});
+    }
+    handleLocalEnd();
+  };
+
+  const handleAnswerCall = async () => {
     if (stopRingRef.current) {
       stopRingRef.current();
       stopRingRef.current = null;
+    }
+    if (orderId) {
+      answerActiveCall(orderId).catch(() => {});
     }
     setCallStatus("connected");
   };
@@ -199,8 +252,8 @@ export function OnlineCallModal({
               {recipient.name || "Delivery Partner"}
             </h3>
             <p className="text-xs text-zinc-400 font-semibold">
-              {callStatus === "connecting" && "Connecting to secure line..."}
-              {callStatus === "ringing" && "Ringing..."}
+              {callStatus === "connecting" && "Connecting..."}
+              {callStatus === "ringing" && (isIncoming ? "Incoming Call..." : "Ringing...")}
               {callStatus === "connected" && (
                 <span className="text-emerald-400 font-mono font-bold text-sm tracking-wider">
                   {formatTimer(secondsElapsed)}
@@ -220,7 +273,7 @@ export function OnlineCallModal({
             )}
             {callStatus === "ringing" && (
               <>
-                <span className="absolute size-36 rounded-full bg-red-500/20 animate-ping opacity-75" />
+                <span className="absolute size-36 rounded-full bg-emerald-500/20 animate-ping opacity-75" />
                 <span className="absolute size-44 rounded-full bg-amber-500/15 animate-pulse" />
               </>
             )}
@@ -276,7 +329,7 @@ export function OnlineCallModal({
               </div>
             )}
 
-            {/* Answer Button (during ringing) */}
+            {/* Answer Button (during ringing for incoming call or testing) */}
             {callStatus === "ringing" && (
               <button
                 type="button"

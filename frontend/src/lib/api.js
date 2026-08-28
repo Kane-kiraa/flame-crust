@@ -258,3 +258,52 @@ export async function sendOrderMessage(data) {
   return await res.json();
 }
 
+export async function getActiveCall(orderId) {
+  try {
+    const res = await globalThis.fetch(`${API_URL}/auth/active-calls?orderId=${encodeURIComponent(orderId)}`);
+    if (!res.ok) return { active: false };
+    return await res.json();
+  } catch (e) {
+    return { active: false };
+  }
+}
+
+export async function startActiveCall(data) {
+  const res = await globalThis.fetch(`${API_URL}/auth/active-calls/start`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to start call");
+  }
+  return await res.json();
+}
+
+export async function answerActiveCall(orderId) {
+  const res = await globalThis.fetch(`${API_URL}/auth/active-calls/answer`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order_id: orderId })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to answer call");
+  }
+  return await res.json();
+}
+
+export async function endActiveCall(orderId) {
+  const res = await globalThis.fetch(`${API_URL}/auth/active-calls/end`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ order_id: orderId })
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Failed to end call");
+  }
+  return await res.json();
+}
+

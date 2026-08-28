@@ -107,6 +107,7 @@ export function OrderChatModal({
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [onlineCallOpen, setOnlineCallOpen] = useState(false);
+  const [isIncomingCall, setIsIncomingCall] = useState(false);
   const messagesEndRef = useRef(null);
   const prevCountRef = useRef(0);
 
@@ -163,8 +164,24 @@ export function OrderChatModal({
     setLoading(true);
     fetchMessages();
     const interval = setInterval(fetchMessages, 2500);
-    return () => clearInterval(interval);
-  }, [open, orderId]);
+
+    // Also poll active call status to catch incoming calls in real-time
+    const callInterval = setInterval(async () => {
+      try {
+        const { getActiveCall } = await import("@/lib/api");
+        const res = await getActiveCall(orderId);
+        if (res.active && res.call?.status === "RINGING" && res.call?.receiver_type === currentUser.type) {
+          setIsIncomingCall(true);
+          setOnlineCallOpen(true);
+        }
+      } catch (e) {}
+    }, 2000);
+
+    return () => {
+      clearInterval(interval);
+      clearInterval(callInterval);
+    };
+  }, [open, orderId, currentUser.type]);
 
   const handleSend = async (textToSend) => {
     const msg = (textToSend || inputMsg).trim();
@@ -363,9 +380,15 @@ export function OrderChatModal({
         {/* In-App Online Voice Call Screen */}
         <OnlineCallModal
           open={onlineCallOpen}
-          onOpenChange={setOnlineCallOpen}
+          onOpenChange={(val) => {
+            setOnlineCallOpen(val);
+            if (!val) setIsIncomingCall(false);
+          }}
+          orderId={orderId}
           recipient={recipient}
           callerType={currentUser.type}
+          currentUser={currentUser}
+          isIncoming={isIncomingCall}
         />
       </DialogContent>
     </Dialog>

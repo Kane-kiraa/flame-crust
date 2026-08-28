@@ -1041,6 +1041,96 @@ public class AuthController {
         }
     }
 
+    @GetMapping("/active-calls")
+    public ResponseEntity<?> getActiveCall(@RequestParam("orderId") Long orderId) {
+        try {
+            List<Map<String, Object>> calls = jdbc.queryForList(
+                "SELECT * FROM active_calls WHERE order_id = ? AND status IN ('RINGING', 'ACCEPTED') ORDER BY created_at DESC LIMIT 1",
+                orderId
+            );
+            if (calls.isEmpty()) {
+                return ResponseEntity.ok(Map.of("active", false));
+            }
+            Map<String, Object> call = calls.getFirst();
+            return ResponseEntity.ok(Map.of("active", true, "call", call));
+        } catch (Exception e) {
+            log.error("Error fetching active call", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/active-calls/start")
+    public ResponseEntity<?> startActiveCall(@RequestBody Map<String, Object> payload) {
+        try {
+            Object orderIdObj = payload.get("order_id") != null ? payload.get("order_id") : payload.get("orderId");
+            if (orderIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "order_id is required"));
+            }
+            Long orderId = Long.valueOf(orderIdObj.toString());
+            String callerType = (String) payload.getOrDefault("caller_type", payload.getOrDefault("callerType", "CUSTOMER"));
+            String callerName = (String) payload.getOrDefault("caller_name", payload.getOrDefault("callerName", "Customer"));
+            String receiverType = (String) payload.getOrDefault("receiver_type", payload.getOrDefault("receiverType", "DRIVER"));
+            String receiverName = (String) payload.getOrDefault("receiver_name", payload.getOrDefault("receiverName", "Driver"));
+
+            // End any prior active calls for this order
+            jdbc.update("UPDATE active_calls SET status = 'ENDED', ended_at = CURRENT_TIMESTAMP WHERE order_id = ? AND status IN ('RINGING', 'ACCEPTED')", orderId);
+
+            // Insert new call
+            jdbc.update(
+                "INSERT INTO active_calls (order_id, caller_type, caller_name, receiver_type, receiver_name, status) VALUES (?, ?, ?, ?, ?, 'RINGING')",
+                orderId, callerType, callerName, receiverType, receiverName
+            );
+
+            List<Map<String, Object>> created = jdbc.queryForList(
+                "SELECT * FROM active_calls WHERE order_id = ? AND status = 'RINGING' ORDER BY created_at DESC LIMIT 1",
+                orderId
+            );
+
+            return ResponseEntity.ok(Map.of("success", true, "call", created.isEmpty() ? Map.of() : created.getFirst()));
+        } catch (Exception e) {
+            log.error("Error starting active call", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/active-calls/answer")
+    public ResponseEntity<?> answerActiveCall(@RequestBody Map<String, Object> payload) {
+        try {
+            Object orderIdObj = payload.get("order_id") != null ? payload.get("order_id") : payload.get("orderId");
+            if (orderIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "order_id is required"));
+            }
+            Long orderId = Long.valueOf(orderIdObj.toString());
+            jdbc.update(
+                "UPDATE active_calls SET status = 'ACCEPTED', answered_at = CURRENT_TIMESTAMP WHERE order_id = ? AND status = 'RINGING'",
+                orderId
+            );
+            return ResponseEntity.ok(Map.of("success", true, "message", "Call answered"));
+        } catch (Exception e) {
+            log.error("Error answering active call", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/active-calls/end")
+    public ResponseEntity<?> endActiveCall(@RequestBody Map<String, Object> payload) {
+        try {
+            Object orderIdObj = payload.get("order_id") != null ? payload.get("order_id") : payload.get("orderId");
+            if (orderIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "order_id is required"));
+            }
+            Long orderId = Long.valueOf(orderIdObj.toString());
+            jdbc.update(
+                "UPDATE active_calls SET status = 'ENDED', ended_at = CURRENT_TIMESTAMP WHERE order_id = ? AND status IN ('RINGING', 'ACCEPTED')",
+                orderId
+            );
+            return ResponseEntity.ok(Map.of("success", true, "message", "Call ended"));
+        } catch (Exception e) {
+            log.error("Error ending active call", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private String hashPasswordSha256(String password) {
         try {
             java.security.MessageDigest md = java.security.MessageDigest.getInstance("SHA-256");
