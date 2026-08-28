@@ -293,12 +293,24 @@ export function OnlineCallModal({
               </button>
             )}
 
+            {/* Accept Call button (only for receiver during ringing) */}
+            {callStatus === "ringing" && isIncoming && (
+              <button
+                type="button"
+                onClick={handleAnswerCall}
+                className="size-8.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95 animate-pulse"
+                title="Accept Call"
+              >
+                <Phone className="size-4" />
+              </button>
+            )}
+
             {/* End / Cancel Call */}
             <button
               type="button"
               onClick={handleEndCall}
               className="size-8.5 rounded-full bg-red-600 hover:bg-red-700 text-white flex items-center justify-center transition-all cursor-pointer shadow-md active:scale-95"
-              title="End Call"
+              title={callStatus === "ringing" ? (isIncoming ? "Decline" : "Cancel") : "End Call"}
             >
               <PhoneOff className="size-4" />
             </button>
@@ -442,8 +454,8 @@ export function OnlineCallModal({
                 </div>
               )}
 
-              {/* Answer Button (during ringing for incoming call or testing) */}
-              {callStatus === "ringing" && (
+              {/* Accept / Answer Button ONLY for the RECEIVER (isIncoming === true) */}
+              {callStatus === "ringing" && isIncoming && (
                 <button
                   type="button"
                   onClick={handleAnswerCall}
@@ -454,14 +466,18 @@ export function OnlineCallModal({
                 </button>
               )}
 
-              {/* End Call Button */}
+              {/* End / Decline / Cancel Button */}
               <button
                 type="button"
                 onClick={handleEndCall}
                 className="w-full h-12 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-98 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-red-600/30 transition-all cursor-pointer"
               >
                 <PhoneOff className="size-4.5" />
-                <span>{callStatus === "ringing" ? "Cancel Call" : "End Call"}</span>
+                <span>
+                  {callStatus === "ringing" 
+                    ? (isIncoming ? "Decline Call" : "Cancel Call") 
+                    : "End Call"}
+                </span>
               </button>
             </div>
           </div>
