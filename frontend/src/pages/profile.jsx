@@ -211,25 +211,47 @@ export default function ProfilePage() {
       let activeCoupons = [];
       let isPwdSet = false;
 
-      const res = await fetch(`${API_URL}/auth/customer-profile-data?customerId=${c.id || ""}&phone=${encodeURIComponent(c.phone || "")}&email=${encodeURIComponent(c.email || "")}`).catch(() => null);
+      const params = new URLSearchParams();
+      if (c.id) params.set("customerId", String(c.id));
+      if (c.phone) params.set("phone", String(c.phone));
+      if (c.email) params.set("email", String(c.email));
+
+      const res = await fetch(`${API_URL}/auth/customer-profile-data?${params.toString()}`).catch(() => null);
       if (res && res.ok) {
         const data = await res.json();
         userOrders = data.orders || [];
         userAddresses = data.addresses || [];
         activeCoupons = data.coupons || [];
         isPwdSet = Boolean(data.hasPassword);
-        if (data.customer?.cover_photo) {
-          setCoverPhoto(data.customer.cover_photo);
+        if (data.customer) {
+          const dbCover = data.customer.cover_photo;
+          if (dbCover) {
+            setCoverPhoto(dbCover);
+            try {
+              localStorage.setItem("flame_customer_cover", dbCover);
+            } catch (e) {}
+          }
+          const authStr = localStorage.getItem("customerAuth");
+          const parsed = authStr ? JSON.parse(authStr) : {};
+          const merged = {
+            ...parsed,
+            ...data.customer,
+            avatar: data.customer.avatar || parsed.avatar,
+            cover_photo: dbCover || parsed.cover_photo,
+          };
+          delete merged.password;
+          delete merged.password_hash;
           try {
-            localStorage.setItem("flame_customer_cover", data.customer.cover_photo);
-            const authStr = localStorage.getItem("customerAuth");
-            if (authStr) {
-              const parsed = JSON.parse(authStr);
-              parsed.cover_photo = data.customer.cover_photo;
-              localStorage.setItem("customerAuth", JSON.stringify(parsed));
-              setCustomer(parsed);
-            }
+            localStorage.setItem("customerAuth", JSON.stringify(merged));
           } catch (e) {}
+          setCustomer(merged);
+          setSettingsForm(prev => ({
+            ...prev,
+            name: merged.name || prev.name,
+            phone: merged.phone || prev.phone,
+            email: merged.email || prev.email,
+            avatar: merged.avatar || prev.avatar,
+          }));
         }
       }
 

@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { AnimatePresence } from "framer-motion";
 import { Toaster } from "@/components/ui/sonner.jsx";
@@ -7,6 +7,7 @@ import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
 import { CartDrawer } from "@/components/food/cart-drawer.jsx";
+import { API_URL } from "@/lib/api";
 
 const Home = lazy(() => import("./pages/home.jsx"));
 const MenuPage = lazy(() => import("./pages/menu.jsx"));
@@ -59,6 +60,68 @@ function RequireAuth({ children }) {
 
 export default function App() {
   const location = useLocation();
+
+  // Background real-time profile & cover photo sync across devices
+  useEffect(() => {
+    const syncLatestCustomerProfile = async () => {
+      try {
+        const stored = localStorage.getItem("customerAuth");
+        if (!stored) return;
+        const c = JSON.parse(stored);
+        if (!c.id && !c.email && !c.phone) return;
+
+        const params = new URLSearchParams();
+        if (c.id) params.set("customerId", String(c.id));
+        if (c.phone) params.set("phone", String(c.phone));
+        if (c.email) params.set("email", String(c.email));
+
+        const res = await fetch(`${API_URL}/auth/customer-profile-data?${params.toString()}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.customer) {
+            const dbCustomer = data.customer;
+            let changed = false;
+
+            const updatedAuth = { ...c };
+            if (dbCustomer.cover_photo && dbCustomer.cover_photo !== c.cover_photo) {
+              updatedAuth.cover_photo = dbCustomer.cover_photo;
+              localStorage.setItem("flame_customer_cover", dbCustomer.cover_photo);
+              changed = true;
+            }
+            if (dbCustomer.avatar && dbCustomer.avatar !== c.avatar) {
+              updatedAuth.avatar = dbCustomer.avatar;
+              changed = true;
+            }
+            if (dbCustomer.name && dbCustomer.name !== c.name) {
+              updatedAuth.name = dbCustomer.name;
+              changed = true;
+            }
+            if (dbCustomer.phone && dbCustomer.phone !== c.phone) {
+              updatedAuth.phone = dbCustomer.phone;
+              changed = true;
+            }
+
+            if (changed) {
+              localStorage.setItem("customerAuth", JSON.stringify(updatedAuth));
+              window.dispatchEvent(new Event("authChanged"));
+            }
+          }
+        }
+      } catch (e) {
+        // silent catch on network issues
+      }
+    };
+
+    syncLatestCustomerProfile();
+    window.addEventListener("focus", syncLatestCustomerProfile);
+    window.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") syncLatestCustomerProfile();
+    });
+
+    return () => {
+      window.removeEventListener("focus", syncLatestCustomerProfile);
+    };
+  }, []);
 
   return (
     <Suspense fallback={<PageLoader />}>

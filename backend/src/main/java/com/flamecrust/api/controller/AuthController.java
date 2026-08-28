@@ -867,27 +867,33 @@ public class AuthController {
 
     @GetMapping("/customer-profile-data")
     public ResponseEntity<?> getCustomerProfileData(
-            @RequestParam(required = false) Long customerId,
+            @RequestParam(required = false) String customerId,
             @RequestParam(required = false) String email,
             @RequestParam(required = false) String phone) {
         
         Map<String, Object> result = new LinkedHashMap<>();
+        Long cIdParsed = null;
+        if (customerId != null && !customerId.isBlank()) {
+            try {
+                cIdParsed = Long.parseLong(customerId.trim());
+            } catch (Exception ignored) {}
+        }
         
         List<Map<String, Object>> customers = List.of();
-        if (customerId != null && customerId > 0) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", customerId);
+        if (cIdParsed != null && cIdParsed > 0) {
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE id = ? LIMIT 1", cIdParsed);
         }
         if (customers.isEmpty() && phone != null && !phone.isBlank()) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone);
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE phone = ? LIMIT 1", phone.trim());
         }
         if (customers.isEmpty() && email != null && !email.isBlank()) {
-            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email);
+            customers = jdbc.queryForList("SELECT id, name, email, phone, avatar, cover_photo, created_at, password_hash IS NOT NULL as has_password FROM customers WHERE email = ? LIMIT 1", email.trim());
         }
 
         Map<String, Object> customer = !customers.isEmpty() ? customers.getFirst() : new LinkedHashMap<>();
-        long cid = customer.containsKey("id") && customer.get("id") != null ? ((Number) customer.get("id")).longValue() : (customerId != null ? customerId : -1L);
-        String cPhone = customer.containsKey("phone") && customer.get("phone") != null ? (String) customer.get("phone") : (phone != null ? phone : "");
-        String cEmail = customer.containsKey("email") && customer.get("email") != null ? (String) customer.get("email") : (email != null ? email : "");
+        long cid = customer.containsKey("id") && customer.get("id") != null ? ((Number) customer.get("id")).longValue() : (cIdParsed != null ? cIdParsed : -1L);
+        String cPhone = customer.containsKey("phone") && customer.get("phone") != null ? (String) customer.get("phone") : (phone != null ? phone.trim() : "");
+        String cEmail = customer.containsKey("email") && customer.get("email") != null ? (String) customer.get("email") : (email != null ? email.trim() : "");
 
         // 1. Fetch only this customer's orders (last 50)
         List<Map<String, Object>> orders = jdbc.queryForList(
