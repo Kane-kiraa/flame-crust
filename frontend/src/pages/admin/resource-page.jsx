@@ -65,8 +65,11 @@ function AdminResourcePage({ resource }) {
       }
 
       const numericSize = targetSize === "All" ? Math.max(total, 1) : Number(targetSize || 10);
-      const baseIndex = total - (targetPage * numericSize);
-      setData(items.map((item, index) => ({ ...item, _index: item.id || (baseIndex - index) })));
+      const baseIndex = (targetPage * numericSize) + 1;
+      setData(items.map((item, index) => ({
+        ...item,
+        _index: item.id !== undefined ? item.id : (baseIndex + index)
+      })));
       setTotalCount(total);
     } catch (err) {
       setError(err.message || "Failed to load data");

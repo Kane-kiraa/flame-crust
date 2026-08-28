@@ -82,11 +82,25 @@ public class AdminCrudController {
             @PathVariable String resource,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(required = false) Integer limit,
-            @RequestParam(required = false) Integer size) {
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false, defaultValue = "id") String sort,
+            @RequestParam(required = false) String dir) {
         JpaRepository<Object, Long> repo = getRepository(resource);
         
+        // Products and categories start from ID 1 ascending (1, 2, 3...)
+        Sort.Direction sortDirection;
+        if (dir != null) {
+            sortDirection = "desc".equalsIgnoreCase(dir) ? Sort.Direction.DESC : Sort.Direction.ASC;
+        } else {
+            sortDirection = ("products".equalsIgnoreCase(resource) || "categories".equalsIgnoreCase(resource))
+                    ? Sort.Direction.ASC
+                    : Sort.Direction.DESC;
+        }
+        
+        Sort sortObj = Sort.by(sortDirection, sort);
+
         if (limit != null && limit == -1) {
-            List<Object> allItems = repo.findAll(Sort.by(Sort.Direction.DESC, "id"));
+            List<Object> allItems = repo.findAll(sortObj);
             Map<String, Object> resp = new LinkedHashMap<>();
             resp.put("items", allItems);
             resp.put("total", allItems.size());
@@ -100,7 +114,7 @@ public class AdminCrudController {
         if (pageSize <= 0) pageSize = 10;
         if (pageSize > 200) pageSize = 200;
 
-        org.springframework.data.domain.Page<Object> pageResult = repo.findAll(PageRequest.of(page, pageSize, Sort.by(Sort.Direction.DESC, "id")));
+        org.springframework.data.domain.Page<Object> pageResult = repo.findAll(PageRequest.of(page, pageSize, sortObj));
 
         Map<String, Object> resp = new LinkedHashMap<>();
         resp.put("items", pageResult.getContent());
