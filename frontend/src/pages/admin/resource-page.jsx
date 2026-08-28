@@ -15,6 +15,21 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import ImageUpload from "@/components/ImageUpload";
 
+// In-memory cache for fast instant page switching
+const resourcePagesCache = new Map();
+
+export function clearResourceCache(resName) {
+  if (resName) {
+    for (const key of resourcePagesCache.keys()) {
+      if (key.startsWith(`${resName}:`)) {
+        resourcePagesCache.delete(key);
+      }
+    }
+  } else {
+    resourcePagesCache.clear();
+  }
+}
+
 function AdminResourcePage({ resource }) {
   const config = resourceConfig[resource];
   const [data, setData] = useState([]);
@@ -37,7 +52,18 @@ function AdminResourcePage({ resource }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchData = useCallback(async (targetPage = page, targetSize = pageSize) => {
+  const fetchData = useCallback(async (targetPage = page, targetSize = pageSize, forceRefresh = false) => {
+    const cacheKey = `${resource}:${targetPage}:${targetSize}`;
+
+    // If already cached and not force refreshing, load instantly (0ms)
+    if (!forceRefresh && resourcePagesCache.has(cacheKey)) {
+      const cached = resourcePagesCache.get(cacheKey);
+      setData(cached.items);
+      setTotalCount(cached.total);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -66,10 +92,18 @@ function AdminResourcePage({ resource }) {
 
       const numericSize = targetSize === "All" ? Math.max(total, 1) : Number(targetSize || 10);
       const baseIndex = (targetPage * numericSize) + 1;
-      setData(items.map((item, index) => ({
+      const formattedItems = items.map((item, index) => ({
         ...item,
         _index: item.id !== undefined ? item.id : (baseIndex + index)
-      })));
+      }));
+
+      // Cache for instant navigation
+      resourcePagesCache.set(cacheKey, {
+        items: formattedItems,
+        total: total,
+      });
+
+      setData(formattedItems);
       setTotalCount(total);
     } catch (err) {
       setError(err.message || "Failed to load data");
@@ -174,8 +208,9 @@ function AdminResourcePage({ resource }) {
         await create(resource, cleanData);
         toast.success(`${config.label.slice(0, -1)} created successfully`);
       }
+      clearResourceCache(resource);
       setFormOpen(false);
-      fetchData(page, pageSize);
+      fetchData(page, pageSize, true);
     } catch (err) {
       toast.error(err.message || "Failed to save");
     } finally {
@@ -188,8 +223,9 @@ function AdminResourcePage({ resource }) {
     try {
       await remove(resource, deleteId);
       toast.success(`${config.label.slice(0, -1)} deleted`);
+      clearResourceCache(resource);
       setDeleteOpen(false);
-      fetchData(page, pageSize);
+      fetchData(page, pageSize, true);
     } catch (err) {
       toast.error(err.message || "Failed to delete");
     } finally {
@@ -214,7 +250,8 @@ function AdminResourcePage({ resource }) {
           // Only send the fields that are being updated
           await update(resource, row.id, updates);
           toast.success("Updated successfully");
-          fetchData(page, pageSize);
+          clearResourceCache(resource);
+          fetchData(page, pageSize, true);
         } catch(err) {
           toast.error("Failed to update: " + err.message);
         }
