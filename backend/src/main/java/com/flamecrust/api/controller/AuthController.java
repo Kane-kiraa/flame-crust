@@ -1061,6 +1061,29 @@ public class AuthController {
         }
     }
 
+    @PostMapping("/order-messages/delete")
+    public ResponseEntity<?> deleteOrderMessage(@RequestBody Map<String, Object> payload) {
+        try {
+            Object msgIdObj = payload.get("message_id") != null ? payload.get("message_id") : payload.get("id");
+            if (msgIdObj == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "message_id is required"));
+            }
+            Long messageId = Long.valueOf(msgIdObj.toString());
+            String senderType = (String) payload.getOrDefault("sender_type", payload.getOrDefault("senderType", "CUSTOMER"));
+
+            // Mark message content as deleted
+            int updated = jdbc.update(
+                "UPDATE order_messages SET message = '[DELETED]' WHERE id = ? AND sender_type = ?",
+                messageId, senderType
+            );
+
+            return ResponseEntity.ok(Map.of("success", true, "updated", updated > 0));
+        } catch (Exception e) {
+            log.error("Error deleting order message", e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of("error", e.getMessage()));
+        }
+    }
+
     private final java.util.concurrent.ConcurrentHashMap<String, Long> typingStatusMap = new java.util.concurrent.ConcurrentHashMap<>();
 
     @PostMapping("/order-chat/typing")

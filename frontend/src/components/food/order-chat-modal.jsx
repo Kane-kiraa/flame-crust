@@ -8,6 +8,8 @@ import {
   Image as ImageIcon,
   ZoomIn,
   Paperclip,
+  Trash2,
+  Ban,
   X, 
   Loader2, 
   Bike, 
@@ -19,7 +21,7 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping } from "@/lib/api";
+import { getOrderMessages, sendOrderMessage, markOrderMessagesRead, reportOrderChatTyping, checkOrderChatTyping, deleteOrderMessage } from "@/lib/api";
 import { uploadImageToCloudinary } from "@/lib/cloudinary";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -274,6 +276,18 @@ export function OrderChatModal({
     }
   };
 
+  const handleUnsendMessage = async (msgId) => {
+    if (!msgId) return;
+    setMessages(prev => prev.map(m => m.id === msgId ? { ...m, message: "[DELETED]" } : m));
+    try {
+      await deleteOrderMessage(msgId, currentUser.type);
+      toast.success("Message removed");
+      fetchMessages();
+    } catch (e) {
+      toast.error("Failed to remove message");
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent 
@@ -424,47 +438,72 @@ export function OrderChatModal({
                       </span>
                     </div>
 
-                    {/* Message Bubble Content (Photo + Caption or Text) */}
-                    <div 
-                      className={cn(
-                        "rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-xs overflow-hidden",
-                        isMe 
-                          ? "bg-primary text-primary-foreground rounded-tr-xs" 
-                          : "bg-secondary text-foreground border border-border/50 rounded-tl-xs",
-                        m.message.startsWith("[IMG]:") ? "p-1.5" : "px-3.5 py-2.5"
-                      )}
-                    >
-                      {m.message.startsWith("[IMG]:") ? (
-                        (() => {
-                          const parts = m.message.replace("[IMG]:", "").trim().split("\n");
-                          const imgUrl = parts[0];
-                          const caption = parts.slice(1).join("\n").trim();
-                          return (
-                            <div className="space-y-1.5">
-                              <div 
-                                className="relative group rounded-xl overflow-hidden cursor-pointer max-w-[240px] bg-black/10"
-                                onClick={() => setPreviewModalUrl(imgUrl)}
-                              >
-                                <img 
-                                  src={imgUrl} 
-                                  alt="Attached Photo" 
-                                  className="w-full max-h-56 object-cover rounded-xl transition-transform duration-200 group-hover:scale-103" 
-                                  loading="lazy"
-                                />
-                                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
-                                  <ZoomIn className="size-5" />
+                    {/* Message Bubble Content (Unsent / Photo / Text) */}
+                    {m.message === "[DELETED]" ? (
+                      <div 
+                        className={cn(
+                          "px-3.5 py-2 rounded-2xl text-xs italic text-muted-foreground/80 bg-secondary/40 border border-border/40 flex items-center gap-1.5 shadow-2xs select-none",
+                          isMe ? "rounded-tr-xs" : "rounded-tl-xs"
+                        )}
+                      >
+                        <Ban className="size-3.5 text-muted-foreground/60 shrink-0" />
+                        <span>This message was removed</span>
+                      </div>
+                    ) : (
+                      <div className="relative group/msg flex items-center gap-1.5">
+                        {isMe && (
+                          <button
+                            type="button"
+                            onClick={() => handleUnsendMessage(m.id)}
+                            className="opacity-0 group-hover/msg:opacity-100 p-1.5 rounded-full text-muted-foreground/50 hover:text-red-500 hover:bg-secondary transition-all cursor-pointer"
+                            title="Unsend message"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        )}
+
+                        <div 
+                          className={cn(
+                            "rounded-2xl text-xs sm:text-sm leading-relaxed break-words shadow-xs overflow-hidden",
+                            isMe 
+                              ? "bg-primary text-primary-foreground rounded-tr-xs" 
+                              : "bg-secondary text-foreground border border-border/50 rounded-tl-xs",
+                            m.message.startsWith("[IMG]:") ? "p-1.5" : "px-3.5 py-2.5"
+                          )}
+                        >
+                          {m.message.startsWith("[IMG]:") ? (
+                            (() => {
+                              const parts = m.message.replace("[IMG]:", "").trim().split("\n");
+                              const imgUrl = parts[0];
+                              const caption = parts.slice(1).join("\n").trim();
+                              return (
+                                <div className="space-y-1.5">
+                                  <div 
+                                    className="relative group rounded-xl overflow-hidden cursor-pointer max-w-[240px] bg-black/10"
+                                    onClick={() => setPreviewModalUrl(imgUrl)}
+                                  >
+                                    <img 
+                                      src={imgUrl} 
+                                      alt="Attached Photo" 
+                                      className="w-full max-h-56 object-cover rounded-xl transition-transform duration-200 group-hover:scale-103" 
+                                      loading="lazy"
+                                    />
+                                    <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white">
+                                      <ZoomIn className="size-5" />
+                                    </div>
+                                  </div>
+                                  {caption && (
+                                    <p className="px-2 py-0.5 text-xs font-medium leading-normal">{caption}</p>
+                                  )}
                                 </div>
-                              </div>
-                              {caption && (
-                                <p className="px-2 py-0.5 text-xs font-medium leading-normal">{caption}</p>
-                              )}
-                            </div>
-                          );
-                        })()
-                      ) : (
-                        m.message
-                      )}
-                    </div>
+                              );
+                            })()
+                          ) : (
+                            m.message
+                          )}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               );

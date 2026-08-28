@@ -337,4 +337,17 @@ export async function checkOrderChatTyping(orderId, userType = "CUSTOMER") {
   return { isTyping: false };
 }
 
+export async function deleteOrderMessage(messageId, senderType = "CUSTOMER") {
+  try {
+    const res = await globalThis.fetch(`${API_URL}/auth/order-messages/delete`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message_id: messageId, sender_type: senderType })
+    });
+    return await res.json();
+  } catch (e) {
+    return { success: false };
+  }
+}
+
 

@@ -884,7 +884,11 @@ function Navbar() {
                         {hasLastMsg ? (
                           <span className={cn(convo.unreadCount > 0 ? "font-bold text-foreground" : "")}>
                             {convo.lastMessage.sender_type === "CUSTOMER" ? "You: " : `${driverName.split(" ")[0]}: `}
-                            {convo.lastMessage.message.startsWith("[IMG]:") ? "📷 Photo" : convo.lastMessage.message}
+                            {convo.lastMessage.message === "[DELETED]" 
+                              ? "🚫 Removed a message" 
+                              : convo.lastMessage.message.startsWith("[IMG]:") 
+                                ? "📷 Photo" 
+                                : convo.lastMessage.message}
                           </span>
                         ) : (
                           <span className="italic text-muted-foreground/80">Tap to start chatting with {driverName.split(" ")[0]}</span>
