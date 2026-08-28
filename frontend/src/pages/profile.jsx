@@ -667,7 +667,7 @@ export default function ProfilePage() {
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20">
       <Navbar />
-      <main className="flex-1 pt-14 sm:pt-16 lg:pt-18 pb-32 sm:pb-20">
+      <main className="flex-1 pt-[calc(4.75rem+env(safe-area-inset-top,0px))] sm:pt-20 lg:pt-22 pb-[calc(7.5rem+env(safe-area-inset-bottom,0px))] sm:pb-20">
         <PageTransition>
           <div className={cn(
             "mx-auto px-3 sm:px-6 lg:px-8 space-y-3.5 sm:space-y-5 transition-all",
@@ -696,13 +696,13 @@ export default function ProfilePage() {
 
                     {/* Floating "Edit Cover Photo" Pill Button */}
                     <label 
-                      className="absolute top-2.5 right-2.5 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold backdrop-blur-md bg-black/60 hover:bg-black/80 text-white border border-white/25 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer z-20"
+                      className="absolute top-3 right-3 sm:top-4 sm:right-4 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold backdrop-blur-md bg-black/60 hover:bg-black/80 text-white border border-white/25 shadow-md hover:scale-105 active:scale-95 transition-all cursor-pointer z-20"
                       title="Change Cover Photo"
                     >
                       {isUploadingCover ? (
-                        <Loader2 className="size-3 sm:size-3.5 animate-spin text-primary" />
+                        <Loader2 className="size-3.5 animate-spin text-primary" />
                       ) : (
-                        <Camera className="size-3 sm:size-3.5" />
+                        <Camera className="size-3.5" />
                       )}
                       <span>{isUploadingCover ? "Uploading..." : "Edit Cover"}</span>
                       <input 
@@ -1047,25 +1047,35 @@ export default function ProfilePage() {
               </div>
             ) : (
               /* ========================================================================= */
-              /* 2. DEDICATED SUB-PAGE VIEWS WITH PROMINENT "← BACK TO PROFILE" BUTTON */
+              /* 2. DEDICATED SUB-PAGE VIEWS WITH CLEAN INLINE BACK BUTTON HEADER          */
               /* ========================================================================= */
               <div className="space-y-4 sm:space-y-6 animate-fade-in">
                 
-                {/* Back to Profile Button & Header */}
-                <div className="space-y-2">
-                  <div>
-                    <button 
-                      type="button"
-                      onClick={() => handleNavigateToTab("MENU")} 
-                      className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 border border-border/70 text-xs sm:text-sm font-semibold text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs"
-                    >
-                      <ArrowLeft className="size-3.5 sm:size-4" />
-                      Back to Profile
-                    </button>
-                  </div>
-                  <div>
-                    <h2 className="font-serif text-xl sm:text-3xl font-bold text-foreground">Profile Settings</h2>
-                    <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Manage your credentials, avatar, and personal details</p>
+                {/* Unified Sub-Page Header with Inline Back Arrow */}
+                <div className="flex items-center gap-3 pb-1">
+                  <button 
+                    type="button"
+                    onClick={() => handleNavigateToTab("MENU")} 
+                    className="size-9 sm:size-10 rounded-full bg-secondary hover:bg-secondary/80 border border-border/70 flex items-center justify-center text-foreground transition-all active:scale-95 cursor-pointer shadow-2xs shrink-0"
+                    title="Back to Profile"
+                  >
+                    <ArrowLeft className="size-4 sm:size-4.5" />
+                  </button>
+                  <div className="min-w-0">
+                    <h2 className="font-serif text-lg sm:text-2xl font-bold text-foreground truncate">
+                      {activeTab === "SETTINGS" && "Profile Settings"}
+                      {activeTab === "ORDERS" && "Recent Orders"}
+                      {activeTab === "ADDRESSES" && "Saved Addresses"}
+                      {activeTab === "FAVORITES" && "Favorite Pizzas"}
+                      {activeTab === "COUPONS" && "My Coupons & Rewards"}
+                    </h2>
+                    <p className="text-[11px] sm:text-xs text-muted-foreground truncate">
+                      {activeTab === "SETTINGS" && "Manage credentials, avatar & personal details"}
+                      {activeTab === "ORDERS" && "Track deliveries & view receipt history"}
+                      {activeTab === "ADDRESSES" && "Manage delivery locations & fast checkout pins"}
+                      {activeTab === "FAVORITES" && "Your favorite pizzas and quick re-orders"}
+                      {activeTab === "COUPONS" && "Discounts and special reward vouchers"}
+                    </p>
                   </div>
                 </div>
 
@@ -1298,33 +1308,28 @@ export default function ProfilePage() {
 
                 {/* ---------------- ORDERS TAB ---------------- */}
                 {activeTab === "ORDERS" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="font-serif text-3xl font-bold text-foreground">Recent Orders</h2>
-                      <p className="text-sm text-muted-foreground mt-1">Track current deliveries and view your order receipt history</p>
-                    </div>
-
+                  <div className="space-y-4">
                     {loading ? (
                       <div className="flex justify-center py-12">
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : orders.length === 0 ? (
-                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
-                        <ShoppingBag className="size-16 mx-auto mb-4 opacity-20" />
+                      <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-8 sm:p-12 text-center text-muted-foreground shadow-warm">
+                        <ShoppingBag className="size-14 mx-auto mb-3 opacity-20" />
                         <p className="font-semibold text-foreground text-base">No orders yet</p>
                         <p className="text-xs text-muted-foreground mt-1">Time to crave something delicious!</p>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-3.5">
                         {orders.map((order) => (
                           <div 
                             key={order.id} 
-                            className="bg-card border border-border/70 rounded-[24px] p-6 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm group"
+                            className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-6 transition-all hover:border-primary/50 cursor-pointer hover:shadow-warm group"
                             onClick={() => navigate(`/track/${order.id}`)}
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                               <div>
-                                <div className="flex items-center gap-3 mb-1">
+                                <div className="flex items-center gap-2.5 mb-1">
                                   <span className="font-mono text-sm text-muted-foreground font-bold">#{order.order_number}</span>
                                   <span className={cn(
                                     "text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider",
@@ -1335,20 +1340,20 @@ export default function ProfilePage() {
                                     {order.status}
                                   </span>
                                 </div>
-                                <h4 className="font-semibold text-foreground flex items-center gap-2 text-sm sm:text-base">
-                                  <Clock className="size-4 text-muted-foreground" />
+                                <h4 className="font-semibold text-foreground flex items-center gap-1.5 text-xs sm:text-sm">
+                                  <Clock className="size-3.5 text-muted-foreground" />
                                   {formatDate(order.created_at)}
                                 </h4>
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap justify-between items-center mt-4 pt-4 border-t border-border/60 gap-3">
-                              <span className="font-bold text-lg text-primary">${order.total}</span>
+                            <div className="flex flex-wrap justify-between items-center mt-3 pt-3 border-t border-border/60 gap-2">
+                              <span className="font-bold text-base sm:text-lg text-primary">${order.total}</span>
                               <div className="flex flex-wrap items-center gap-2">
                                 <Button 
                                   variant="outline" 
                                   size="sm" 
-                                  className="rounded-full text-xs h-8 px-3"
+                                  className="rounded-full text-xs h-7 sm:h-8 px-3"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleReorder(order.id);
@@ -1359,7 +1364,7 @@ export default function ProfilePage() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="rounded-full text-xs h-8 px-3 text-muted-foreground hover:text-foreground"
+                                  className="rounded-full text-xs h-7 sm:h-8 px-3 text-muted-foreground hover:text-foreground"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setSelectedOrderDetails(order);
@@ -1370,7 +1375,7 @@ export default function ProfilePage() {
                                 <Button 
                                   variant="default" 
                                   size="sm" 
-                                  className="rounded-full text-xs h-8 px-4 font-semibold shadow-warm"
+                                  className="rounded-full text-xs h-7 sm:h-8 px-4 font-semibold shadow-warm"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     navigate(`/track/${order.id}`);
@@ -1389,24 +1394,20 @@ export default function ProfilePage() {
 
                 {/* ---------------- ADDRESSES TAB ---------------- */}
                 {activeTab === "ADDRESSES" && (
-                  <div className="space-y-6">
-                    <div className="flex justify-between items-center flex-wrap gap-3">
-                      <div>
-                        <h2 className="font-serif text-3xl font-bold text-foreground">Saved Addresses</h2>
-                        <p className="text-sm text-muted-foreground mt-1">Manage your delivery locations &amp; fast checkout pins</p>
-                      </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-end">
                       <Button 
                         onClick={() => setShowAddForm(!showAddForm)} 
                         className="rounded-full px-5 font-semibold shadow-warm hover:shadow-warm-lg"
                       >
-                        <Plus className="size-4 mr-1.5" /> Add New
+                        <Plus className="size-4 mr-1.5" /> Add New Address
                       </Button>
                     </div>
 
                     {showAddForm && (
-                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-[24px] p-6 mb-6 shadow-warm space-y-4 animate-fade-in">
+                      <form onSubmit={handleCreateAddress} className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-4 sm:p-6 mb-4 shadow-warm space-y-4 animate-fade-in">
                         <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                          <h4 className="font-semibold text-foreground text-base">New Address Location</h4>
+                          <h4 className="font-semibold text-foreground text-sm sm:text-base">New Address Location</h4>
                           <button 
                             type="button" 
                             onClick={() => setShowAddForm(false)} 
@@ -1491,13 +1492,13 @@ export default function ProfilePage() {
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : addresses.length === 0 ? (
-                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
-                        <MapPin className="size-16 mx-auto mb-4 opacity-20" />
+                      <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-8 sm:p-12 text-center text-muted-foreground shadow-warm">
+                        <MapPin className="size-14 mx-auto mb-3 opacity-20" />
                         <p className="font-semibold text-foreground">No saved addresses yet</p>
                         <p className="text-xs text-muted-foreground mt-1">Add your home or office address for 1-tap checkout!</p>
                       </div>
                     ) : (
-                      <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="grid sm:grid-cols-2 gap-3.5">
                         {addresses.map(addr => {
                           const isHome = (addr.label || "").toLowerCase().includes("home") || (addr.label || "").toLowerCase().includes("ផ្ទះ");
                           const isWork = (addr.label || "").toLowerCase().includes("work") || (addr.label || "").toLowerCase().includes("office") || (addr.label || "").toLowerCase().includes("ការងារ");
@@ -1506,21 +1507,21 @@ export default function ProfilePage() {
                             <div 
                               key={addr.id} 
                               className={cn(
-                                "bg-card border rounded-[24px] p-5 relative group flex flex-col justify-between transition-all hover:shadow-warm",
+                                "bg-card border rounded-2xl sm:rounded-[24px] p-4 sm:p-5 relative group flex flex-col justify-between transition-all hover:shadow-warm",
                                 addr.is_default ? "border-primary/50 shadow-xs" : "border-border/70"
                               )}
                             >
                               <div>
-                                <div className="flex items-start justify-between gap-3 mb-2.5">
-                                  <div className="flex items-center gap-3">
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <div className="flex items-center gap-2.5">
                                     <div className={cn(
-                                      "size-10 rounded-2xl flex items-center justify-center shrink-0 shadow-2xs",
+                                      "size-9 rounded-xl flex items-center justify-center shrink-0 shadow-2xs",
                                       addr.is_default ? "bg-primary/15 text-primary" : "bg-secondary text-muted-foreground"
                                     )}>
-                                      {isHome ? <MapPin className="size-5" /> : isWork ? <Building2 className="size-5" /> : <MapPin className="size-5" />}
+                                      {isHome ? <MapPin className="size-4" /> : isWork ? <Building2 className="size-4" /> : <MapPin className="size-4" />}
                                     </div>
                                     <div>
-                                      <h4 className="font-bold text-foreground text-base leading-tight">
+                                      <h4 className="font-bold text-foreground text-sm sm:text-base leading-tight">
                                         {addr.label || "Delivery"}
                                       </h4>
                                       <span className="text-xs text-muted-foreground font-medium">
@@ -1530,8 +1531,8 @@ export default function ProfilePage() {
                                   </div>
 
                                   {addr.is_default ? (
-                                    <span className="inline-flex items-center gap-1 text-[10px] bg-primary/15 text-primary px-2.5 py-1 rounded-full font-bold uppercase tracking-wider border border-primary/25">
-                                      <Star className="size-3 fill-primary" /> Default
+                                    <span className="inline-flex items-center gap-1 text-[9px] bg-primary/15 text-primary px-2 py-0.5 rounded-full font-bold uppercase tracking-wider border border-primary/25">
+                                      <Star className="size-2.5 fill-primary" /> Default
                                     </span>
                                   ) : (
                                     <button
@@ -1545,20 +1546,20 @@ export default function ProfilePage() {
                                   )}
                                 </div>
 
-                                <p className="text-xs text-foreground/85 font-medium line-clamp-2 mt-1.5 leading-relaxed bg-secondary/30 rounded-xl p-2.5 border border-border/30">
+                                <p className="text-xs text-foreground/85 font-medium line-clamp-2 mt-1 leading-relaxed bg-secondary/30 rounded-xl p-2.5 border border-border/30">
                                   {addr.address_line}
                                 </p>
                               </div>
 
-                              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between gap-2">
+                              <div className="mt-3 pt-2.5 border-t border-border/50 flex items-center justify-between gap-2">
                                 <Button
                                   type="button"
                                   variant="ghost"
                                   size="sm"
                                   onClick={() => setSelectedAddressDetails(addr)}
-                                  className="h-8 px-3 rounded-full text-xs font-semibold text-foreground hover:bg-secondary flex items-center gap-1.5 cursor-pointer"
+                                  className="h-7 px-2.5 rounded-full text-xs font-semibold text-foreground hover:bg-secondary flex items-center gap-1 cursor-pointer"
                                 >
-                                  <Eye className="size-3.5 text-primary" />
+                                  <Eye className="size-3 text-primary" />
                                   <span>Details</span>
                                 </Button>
 
@@ -1568,20 +1569,20 @@ export default function ProfilePage() {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => setEditingAddress(addr)}
-                                    className="size-8 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
+                                    className="size-7 p-0 rounded-full text-muted-foreground hover:text-foreground hover:bg-secondary cursor-pointer"
                                     title="Edit Address"
                                   >
-                                    <Pencil className="size-3.5" />
+                                    <Pencil className="size-3" />
                                   </Button>
                                   <Button
                                     type="button"
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => handleDeleteAddress(addr.id)}
-                                    className="size-8 p-0 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    className="size-7 p-0 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10 cursor-pointer"
                                     title="Delete Address"
                                   >
-                                    <Trash2 className="size-3.5" />
+                                    <Trash2 className="size-3" />
                                   </Button>
                                 </div>
                               </div>
@@ -1595,20 +1596,15 @@ export default function ProfilePage() {
 
                 {/* ---------------- FAVORITES TAB ---------------- */}
                 {activeTab === "FAVORITES" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="font-serif text-3xl font-bold text-foreground">Favorite Pizzas</h2>
-                      <p className="text-sm text-muted-foreground mt-1">Your quick access list of loved dishes and crusts</p>
-                    </div>
-
+                  <div className="space-y-4">
                     {favorites.length === 0 ? (
-                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
-                        <Heart className="size-16 mx-auto mb-4 opacity-20" />
+                      <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-8 sm:p-12 text-center text-muted-foreground shadow-warm">
+                        <Heart className="size-14 mx-auto mb-3 opacity-20" />
                         <p className="font-semibold text-foreground">No favorites yet</p>
                         <p className="text-xs text-muted-foreground mt-1">Browse our menu and tap the heart icon to save dishes!</p>
                       </div>
                     ) : (
-                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                         {favorites.map(item => (
                           <div 
                             key={item.id} 
@@ -1628,12 +1624,12 @@ export default function ProfilePage() {
                                 className="absolute top-2 right-2 p-1.5 rounded-full bg-background/85 backdrop-blur-xs shadow-sm hover:scale-110 active:scale-95 transition-transform cursor-pointer"
                                 title="Remove from Favorites"
                               >
-                                <Heart className="size-4 fill-red-500 text-red-500" />
+                                <Heart className="size-3.5 fill-red-500 text-red-500" />
                               </button>
                             </div>
-                            <div className="p-3.5">
-                              <h4 className="font-bold text-sm text-foreground truncate">{item.name}</h4>
-                              <p className="text-primary font-bold text-sm mt-1">${item.price}</p>
+                            <div className="p-3">
+                              <h4 className="font-bold text-xs sm:text-sm text-foreground truncate">{item.name}</h4>
+                              <p className="text-primary font-bold text-xs sm:text-sm mt-0.5">${item.price}</p>
                             </div>
                           </div>
                         ))}
@@ -1644,84 +1640,79 @@ export default function ProfilePage() {
 
                 {/* ---------------- COUPONS TAB ---------------- */}
                 {activeTab === "COUPONS" && (
-                  <div className="space-y-6">
-                    <div>
-                      <h2 className="font-serif text-3xl font-bold text-foreground">My Coupons &amp; Rewards</h2>
-                      <p className="text-sm text-muted-foreground mt-1">Use coupons at checkout to enjoy discounts on your orders</p>
-                    </div>
-
+                  <div className="space-y-4">
                     {loading ? (
                       <div className="flex justify-center py-12">
                         <div className="size-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
                       </div>
                     ) : coupons.length === 0 ? (
-                      <div className="bg-card border border-border/70 rounded-[24px] p-12 text-center text-muted-foreground shadow-warm">
-                        <Ticket className="size-16 mx-auto mb-4 opacity-20" />
+                      <div className="bg-card border border-border/70 rounded-2xl sm:rounded-[24px] p-8 sm:p-12 text-center text-muted-foreground shadow-warm">
+                        <Ticket className="size-14 mx-auto mb-3 opacity-20" />
                         <p className="font-semibold text-foreground">No coupons available right now</p>
                         <p className="text-xs text-muted-foreground mt-1">Check back soon for new offers and rewards!</p>
                       </div>
                     ) : (
-                      <div className="space-y-8">
+                      <div className="space-y-6">
                         <div>
-                          <h4 className="text-base font-bold mb-4 text-foreground flex items-center gap-2">
+                          <h4 className="text-sm font-bold mb-3 text-foreground flex items-center gap-1.5">
                             <span className="size-2 rounded-full bg-emerald-500 animate-pulse"></span> Available Now
                           </h4>
-                          <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="grid sm:grid-cols-2 gap-3">
                             {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).map(coupon => (
-                              <div key={coupon.id} className="bg-card border border-emerald-500/30 rounded-2xl p-5 relative overflow-hidden shadow-warm">
+                              <div key={coupon.id} className="bg-card border border-emerald-500/30 rounded-2xl p-4 relative overflow-hidden shadow-warm">
                                 <div className="absolute -right-6 -top-6 size-24 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none"></div>
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <div className="inline-block px-3 py-1 bg-emerald-600 text-white text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
+                                    <div className="inline-block px-2.5 py-0.5 bg-emerald-600 text-white text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
                                       {coupon.code}
                                     </div>
-                                    <h5 className="font-bold text-lg text-foreground">
+                                    <h5 className="font-bold text-base text-foreground">
                                       {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
                                        coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
                                        `$${coupon.discount_value} OFF`}
                                     </h5>
-                                    <p className="text-xs text-muted-foreground mt-1">Min. spend: ${coupon.min_order_amount}</p>
+                                    <p className="text-xs text-muted-foreground mt-0.5">Min. spend: ${coupon.min_order_amount}</p>
                                   </div>
                                 </div>
                                 {coupon.expires_at && (
-                                  <div className="mt-4 pt-3 border-t border-border/60 text-xs text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1.5">
+                                  <div className="mt-3 pt-2.5 border-t border-border/60 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                                     <Clock className="size-3" /> Valid until {new Date(coupon.expires_at).toLocaleDateString()}
                                   </div>
                                 )}
                               </div>
                             ))}
                             {coupons.filter(c => c.active && (!c.expires_at || new Date(c.expires_at) > new Date())).length === 0 && (
-                              <p className="text-sm text-muted-foreground">No available coupons.</p>
+                              <p className="text-xs text-muted-foreground">No available coupons.</p>
                             )}
                           </div>
                         </div>
 
                         <div>
-                          <h4 className="text-base font-bold mb-4 text-muted-foreground flex items-center gap-2">
+                          <h4 className="text-sm font-bold mb-3 text-muted-foreground flex items-center gap-1.5">
                             <span className="size-2 rounded-full bg-muted-foreground/30"></span> Used / Expired
                           </h4>
-                          <div className="grid sm:grid-cols-2 gap-4 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
+                          <div className="grid sm:grid-cols-2 gap-3 opacity-60 grayscale hover:grayscale-0 transition-all duration-300">
                             {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).map(coupon => (
-                              <div key={coupon.id} className="bg-card border border-border/60 rounded-2xl p-5 shadow-2xs">
+                              <div key={coupon.id} className="bg-card border border-border/60 rounded-2xl p-4 shadow-2xs">
                                 <div className="flex items-start justify-between">
                                   <div>
-                                    <div className="inline-block px-3 py-1 bg-secondary text-muted-foreground text-xs font-bold rounded-full mb-2 uppercase tracking-wide">
+                                    <div className="inline-block px-2.5 py-0.5 bg-secondary text-muted-foreground text-[10px] font-bold rounded-full mb-1.5 uppercase tracking-wide">
                                       {coupon.code}
                                     </div>
-                                    <h5 className="font-bold text-muted-foreground">
+                                    <h5 className="font-bold text-sm text-muted-foreground">
                                       {coupon.discount_type === 'PERCENTAGE' ? `${coupon.discount_value}% OFF` : 
                                        coupon.discount_type === 'FREE_DELIVERY' ? 'FREE DELIVERY' : 
                                        `$${coupon.discount_value} OFF`}
                                     </h5>
                                   </div>
                                 </div>
-                                <div className="mt-4 pt-3 border-t border-border/60 text-xs text-muted-foreground flex items-center gap-1.5">
+                                <div className="mt-3 pt-2.5 border-t border-border/60 text-[11px] text-muted-foreground flex items-center gap-1">
                                   {coupon.active ? "Expired" : "Used or Inactive"}
                                 </div>
                               </div>
                             ))}
                             {coupons.filter(c => !c.active || (c.expires_at && new Date(c.expires_at) <= new Date())).length === 0 && (
-                              <p className="text-sm text-muted-foreground">No expired coupons.</p>
+                              <p className="text-xs text-muted-foreground">No expired coupons.</p>
                             )}
                           </div>
                         </div>
