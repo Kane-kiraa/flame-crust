@@ -63,7 +63,7 @@ export default function App() {
   return (
     <Suspense fallback={<PageLoader />}>
       <ScrollToTop />
-      <Toaster position="top-center" richColors closeButton offset="76px" />
+      <Toaster position="top-center" richColors closeButton />
       <ActiveOrderWidget />
       <FlyToCart />
       <CartDrawer />
