@@ -877,22 +877,25 @@ export default function DriverDashboardPage() {
             if (prevLastId !== undefined && lastMsg.id > prevLastId) {
               if (lastMsg.sender_type !== "DRIVER") {
                 // Incoming message from Customer!
-                setUnreadMap(prev => ({ ...prev, [ord.id]: (prev[ord.id] || 0) + 1 }));
-                setDriverChatHead({
-                  order: ord,
-                  message: lastMsg.message,
-                  timestamp: Date.now()
-                });
-                showChatNotificationToast({
-                  senderName: ord.customer?.name || lastMsg.sender_name || "Customer",
-                  message: lastMsg.message,
-                  photo: ord.customer?.avatar,
-                  onReply: () => {
-                    setSelectedChatOrder(ord);
-                    setUnreadMap(prev => ({ ...prev, [ord.id]: 0 }));
-                    setDriverChatHead(null);
-                  }
-                });
+                const isCurrentlyViewing = selectedChatOrder && String(selectedChatOrder.id) === String(ord.id);
+                if (!isCurrentlyViewing) {
+                  setUnreadMap(prev => ({ ...prev, [ord.id]: (prev[ord.id] || 0) + 1 }));
+                  setDriverChatHead({
+                    order: ord,
+                    message: lastMsg.message,
+                    timestamp: Date.now()
+                  });
+                  showChatNotificationToast({
+                    senderName: ord.customer?.name || lastMsg.sender_name || "Customer",
+                    message: lastMsg.message,
+                    photo: ord.customer?.avatar,
+                    onReply: () => {
+                      setSelectedChatOrder(ord);
+                      setUnreadMap(prev => ({ ...prev, [ord.id]: 0 }));
+                      setDriverChatHead(null);
+                    }
+                  });
+                }
               }
             }
             lastKnownDriverMsgsRef.current[ord.id] = lastMsg.id;
@@ -904,7 +907,7 @@ export default function DriverDashboardPage() {
     checkDriverIncomingMessages();
     const chatInterval = setInterval(checkDriverIncomingMessages, 3000);
     return () => clearInterval(chatInterval);
-  }, [driver, myOrders]);
+  }, [driver, myOrders, selectedChatOrder]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

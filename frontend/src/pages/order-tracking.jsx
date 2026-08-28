@@ -173,20 +173,20 @@ export default function OrderTrackingPage() {
           if (lastKnownMsgIdRef.current !== null && lastMsg.id > lastKnownMsgIdRef.current) {
             if (lastMsg.sender_type !== "CUSTOMER") {
               // Incoming message from Driver!
-              setLastMsgText(lastMsg.message);
-              setChatHeadDismissed(false);
               if (!chatOpen) {
+                setLastMsgText(lastMsg.message);
+                setChatHeadDismissed(false);
                 setUnreadCount(prev => prev + 1);
+                showChatNotificationToast({
+                  senderName: driver?.name || lastMsg.sender_name || "Delivery Partner",
+                  message: lastMsg.message,
+                  photo: driver?.profilePhoto || driver?.profile_photo,
+                  onReply: () => {
+                    setChatOpen(true);
+                    setUnreadCount(0);
+                  }
+                });
               }
-              showChatNotificationToast({
-                senderName: driver?.name || lastMsg.sender_name || "Delivery Partner",
-                message: lastMsg.message,
-                photo: driver?.profilePhoto || driver?.profile_photo,
-                onReply: () => {
-                  setChatOpen(true);
-                  setUnreadCount(0);
-                }
-              });
             }
           }
           lastKnownMsgIdRef.current = lastMsg.id;

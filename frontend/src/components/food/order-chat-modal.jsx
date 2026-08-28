@@ -3,16 +3,19 @@ import {
   Send, 
   MessageSquare, 
   Phone, 
+  PhoneCall,
   X, 
   Loader2, 
   Bike, 
   User, 
   CheckCheck, 
-  Sparkles 
+  Sparkles,
+  Wifi
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { OnlineCallModal } from "@/components/food/online-call-modal";
 import { getOrderMessages, sendOrderMessage } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -103,6 +106,7 @@ export function OrderChatModal({
   const [inputMsg, setInputMsg] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [onlineCallOpen, setOnlineCallOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const prevCountRef = useRef(0);
 
@@ -235,11 +239,21 @@ export function OrderChatModal({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Free In-App Online Voice Call */}
+            <button
+              type="button"
+              onClick={() => setOnlineCallOpen(true)}
+              className="size-9 rounded-full bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-600 dark:text-emerald-400 flex items-center justify-center transition-colors cursor-pointer"
+              title="Online Voice Call"
+            >
+              <PhoneCall className="size-4" />
+            </button>
+
             {recipient.phone && (
               <a
                 href={`tel:${recipient.phone}`}
                 className="size-9 rounded-full bg-primary/10 hover:bg-primary/20 text-primary flex items-center justify-center transition-colors"
-                title="Call"
+                title="Cellular Phone Call"
               >
                 <Phone className="size-4" />
               </a>
@@ -345,6 +359,14 @@ export function OrderChatModal({
             {sending ? <Loader2 className="size-4.5 animate-spin" /> : <Send className="size-4.5" />}
           </Button>
         </form>
+
+        {/* In-App Online Voice Call Screen */}
+        <OnlineCallModal
+          open={onlineCallOpen}
+          onOpenChange={setOnlineCallOpen}
+          recipient={recipient}
+          callerType={currentUser.type}
+        />
       </DialogContent>
     </Dialog>
   );
