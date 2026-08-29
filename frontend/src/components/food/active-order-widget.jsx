@@ -189,7 +189,7 @@ export function ActiveOrderWidget() {
                   localStorage.setItem("flame_active_order_minimized", "false");
                 } catch (err) { }
               }}
-              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] right-3 lg:bottom-6 lg:right-6 select-none cursor-pointer"
+              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] right-3 md:bottom-6 md:right-6 select-none cursor-pointer"
               title="Open Live Order Tracking"
             >
               <div className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-card/95 backdrop-blur-xl border border-primary/40 shadow-xl text-xs font-bold text-foreground hover:scale-105 transition-all">
@@ -205,7 +205,7 @@ export function ActiveOrderWidget() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 20, scale: 0.95 }}
               transition={{ type: "spring", stiffness: 350, damping: 28 }}
-              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 max-w-md mx-auto lg:bottom-6 lg:right-6 lg:left-auto lg:mx-0 lg:max-w-sm lg:w-full select-none"
+              className="fixed z-30 bottom-[calc(max(0.75rem,env(safe-area-inset-bottom,0px))+4.75rem)] inset-x-3 max-w-md mx-auto md:bottom-6 md:right-6 md:left-auto md:mx-0 md:max-w-sm md:w-full select-none"
             >
               <div
                 onClick={handleWidgetClick}

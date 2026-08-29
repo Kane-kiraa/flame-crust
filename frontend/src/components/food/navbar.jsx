@@ -479,7 +479,7 @@ function Navbar() {
             )}
           </AnimatePresence>
 
-          <nav className="hidden lg:flex items-center justify-center gap-1 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
+          <nav className="hidden md:flex items-center justify-center gap-1 shrink-0 overflow-x-auto no-scrollbar scroll-smooth">
             {navLinks.map((l) => (
               <Link
                 key={l.label}
@@ -643,7 +643,7 @@ function Navbar() {
             <Button
               variant="ghost"
               size="icon"
-              className="lg:hidden size-10 shrink-0 rounded-full text-foreground hover:bg-secondary/60"
+              className="md:hidden size-10 shrink-0 rounded-full text-foreground hover:bg-secondary/60"
               onClick={() => setMobileOpen((s) => !s)}
               aria-label="Toggle menu"
             >
@@ -659,7 +659,7 @@ function Navbar() {
               animate={{ height: "auto", opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
-              className="lg:hidden overflow-hidden border-t border-border/60"
+              className="md:hidden overflow-hidden border-t border-border/60"
             >
               <div className="flex flex-col py-3 px-2 gap-1.5 max-h-[75vh] overflow-y-auto no-scrollbar">
                 {/* Mobile User Card */}

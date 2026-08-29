@@ -112,7 +112,7 @@ export function MobileBottomNav() {
   return (
     <>
       {/* Authentic iOS Frosted Glass Mobile Bottom Capsule */}
-      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] lg:hidden select-none">
+      <div className="fixed bottom-[max(0.75rem,env(safe-area-inset-bottom,0px))] inset-x-3 sm:inset-x-6 z-[70] md:hidden select-none">
         <nav
           className="mx-auto max-w-md bg-background/70 dark:bg-zinc-900/70 backdrop-blur-2xl backdrop-saturate-150 border border-black/[0.08] dark:border-white/[0.12] ring-1 ring-white/30 dark:ring-white/5 shadow-[0_8px_30px_rgb(0,0,0,0.12)] rounded-full p-1.5 transition-all duration-300"
           aria-label="Mobile Navigation Dock"

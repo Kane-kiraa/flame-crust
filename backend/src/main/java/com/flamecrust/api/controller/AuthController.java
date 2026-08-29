@@ -79,13 +79,14 @@ public class AuthController {
         log.info("Generated OTP for {}: {}", email, otp);
         boolean emailSent = emailService.sendOtpEmail(email, otp);
 
+        if (!emailSent) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to send verification email. Please check the email address or try again later."));
+        }
+
         Map<String, Object> resp = new HashMap<>();
         resp.put("message", "OTP generated successfully");
-        resp.put("emailSent", emailSent);
-        if (!emailSent) {
-            resp.put("dev_otp", otp);
-            resp.put("hint", "Email service is offline or SMTP unconfigured. Code: " + otp);
-        }
+        resp.put("emailSent", true);
 
         return ResponseEntity.ok(resp);
     }
@@ -264,6 +265,7 @@ public class AuthController {
         String email = body.get("email");
         String phone = body.get("phone");
         String password = body.get("password");
+        String otp = body.get("otp");
 
         if (email == null || email.isBlank()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
@@ -271,21 +273,39 @@ public class AuthController {
         if (password == null || password.length() < 6) {
             return ResponseEntity.badRequest().body(Map.of("error", "Password must be at least 6 characters"));
         }
+        if (otp == null || otp.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "OTP code is required"));
+        }
         if (name == null || name.isBlank()) {
             name = email.contains("@") ? email.substring(0, email.indexOf("@")) : "Customer";
         }
 
+        email = email.toLowerCase().trim();
+        otp = otp.trim();
+
         // Check if customer already exists
-        List<Map<String, Object>> existing = jdbc.queryForList("SELECT id FROM customers WHERE email = ? LIMIT 1", email);
+        List<Map<String, Object>> existing = jdbc.queryForList("SELECT id FROM customers WHERE LOWER(email) = ? LIMIT 1", email);
         if (!existing.isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "An account with this email already exists. Please sign in."));
         }
+
+        // Verify OTP
+        List<Map<String, Object>> rows = jdbc.queryForList(
+                "SELECT id FROM otps WHERE LOWER(target) = ? AND otp_code = ? AND is_used = false AND expires_at > ? ORDER BY id DESC LIMIT 1",
+                email, otp, Timestamp.from(Instant.now()));
+
+        if (rows.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Map.of("error", "Invalid or expired OTP code"));
+        }
+
+        long otpId = ((Number) rows.get(0).get("id")).longValue();
+        jdbc.update("UPDATE otps SET is_used = true WHERE id = ?", otpId);
 
         String encodedPassword = passwordEncoder.encode(password);
         jdbc.update("INSERT INTO customers (name, email, phone, password_hash) VALUES (?, ?, ?, ?)",
                 name, email, phone, encodedPassword);
 
-        Map<String, Object> customer = jdbc.queryForList("SELECT * FROM customers WHERE email = ? LIMIT 1", email).getFirst();
+        Map<String, Object> customer = jdbc.queryForList("SELECT * FROM customers WHERE LOWER(email) = ? LIMIT 1", email).getFirst();
         customer.remove("password_hash");
 
         String token = jwtUtil.generateToken(email, "CUSTOMER");
