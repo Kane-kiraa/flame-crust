@@ -43,73 +43,75 @@ function MapUpdater({ center }) {
 // ----------------- HEADER -----------------
 function DriverHeader({ driver, locationActive, theme, toggleTheme, onRefresh, refreshing }) {
   return (
-    <header className="shrink-0 h-16 bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 flex items-center justify-between px-3 sm:px-6 transition-colors z-40 relative shadow-xs">
-      <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 flex items-center justify-center shadow-md shadow-red-600/25 shrink-0 text-white">
-          <Bike className="size-5 sm:size-5.5 stroke-[2.5]" />
-        </div>
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 flex-nowrap">
-            <h1 className="font-black text-sm sm:text-lg text-slate-950 dark:text-white tracking-tight leading-none truncate whitespace-nowrap">
-              Flame & Crust
-            </h1>
-            <span className="text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-red-500/15 text-red-600 dark:text-red-400 rounded-md border border-red-500/30 shrink-0 whitespace-nowrap">
-              Rider Hub
-            </span>
+    <header className="shrink-0 pt-[env(safe-area-inset-top,0px)] bg-white dark:bg-zinc-950 border-b border-slate-200/80 dark:border-white/10 transition-colors z-40 relative shadow-xs">
+      <div className="h-16 flex items-center justify-between px-3 sm:px-6">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="size-9 sm:size-10 rounded-2xl bg-gradient-to-r from-red-600 to-amber-600 flex items-center justify-center shadow-md shadow-red-600/25 shrink-0 text-white">
+            <Bike className="size-5 sm:size-5.5 stroke-[2.5]" />
           </div>
-          <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mt-0.5 flex items-center gap-1.5 truncate">
-            <span className={cn("size-2 rounded-full inline-block shrink-0", locationActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
-            <span className="truncate">{locationActive ? "GPS Active • Ready for orders" : "GPS Connecting..."}</span>
-          </p>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-        {/* Refresh Button */}
-        <button 
-          onClick={onRefresh}
-          disabled={refreshing}
-          className={cn(
-            "size-9 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer",
-            refreshing && "opacity-60 cursor-not-allowed"
-          )}
-          title="Refresh Feed"
-        >
-          <RefreshCw className={cn("size-4", refreshing && "animate-spin text-red-500")} />
-        </button>
-
-        {/* Theme Toggle */}
-        <button 
-          onClick={toggleTheme}
-          className="size-9 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer"
-          title="Toggle Theme"
-        >
-          {theme === 'dark' ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
-        </button>
-
-        <div className="w-px h-6 bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
-
-        {/* Driver Profile */}
-        <Link to="/driver/profile" className="flex items-center gap-2 group pl-0.5 shrink-0">
-          <div className="hidden md:block text-right">
-            <p className="text-xs font-black text-slate-900 dark:text-zinc-100 group-hover:text-primary transition-colors truncate max-w-[100px]">
-              {driver?.name || "Driver"}
-            </p>
-            <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
-              ★ 4.9 • Online
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 flex-nowrap">
+              <h1 className="font-black text-sm sm:text-lg text-slate-950 dark:text-white tracking-tight leading-none truncate whitespace-nowrap">
+                Flame & Crust
+              </h1>
+              <span className="text-[9px] sm:text-[10px] font-black uppercase px-1.5 py-0.5 bg-red-500/15 text-red-600 dark:text-red-400 rounded-md border border-red-500/30 shrink-0 whitespace-nowrap">
+                Rider Hub
+              </span>
+            </div>
+            <p className="text-[10px] sm:text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mt-0.5 flex items-center gap-1.5 truncate">
+              <span className={cn("size-2 rounded-full inline-block shrink-0", locationActive ? "bg-emerald-500 animate-pulse" : "bg-slate-400")} />
+              <span className="truncate">{locationActive ? "GPS Active • Ready for orders" : "GPS Connecting..."}</span>
             </p>
           </div>
-          <div className="relative shrink-0">
-            {driver?.profile_photo ? (
-              <img src={driver.profile_photo} alt={driver.name} className="size-9 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" />
-            ) : (
-              <div className="size-9 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
-                <User className="size-4.5" />
-              </div>
+        </div>
+
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Refresh Button */}
+          <button 
+            onClick={onRefresh}
+            disabled={refreshing}
+            className={cn(
+              "size-9 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer",
+              refreshing && "opacity-60 cursor-not-allowed"
             )}
-            <span className="absolute -bottom-0.5 -right-0.5 size-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-950" />
-          </div>
-        </Link>
+            title="Refresh Feed"
+          >
+            <RefreshCw className={cn("size-4", refreshing && "animate-spin text-red-500")} />
+          </button>
+
+          {/* Theme Toggle */}
+          <button 
+            onClick={toggleTheme}
+            className="size-9 rounded-full bg-slate-100 dark:bg-zinc-900 hover:bg-slate-200 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-300 transition-all active:scale-95 border border-slate-200/50 dark:border-white/5 flex items-center justify-center shrink-0 cursor-pointer"
+            title="Toggle Theme"
+          >
+            {theme === 'dark' ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
+          </button>
+
+          <div className="w-px h-6 bg-slate-200 dark:bg-zinc-800 hidden sm:block" />
+
+          {/* Driver Profile */}
+          <Link to="/driver/profile" className="flex items-center gap-2 group pl-0.5 shrink-0">
+            <div className="hidden md:block text-right">
+              <p className="text-xs font-black text-slate-900 dark:text-zinc-100 group-hover:text-primary transition-colors truncate max-w-[100px]">
+                {driver?.name || "Driver"}
+              </p>
+              <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400">
+                ★ 4.9 • Online
+              </p>
+            </div>
+            <div className="relative shrink-0">
+              {driver?.profile_photo ? (
+                <img src={driver.profile_photo} alt={driver.name} className="size-9 rounded-full object-cover ring-2 ring-red-500/80 shadow-sm shrink-0" />
+              ) : (
+                <div className="size-9 rounded-full bg-red-500/15 border border-red-500/30 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                  <User className="size-4.5" />
+                </div>
+              )}
+              <span className="absolute -bottom-0.5 -right-0.5 size-2.5 bg-emerald-500 rounded-full ring-2 ring-white dark:ring-zinc-950" />
+            </div>
+          </Link>
+        </div>
       </div>
     </header>
   );
