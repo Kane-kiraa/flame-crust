@@ -1,5 +1,5 @@
 // Helper to compress image into lightweight Base64 string
-const fileToBase64 = (file, maxSize = 800) => {
+const fileToBase64 = (file, maxSize = 1200) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -25,7 +25,7 @@ const fileToBase64 = (file, maxSize = 800) => {
         ctx.fillStyle = "#ffffff"; // Add white background in case of transparent png
         ctx.fillRect(0, 0, width, height);
         ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.85)); // 0.85 quality is small but clear
+        resolve(canvas.toDataURL("image/jpeg", 0.92)); // High quality compression
       };
       img.onerror = () => resolve(e.target.result);
       img.src = e.target.result;
@@ -39,8 +39,8 @@ export const uploadImageToCloudinary = async (file) => {
   const cloudName = (import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || "gdkctwwo").trim();
   const uploadPreset = (import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET || "flameimg").trim();
 
-  // Compress image to JPEG before upload
-  const compressedBase64 = await fileToBase64(file, 800);
+  // Compress image to JPEG before upload (High Quality)
+  const compressedBase64 = await fileToBase64(file, 1200);
 
   if (file && cloudName && uploadPreset) {
     try {
@@ -72,12 +72,12 @@ export const uploadImageToCloudinary = async (file) => {
 };
 
 // Helper to optimize existing Cloudinary URLs on the fly (for old images)
-export const getOptimizedImageUrl = (url, width = 800) => {
+export const getOptimizedImageUrl = (url, width = 1200) => {
   if (!url || !url.includes("res.cloudinary.com")) return url;
   
   // If already transformed, don't transform again
   if (url.includes("/upload/f_") || url.includes("/upload/q_")) return url;
 
-  // Inject transformation: output as JPG, auto quality, max width
-  return url.replace("/image/upload/", `/image/upload/f_jpg,q_auto,w_${width},c_limit/`);
+  // Inject transformation: output as JPG, high quality auto, max width 1200px
+  return url.replace("/image/upload/", `/image/upload/f_jpg,q_auto:good,w_${width},c_limit/`);
 };
