@@ -294,22 +294,23 @@ function AdminResourcePage({ resource }) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
-            <h1 className="font-serif text-2xl sm:text-3xl font-bold text-foreground">
+          <div className="flex items-center gap-3">
+            <h1 className="font-serif text-3xl sm:text-4xl font-black text-foreground tracking-tight">
               {config.label}
             </h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary border border-primary/20">
+            <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 shadow-sm">
               {totalCount} {totalCount === 1 ? "item" : "items"}
             </span>
           </div>
-          <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm font-medium text-muted-foreground">
             Manage, search, and update {config.label.toLowerCase()} for Flame & Crust.
           </p>
         </div>
       </div>
 
       {/* Data Table Container */}
-      <div className="rounded-3xl border border-border/70 bg-card p-4 sm:p-6 shadow-warm">
+      <div className="rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-3xl p-5 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 to-amber-500/60 opacity-80" />
         {error ? (
           <ErrorState
             title="Failed to load data"
@@ -342,9 +343,9 @@ function AdminResourcePage({ resource }) {
               !config.disableCreate && (
                 <Button
                   onClick={openCreate}
-                  className="rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 font-semibold h-11 px-5 shadow-warm"
+                  className="rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold h-11 px-6 shadow-md shadow-primary/20 transition-all hover:scale-105 active:scale-95"
                 >
-                  <Plus className="size-4 mr-1.5" />
+                  <Plus className="size-4 mr-2" />
                   Add {config.label.slice(0, -1)}
                 </Button>
               )

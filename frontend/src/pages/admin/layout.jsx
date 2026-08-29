@@ -82,7 +82,7 @@ function AdminLayout() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 bg-secondary/15">
         {/* Admin Top Header */}
-        <header className="h-[calc(env(safe-area-inset-top)+4rem)] pt-[env(safe-area-inset-top)] border-b border-border/70 bg-card/90 backdrop-blur-xl px-4 sm:px-6 flex items-center justify-between sticky top-0 z-30">
+        <header className="h-[calc(env(safe-area-inset-top)+4.5rem)] pt-[env(safe-area-inset-top)] border-b border-border/30 bg-card/40 backdrop-blur-3xl px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-[0_4px_30px_rgba(0,0,0,0.02)]">
           <div className="flex items-center gap-3">
             {/* Mobile menu trigger */}
             <Button
@@ -96,10 +96,10 @@ function AdminLayout() {
             </Button>
 
             {/* Breadcrumb / Page Title */}
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium">
-              <span className="hidden sm:inline">Admin</span>
-              <ChevronRight className="size-3.5 hidden sm:inline" />
-              <span className="text-foreground font-semibold text-sm sm:text-base capitalize">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
+              <span className="hidden sm:inline bg-secondary/80 px-2 py-1 rounded-md">Admin Space</span>
+              <ChevronRight className="size-3 hidden sm:inline opacity-50" />
+              <span className="text-foreground font-black tracking-tight text-sm sm:text-base capitalize">
                 {getPageTitle()}
               </span>
             </div>
@@ -112,11 +112,11 @@ function AdminLayout() {
               variant="outline"
               size="sm"
               onClick={() => setChangePasswordOpen(true)}
-              className="rounded-xl border-border/80 text-xs font-semibold h-9 px-3 hover:bg-primary/10 hover:text-primary transition-all flex items-center gap-1.5"
+              className="rounded-xl border-border/50 text-xs font-bold h-9 px-3.5 bg-secondary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 flex items-center gap-2 group"
               title="Change Admin Password"
             >
-              <KeyRound className="size-3.5 text-primary" />
-              <span className="hidden md:inline">Change Password</span>
+              <KeyRound className="size-3.5 text-primary group-hover:text-primary-foreground transition-colors" />
+              <span className="hidden md:inline">Password</span>
             </Button>
 
             {/* Direct Storefront Link */}
@@ -124,10 +124,10 @@ function AdminLayout() {
               variant="outline"
               size="sm"
               asChild
-              className="hidden sm:inline-flex rounded-xl border-border/80 text-xs font-semibold h-9 px-3 hover:bg-primary/10 hover:text-primary transition-all"
+              className="hidden sm:inline-flex rounded-xl border-border/50 text-xs font-bold h-9 px-3.5 bg-secondary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 group"
             >
               <Link to="/">
-                <Store className="size-3.5 mr-1.5 text-primary" />
+                <Store className="size-3.5 mr-2 text-primary group-hover:text-primary-foreground transition-colors" />
                 Storefront
               </Link>
             </Button>
@@ -136,7 +136,7 @@ function AdminLayout() {
             <Button
               variant="ghost"
               size="icon"
-              className="size-9 rounded-xl text-foreground/70 hover:text-primary"
+              className="size-9 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
             >

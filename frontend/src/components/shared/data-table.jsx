@@ -134,20 +134,20 @@ export function DataTable({
         <EmptyState title={emptyTitle} description={emptyDescription} />
       ) : (
         <>
-          <div className="rounded-2xl border border-border/60 overflow-hidden bg-card relative">
+          <div className="rounded-[24px] border border-border/40 overflow-hidden bg-card/40 backdrop-blur-md relative shadow-sm">
             {loading && (
-              <div className="absolute inset-0 bg-background/40 backdrop-blur-[1px] flex items-center justify-center z-10">
+              <div className="absolute inset-0 bg-background/50 backdrop-blur-[2px] flex items-center justify-center z-10">
                 <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             )}
             <Table>
               <TableHeader>
-                <TableRow className="bg-secondary/40 hover:bg-secondary/40 border-border/60">
+                <TableRow className="bg-secondary/20 hover:bg-secondary/20 border-border/40">
                   {columns.map((col) => (
                     <TableHead
                       key={col.key}
                       className={cn(
-                        "text-xs font-semibold text-muted-foreground uppercase tracking-wider py-3",
+                        "text-[11px] font-black text-muted-foreground uppercase tracking-[0.15em] py-4",
                         col.className
                       )}
                     >
@@ -179,10 +179,10 @@ export function DataTable({
                 {pagedData.map((row, idx) => (
                   <TableRow
                     key={row.id ?? idx}
-                    className="border-border/40 hover:bg-secondary/20 transition-colors"
+                    className="border-border/40 hover:bg-secondary/40 transition-colors group"
                   >
                     {columns.map((col) => (
-                      <TableCell key={col.key} className={cn("py-3 text-sm", col.className)}>
+                      <TableCell key={col.key} className={cn("py-4 text-sm font-medium", col.className)}>
                         {col.render ? col.render(row[col.key], row) : (row[col.key] ?? "—")}
                       </TableCell>
                     ))}

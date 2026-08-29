@@ -21,7 +21,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
     try {
       const favs = JSON.parse(localStorage.getItem("customerFavorites") || "[]");
       setIsFavorite(favs.some((f) => String(f.id) === String(item.id)));
-    } catch (e) {}
+    } catch (e) { }
   }, [item.id]);
 
   const toggleFavorite = (e) => {
@@ -37,7 +37,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
       localStorage.setItem("customerFavorites", JSON.stringify(favs));
       setIsFavorite(!isFavorite);
       window.dispatchEvent(new Event("favoritesChanged"));
-    } catch (err) {}
+    } catch (err) { }
   };
 
   const handleAdd = (e) => {
@@ -63,7 +63,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
   return (
     <article className="group card-lift relative flex flex-col overflow-hidden rounded-2xl sm:rounded-3xl bg-card border border-border/70 shadow-warm hover:shadow-warm-lg transition-all duration-300">
       <Link to={`/product/${item.id}`} className="block relative">
-        <div className="relative aspect-[4/3] overflow-hidden bg-secondary/40">
+        <div className="relative aspect-[4/3] overflow-hidden bg-secondary/30">
           {!isImageLoaded && (
             <div className="absolute inset-0 bg-muted animate-pulse" />
           )}
@@ -72,7 +72,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
             alt={item.name}
             onLoad={() => setIsImageLoaded(true)}
             className={cn(
-              "w-full h-full object-cover transition-all duration-700 group-hover:scale-105",
+              "w-full h-full object-cover transition-all duration-500 group-hover:scale-105",
               isImageLoaded ? "opacity-100 blur-0" : "opacity-0 blur-sm"
             )}
             loading="lazy"
@@ -82,7 +82,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
           <button
             type="button"
             onClick={toggleFavorite}
-            className="absolute top-2 right-2 p-1.5 sm:p-2 rounded-full bg-background/85 backdrop-blur-md shadow-sm hover:bg-background hover:scale-110 active:scale-95 transition-all z-10 cursor-pointer"
+            className="absolute top-2.5 right-2.5 p-1.5 sm:p-2 rounded-full bg-background/80 hover:bg-background backdrop-blur-md shadow-xs hover:scale-110 active:scale-95 transition-all z-10 cursor-pointer"
             title={isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
             <Heart
@@ -94,38 +94,36 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
           </button>
 
           {/* Top-Left: Trending Rank or Discount Badge */}
-          <div className="absolute top-2 left-2 z-10 flex flex-col gap-1">
+          <div className="absolute top-2.5 left-2.5 z-10 flex flex-col gap-1">
             {trendingRank && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-slate-950 px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-wide shadow-md">
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 text-slate-950 px-2 py-0.5 text-[10px] sm:text-xs font-black uppercase tracking-wide shadow-xs">
                 <TrendingUp className="size-2.5 sm:size-3" />
                 #{trendingRank}
               </span>
             )}
             {discountBadge && !trendingRank && (
-              <span className="inline-flex items-center rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-[10px] sm:text-xs font-bold tracking-tight shadow-md">
+              <span className="inline-flex items-center rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-[10px] sm:text-xs font-bold tracking-tight shadow-xs">
                 {discountBadge}
               </span>
             )}
           </div>
 
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-
           {/* Bottom-Right: Star Rating Badge */}
-          <div className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-md px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-foreground shadow-sm">
+          <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1 rounded-full bg-background/90 backdrop-blur-md px-2 py-0.5 text-[10px] sm:text-xs font-bold text-foreground shadow-xs border border-border/40">
             <Star className="size-2.5 sm:size-3 fill-amber-500 text-amber-500" />
             <span>{item.rating || "4.9"}</span>
           </div>
 
           {/* Bottom-Left: Spicy / Veg Badges */}
-          <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
+          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1">
             {item.spicy && (
-              <span className="flex items-center gap-1 rounded-full bg-red-600/90 text-white px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase shadow-2xs">
+              <span className="flex items-center gap-1 rounded-full bg-red-600/90 backdrop-blur-xs text-white px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase shadow-xs">
                 <Flame className="size-2.5 sm:size-3" />
                 Spicy
               </span>
             )}
             {item.vegetarian && (
-              <span className="flex items-center gap-1 rounded-full bg-emerald-600/90 text-white px-1.5 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase shadow-2xs">
+              <span className="flex items-center gap-1 rounded-full bg-emerald-600/90 backdrop-blur-xs text-white px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase shadow-xs">
                 <Leaf className="size-2.5 sm:size-3" />
                 Veg
               </span>
@@ -134,20 +132,22 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
         </div>
       </Link>
 
-      {/* Card Body & Interactive Add Controls */}
-      <div className="flex flex-1 flex-col p-2.5 sm:p-4 bg-card justify-between border-t border-border/40">
+      {/* Card Body: Name, Description, Price & Action Controls */}
+      <div className="flex flex-1 flex-col p-3 sm:p-4 bg-card justify-between gap-3 border-t border-border/40">
         <div>
           <Link to={`/product/${item.id}`} className="hover:text-primary transition-colors block">
             <h3 className="font-serif text-sm sm:text-base font-bold text-foreground leading-tight line-clamp-1 group-hover:text-primary transition-colors">
               {item.name}
             </h3>
           </Link>
-          <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground line-clamp-1 sm:line-clamp-2 leading-relaxed">
-            {item.description}
-          </p>
+          {item.description && (
+            <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground line-clamp-1 sm:line-clamp-2 leading-relaxed">
+              {item.description}
+            </p>
+          )}
         </div>
 
-        <div className="mt-2.5 sm:mt-3.5 flex items-center justify-between gap-1.5">
+        <div className="flex items-center justify-between gap-1.5 pt-1">
           <div className="flex flex-col shrink-0">
             <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
               Price
@@ -167,7 +167,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
                   if (inCart.qty > 1) decrement(inCart.id);
                   else removeItem(inCart.id);
                 }}
-                className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+                className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
               >
                 <Minus className="size-3" />
               </button>
@@ -181,7 +181,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
                   e.stopPropagation();
                   increment(inCart.id);
                 }}
-                className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0"
+                className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
               >
                 <Plus className="size-3" />
               </button>
@@ -190,7 +190,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
             <Button
               onClick={handleAdd}
               size="sm"
-              className="h-7 sm:h-9 px-2.5 sm:px-3.5 rounded-xl font-bold shadow-xs transition-all active:scale-95 text-[11px] sm:text-xs shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1"
+              className="h-7 sm:h-9 px-3 sm:px-4 rounded-xl font-bold shadow-xs transition-all active:scale-95 text-[11px] sm:text-xs shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 cursor-pointer"
             >
               <Plus className="size-3.5" />
               <span>Add</span>

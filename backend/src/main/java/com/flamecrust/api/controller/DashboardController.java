@@ -45,10 +45,41 @@ public class DashboardController {
 
             // 3. Fast 7-day revenue aggregation
             List<Map<String, Object>> chartPoints = jdbc.queryForList(
-                    "SELECT DATE(created_at) as order_date, COALESCE(SUM(total), 0) as daily_revenue " +
+                    "SELECT DATE(created_at) as order_date, COALESCE(SUM(total), 0) as daily_revenue, COUNT(*) as order_count " +
                     "FROM orders WHERE status != 'CANCELLED' AND created_at >= DATE_SUB(CURDATE(), INTERVAL 7 DAY) " +
                     "GROUP BY DATE(created_at) ORDER BY order_date ASC");
             result.put("chartData", chartPoints);
+
+            // 4. Top Selling Products
+            List<Map<String, Object>> topProducts = jdbc.queryForList(
+                    "SELECT p.name, COUNT(oi.id) as sales, COALESCE(SUM(oi.price * oi.quantity), 0) as revenue " +
+                    "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
+                    "GROUP BY p.id, p.name ORDER BY sales DESC LIMIT 5");
+            result.put("topProducts", topProducts);
+
+            // 5. Sales by Category
+            List<Map<String, Object>> categoryData = jdbc.queryForList(
+                    "SELECT c.name, COUNT(oi.id) as value " +
+                    "FROM order_items oi JOIN products p ON oi.product_id = p.id " +
+                    "JOIN categories c ON p.category_id = c.id " +
+                    "GROUP BY c.id, c.name");
+            result.put("categoryData", categoryData);
+
+            // 6. Recent Reviews
+            List<Map<String, Object>> recentReviews = jdbc.queryForList(
+                    "SELECT r.rating, r.comment, c.name as customer, r.created_at as time " +
+                    "FROM reviews r LEFT JOIN customers c ON r.customer_id = c.id " +
+                    "ORDER BY r.created_at DESC LIMIT 5");
+            result.put("recentReviews", recentReviews);
+
+            // 7. Low Stock Alerts
+            List<Map<String, Object>> lowStock = jdbc.queryForList(
+                    "SELECT p.name as item, i.stock_quantity as current, i.low_stock_threshold as min, " +
+                    "(i.stock_quantity <= i.low_stock_threshold) as critical " +
+                    "FROM inventory i JOIN products p ON i.product_id = p.id " +
+                    "WHERE i.stock_quantity <= i.low_stock_threshold + 20 " +
+                    "ORDER BY i.stock_quantity ASC LIMIT 5");
+            result.put("lowStock", lowStock);
 
         } catch (Exception e) {
             result.put("totalRevenue", BigDecimal.ZERO);
