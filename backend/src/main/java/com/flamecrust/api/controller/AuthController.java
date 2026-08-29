@@ -919,12 +919,23 @@ public class AuthController {
             String cPhone = customer.containsKey("phone") && customer.get("phone") != null ? String.valueOf(customer.get("phone")) : (phone != null ? phone.trim() : "");
             String cEmail = customer.containsKey("email") && customer.get("email") != null ? String.valueOf(customer.get("email")) : (email != null ? email.trim() : "");
 
-            // 1. Fetch only this customer's orders (last 50)
+            // 1. Fetch only this customer's orders (last 50) and embed order items
             List<Map<String, Object>> orders = List.of();
             try {
                 orders = jdbc.queryForList(
                         "SELECT * FROM orders WHERE customer_id = ? OR (customer_phone IS NOT NULL AND customer_phone != '' AND customer_phone = ?) OR (customer_email IS NOT NULL AND customer_email != '' AND customer_email = ?) ORDER BY id DESC LIMIT 50",
                         cid, cPhone, cEmail);
+                if (!orders.isEmpty()) {
+                    for (Map<String, Object> orderMap : orders) {
+                        Object orderIdObj = orderMap.get("id");
+                        if (orderIdObj != null) {
+                            try {
+                                List<Map<String, Object>> items = jdbc.queryForList("SELECT * FROM order_items WHERE order_id = ?", orderIdObj);
+                                orderMap.put("items", items);
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
             } catch (Exception ignored) {}
 
             // 2. Fetch only this customer's addresses

@@ -272,6 +272,12 @@ export default function ProfilePage() {
       setCoupons(activeCoupons);
       setHasPassword(isPwdSet);
 
+      try {
+        const fetchedItems = await list("order_items").catch(() => []);
+        const itemsArr = Array.isArray(fetchedItems) ? fetchedItems : (fetchedItems?.items || fetchedItems?.content || []);
+        if (itemsArr.length > 0) setAllOrderItems(itemsArr);
+      } catch (e) {}
+
       profileMemoryCache = {
         ...profileMemoryCache,
         orders: userOrders,
@@ -318,6 +324,20 @@ export default function ProfilePage() {
     window.addEventListener("favoritesChanged", handleFavChange);
     return () => window.removeEventListener("favoritesChanged", handleFavChange);
   }, [navigate]);
+
+  useEffect(() => {
+    if (selectedOrderDetails) {
+      const orderIdStr = String(selectedOrderDetails.id);
+      const hasEmbedded = selectedOrderDetails.items && Array.isArray(selectedOrderDetails.items) && selectedOrderDetails.items.length > 0;
+      const hasFiltered = allOrderItems.some(item => String(item.order_id || item.orderId) === orderIdStr);
+      if (!hasEmbedded && !hasFiltered) {
+        list("order_items").then(items => {
+          const itemsArr = Array.isArray(items) ? items : (items?.items || items?.content || []);
+          if (itemsArr.length > 0) setAllOrderItems(itemsArr);
+        }).catch(() => {});
+      }
+    }
+  }, [selectedOrderDetails]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -1834,29 +1854,42 @@ export default function ProfilePage() {
                   </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 max-h-[60vh] overflow-y-auto custom-scrollbar pr-2 mt-4">
-                  {selectedOrderDetails && allOrderItems
-                    .filter(item => String(item.order_id) === String(selectedOrderDetails.id))
-                    .map(item => {
-                      const foodItem = allProducts.find(f => String(f.id) === String(item.product_id) || f.name === item.product_name) || {};
+                  {(() => {
+                    const itemsList = (selectedOrderDetails?.items && Array.isArray(selectedOrderDetails.items) && selectedOrderDetails.items.length > 0)
+                      ? selectedOrderDetails.items
+                      : (selectedOrderDetails?.order_items && Array.isArray(selectedOrderDetails.order_items) && selectedOrderDetails.order_items.length > 0)
+                        ? selectedOrderDetails.order_items
+                        : allOrderItems.filter(item => String(item.order_id || item.orderId) === String(selectedOrderDetails?.id));
+
+                    if (!itemsList || itemsList.length === 0) {
+                      return <div className="text-center py-6 text-muted-foreground">No items found for this order.</div>;
+                    }
+
+                    return itemsList.map((item, idx) => {
+                      const foodItem = allProducts.find(f => String(f.id) === String(item.product_id || item.productId) || f.name === (item.product_name || item.productName)) || {};
+                      const pName = item.product_name || item.productName || foodItem.name || "Item";
+                      const pQty = item.quantity || 1;
+                      const pTotal = Number(item.line_total || item.lineTotal || (item.unit_price || item.unitPrice || 0) * pQty).toFixed(2);
+
                       return (
-                        <div key={item.id} className="flex justify-between items-center text-sm gap-3 p-3 bg-secondary/30 rounded-xl border border-border/40">
+                        <div key={item.id || `${item.product_id}-${idx}`} className="flex justify-between items-center text-sm gap-3 p-3 bg-secondary/30 rounded-xl border border-border/40">
                           <div className="flex items-center gap-3">
                             <div className="size-12 bg-secondary rounded-lg overflow-hidden shrink-0 border border-border/50 flex items-center justify-center">
                               {foodItem.image ? (
-                                <img src={foodItem.image} alt={item.product_name} className="w-full h-full object-cover" />
+                                <img src={foodItem.image} alt={pName} className="w-full h-full object-cover" />
                               ) : (
                                 <ShoppingBag className="size-5 text-primary/60" />
                               )}
                             </div>
                             <div className="flex flex-col">
                               <span className="font-semibold text-foreground">
-                                {item.quantity}x {item.product_name}
+                                {pQty}x {pName}
                               </span>
                               {item.options && (
                                 <span className="text-xs text-muted-foreground">
                                   {(() => {
                                     try {
-                                      return Object.values(JSON.parse(item.options)).join(", ");
+                                      return Object.values(typeof item.options === "string" ? JSON.parse(item.options) : item.options).join(", ");
                                     } catch(e) {
                                       return String(item.options);
                                     }
@@ -1865,13 +1898,11 @@ export default function ProfilePage() {
                               )}
                             </div>
                           </div>
-                          <span className="font-bold">${Number(item.line_total).toFixed(2)}</span>
+                          <span className="font-bold">${pTotal}</span>
                         </div>
                       );
-                    })}
-                  {selectedOrderDetails && allOrderItems.filter(item => String(item.order_id) === String(selectedOrderDetails.id)).length === 0 && (
-                    <div className="text-center py-6 text-muted-foreground">No items found for this order.</div>
-                  )}
+                    });
+                  })()}
                 </div>
                 <div className="pt-4 border-t border-border/60 space-y-2 text-sm mt-4">
                   <div className="flex justify-between text-muted-foreground">
