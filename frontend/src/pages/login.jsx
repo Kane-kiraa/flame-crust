@@ -271,25 +271,29 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/auth/customer-register`, {
+      const response = await fetch(`${API_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: name.trim(),
-          email: email.trim(),
-          phone: phone.trim(),
-          password: password
-        }),
+        body: JSON.stringify({ email: email.trim() }),
       });
 
-      const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "Registration failed.");
+        if (response.status === 429) {
+          const lockUntil = new Date().getTime() + 60000;
+          localStorage.setItem("otpLockTime", lockUntil.toString());
+          setOtpLockTime(lockUntil);
+          throw new Error("Too many attempts. Please wait 60 seconds.");
+        }
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || "Failed to send verification code.");
       }
 
-      finishLoginAndRedirect(data.customer, data.token);
+      const data = await response.json().catch(() => ({}));
+      toast.success("Verification code sent to " + email);
+      // Use OTP_VERIFY_SIGNUP to distinguish from normal passwordless OTP
+      setStep("OTP_VERIFY_SIGNUP");
     } catch (err) {
-      toast.error(err.message || "Failed to create account.");
+      toast.error(err.message || "Failed to send code.");
     } finally {
       setLoading(false);
     }
@@ -327,13 +331,7 @@ export default function LoginPage() {
       }
 
       const data = await response.json().catch(() => ({}));
-      if (data.dev_otp) {
-        setDevOtp(data.dev_otp);
-        toast.success(`Verification code generated! (Code: ${data.dev_otp})`, { duration: 10000 });
-      } else {
-        setDevOtp("");
-        toast.success("Verification code sent to " + email);
-      }
+      toast.success("Verification code sent to " + email);
       setStep("OTP_VERIFY");
     } catch (err) {
       toast.error(err.message || "Failed to send code.");
@@ -342,30 +340,53 @@ export default function LoginPage() {
     }
   };
 
-  const handleVerifyOTP = async (e) => {
+  const handleVerifyOTP = async (e, isSignup = false) => {
     e.preventDefault();
     if (otp.length < 6) {
       toast.error("Please enter the 6-digit code.");
       return;
     }
     setLoading(true);
+
     try {
-      const response = await fetch(`${API_URL}/auth/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
-      });
+      if (isSignup) {
+        // Submit full registration with OTP
+        const response = await fetch(`${API_URL}/auth/customer-register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: name.trim(),
+            email: email.trim(),
+            phone: phone.trim(),
+            password: password,
+            otp: otp.trim()
+          }),
+        });
 
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.error || "Invalid OTP code");
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Invalid code or registration failed.");
+        }
+
+        toast.success("Account created successfully!");
+        finishLoginAndRedirect(data.customer, data.token);
+      } else {
+        // Normal passwordless login
+        const response = await fetch(`${API_URL}/auth/verify-otp`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email.trim(), otp: otp.trim() }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || "Invalid or expired code.");
+        }
+
+        checkProfileAndRedirect(data.customer, data.token);
       }
-
-      const data = await response.json();
-      const customer = data.customer;
-      checkProfileAndRedirect(customer, data.token);
     } catch (err) {
-      toast.error(err.message || "Failed to verify code");
+      toast.error(err.message || "Verification failed.");
     } finally {
       setLoading(false);
     }
@@ -876,7 +897,7 @@ export default function LoginPage() {
               )}
 
               {/* STEP 2: OTP VERIFICATION */}
-              {step === "OTP_VERIFY" && (
+              {(step === "OTP_VERIFY" || step === "OTP_VERIFY_SIGNUP") && (
                 <div className="py-1">
                   <div className="text-center mb-5">
                     <h1 className="font-serif text-2xl font-bold text-foreground">
@@ -890,7 +911,7 @@ export default function LoginPage() {
                   <motion.form
                     initial={{ opacity: 0, scale: 0.96 }}
                     animate={{ opacity: 1, scale: 1 }}
-                    onSubmit={handleVerifyOTP}
+                    onSubmit={(e) => handleVerifyOTP(e, step === "OTP_VERIFY_SIGNUP")}
                     className="space-y-4"
                   >
                     <div className="space-y-2">
@@ -907,19 +928,6 @@ export default function LoginPage() {
                         />
                       </div>
                     </div>
-
-                    {devOtp && (
-                      <div 
-                        onClick={() => setOtp(devOtp)}
-                        className="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-center justify-between text-xs cursor-pointer hover:bg-amber-500/20 transition-all text-amber-700 dark:text-amber-300 font-semibold"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="size-2 rounded-full bg-amber-500 animate-ping" />
-                          <span>Code: <strong className="font-mono text-sm tracking-wider">{devOtp}</strong></span>
-                        </div>
-                        <span className="text-[11px] underline font-bold">Auto fill</span>
-                      </div>
-                    )}
 
                     <Button
                       type="submit"

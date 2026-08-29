@@ -1,0 +1,132 @@
+import { LineChart, BarChart, Clock, CheckCircle2, TrendingUp, AlertTriangle } from "lucide-react";
+
+export function PerformanceView({ orders = [] }) {
+  // Calculate real performance metrics
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+
+  const todaysOrders = orders.filter(o => new Date(o.created_at) >= todayStart);
+  const completedToday = todaysOrders.filter(o => ['READY', 'COMPLETED', 'DELIVERED'].includes(o.status));
+  const delayedOrders = todaysOrders.filter(o => o.status === 'PENDING' && (new Date() - new Date(o.created_at)) > 15 * 60 * 1000); // Pending > 15 mins
+
+  // Avg Prep Time (difference between created_at and updated_at for READY orders)
+  let totalPrepSeconds = 0;
+  let validPrepOrders = 0;
+  completedToday.forEach(o => {
+    if (o.created_at && o.updated_at) {
+       const diff = Math.floor((new Date(o.updated_at) - new Date(o.created_at)) / 1000);
+       if (diff > 0 && diff < 3600) { // sanity check: less than 1 hour prep time
+         totalPrepSeconds += diff;
+         validPrepOrders++;
+       }
+    }
+  });
+
+  const avgPrepMins = validPrepOrders > 0 ? Math.floor((totalPrepSeconds / validPrepOrders) / 60) : 0;
+  const avgPrepSecs = validPrepOrders > 0 ? Math.floor((totalPrepSeconds / validPrepOrders) % 60) : 0;
+
+  // Orders per hour (since start of day)
+  const currentHour = new Date().getHours() || 1;
+  const ordersPerHour = Math.round(todaysOrders.length / (currentHour - todayStart.getHours() || 1));
+
+  // Dynamic week graph (simplified to last 7 days count)
+  const weekData = Array(7).fill(0);
+  orders.forEach(o => {
+    const d = new Date(o.created_at);
+    const dayIndex = (d.getDay() + 6) % 7; // Monday = 0
+    if ((new Date() - d) < 7 * 24 * 60 * 60 * 1000) {
+      weekData[dayIndex]++;
+    }
+  });
+  const maxDay = Math.max(...weekData, 1);
+  const weekPercentages = weekData.map(v => Math.round((v / maxDay) * 100));
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden">
+      <div className="mb-6 shrink-0">
+        <h2 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+          <LineChart className="size-6 text-purple-500" /> Kitchen Performance Analytics
+        </h2>
+        <p className="text-sm font-bold text-slate-500 dark:text-zinc-400 mt-1">Monitor efficiency, speed, and overall kitchen rating</p>
+      </div>
+
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard title="Orders Completed" value={completedToday.length} icon={CheckCircle2} color="green" />
+          <StatCard title="Avg Prep Time" value={`${avgPrepMins}m ${avgPrepSecs}s`} icon={Clock} color="blue" />
+          <StatCard title="Orders per Hour" value={ordersPerHour} icon={TrendingUp} color="orange" />
+          <StatCard title="Delayed Orders" value={delayedOrders.length} icon={AlertTriangle} color="red" />
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm">
+            <h3 className="font-black text-slate-900 dark:text-white mb-6">Completion Rate vs Goal</h3>
+            <div className="h-64 flex items-end justify-between gap-2">
+              {weekPercentages.map((val, i) => (
+                <div key={i} className="w-full bg-slate-100 dark:bg-zinc-800 rounded-t-xl relative group">
+                  <div 
+                    className="absolute bottom-0 left-0 right-0 bg-blue-500 rounded-t-xl transition-all duration-1000" 
+                    style={{ height: `${val}%` }}
+                  />
+                  <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">{val}%</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-between mt-4 text-[10px] font-bold text-slate-400 uppercase">
+              <span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-zinc-900 rounded-3xl p-6 border border-slate-200 dark:border-white/5 shadow-sm flex flex-col justify-between">
+            <div>
+              <h3 className="font-black text-slate-900 dark:text-white mb-2">Customer Rating</h3>
+              <p className="text-sm font-bold text-slate-500">Based on food quality and prep time</p>
+            </div>
+            <div className="flex items-center justify-center py-10">
+              <div className="relative size-48 rounded-full border-[16px] border-slate-100 dark:border-zinc-800 flex items-center justify-center overflow-hidden">
+                <svg className="absolute inset-0 size-full -rotate-90">
+                  <circle cx="96" cy="96" r="80" fill="none" stroke="currentColor" strokeWidth="16" className="text-orange-500" strokeDasharray="502" strokeDashoffset="25" strokeLinecap="round" />
+                </svg>
+                <div className="text-center">
+                  <span className="text-5xl font-black text-slate-900 dark:text-white block">4.9</span>
+                  <span className="text-sm font-bold text-orange-500">★★★★★</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex justify-center gap-6">
+              <div className="text-center">
+                <div className="text-xl font-black text-slate-900 dark:text-white">98%</div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase">Positive</div>
+              </div>
+              <div className="text-center">
+                <div className="text-xl font-black text-slate-900 dark:text-white">2%</div>
+                <div className="text-[10px] font-bold text-slate-500 uppercase">Negative</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ title, value, icon: Icon, color }) {
+  const colorMap = {
+    blue: "text-blue-500 bg-blue-50 dark:bg-blue-500/10 dark:text-blue-400 border-blue-100 dark:border-blue-500/20",
+    orange: "text-orange-500 bg-orange-50 dark:bg-orange-500/10 dark:text-orange-400 border-orange-100 dark:border-orange-500/20",
+    green: "text-green-600 bg-green-50 dark:bg-green-500/10 dark:text-green-400 border-green-100 dark:border-green-500/20",
+    red: "text-red-500 bg-red-50 dark:bg-red-500/10 dark:text-red-400 border-red-100 dark:border-red-500/20",
+  };
+
+  return (
+    <div className="bg-white dark:bg-zinc-900 p-5 rounded-2xl border border-slate-200 dark:border-white/5 shadow-sm">
+      <div className="flex items-center gap-3 mb-3">
+        <div className={`p-2 rounded-xl border ${colorMap[color]}`}>
+          <Icon className="size-5" />
+        </div>
+        <span className="text-xs font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider leading-tight">{title}</span>
+      </div>
+      <div className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">{value}</div>
+    </div>
+  );
+}
