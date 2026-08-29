@@ -6,6 +6,7 @@ import { Plus, Minus, Star, Flame, Leaf, Check, Heart, TrendingUp } from "lucide
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
 import { cn, formatPrice } from "@/lib/utils";
+import { getOptimizedImageUrl } from "@/lib/cloudinary";
 
 export function FoodCard({ item, index = 0, trendingRank = null }) {
   const addItem = useCart((s) => s.addItem);
@@ -68,7 +69,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
             <div className="absolute inset-0 bg-muted animate-pulse" />
           )}
           <img
-            src={item.image}
+            src={getOptimizedImageUrl(item.image)}
             alt={item.name}
             onLoad={() => setIsImageLoaded(true)}
             className={cn(
@@ -115,7 +116,7 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
           </div>
 
           {/* Bottom-Left: Spicy / Veg Badges */}
-          <div className="absolute bottom-2.5 left-2.5 flex items-center gap-1">
+          <div className="absolute bottom-2.5 left-2.5 flex flex-wrap items-center gap-1 pr-12">
             {item.spicy && (
               <span className="flex items-center gap-1 rounded-full bg-red-600/90 backdrop-blur-xs text-white px-2 py-0.5 text-[9px] sm:text-[10px] font-bold uppercase shadow-xs">
                 <Flame className="size-2.5 sm:size-3" />
