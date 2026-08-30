@@ -925,7 +925,6 @@ export function PaymentForm({
                   </>
                 ) : (
                   <>
-                    <CheckCircle2 className="size-4 mr-1.5" /> ខ្ញុំបានទូទាត់រួចរាល់ (Paid ✓)
                   </>
                 )}
               </Button>

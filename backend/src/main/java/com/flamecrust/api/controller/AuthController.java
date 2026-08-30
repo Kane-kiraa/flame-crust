@@ -80,13 +80,13 @@ public class AuthController {
         boolean emailSent = emailService.sendOtpEmail(email, otp);
 
         Map<String, Object> resp = new HashMap<>();
-        resp.put("message", "OTP generated successfully");
-        resp.put("emailSent", emailSent);
-        // Include OTP in response for development/testing convenience
-        resp.put("otp", otp);
         if (!emailSent) {
-            resp.put("warning", "Failed to send verification email. OTP is provided in the response for testing.");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to send verification email. Please try again later."));
         }
+
+        resp.put("message", "OTP generated successfully");
+        resp.put("emailSent", true);
 
         return ResponseEntity.ok(resp);
     }

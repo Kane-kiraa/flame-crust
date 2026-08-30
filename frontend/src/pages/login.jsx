@@ -290,10 +290,6 @@ export default function LoginPage() {
 
       const data = await response.json().catch(() => ({}));
       toast.success("Verification code sent to " + email);
-      if (data.otp) {
-        setOtp(data.otp);
-        toast.info("DEV MODE: OTP Auto-filled!");
-      }
       // Use OTP_VERIFY_SIGNUP to distinguish from normal passwordless OTP
       setStep("OTP_VERIFY_SIGNUP");
     } catch (err) {
@@ -336,10 +332,6 @@ export default function LoginPage() {
 
       const data = await response.json().catch(() => ({}));
       toast.success("Verification code sent to " + email);
-      if (data.otp) {
-        setOtp(data.otp);
-        toast.info("DEV MODE: OTP Auto-filled!");
-      }
       setStep("OTP_VERIFY");
     } catch (err) {
       toast.error(err.message || "Failed to send code.");
