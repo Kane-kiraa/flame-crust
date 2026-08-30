@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { InputOTP, InputOTPGroup, InputOTPSlot, InputOTPSeparator } from "@/components/ui/input-otp";
 import { Navbar } from "@/components/food/navbar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { toast } from "sonner";
@@ -914,19 +915,20 @@ export default function LoginPage() {
                     onSubmit={(e) => handleVerifyOTP(e, step === "OTP_VERIFY_SIGNUP")}
                     className="space-y-4"
                   >
-                    <div className="space-y-2">
-                      <div className="relative">
-                        <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-                        <Input
-                          type="text"
-                          maxLength={6}
-                          autoFocus
-                          value={otp}
-                          onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-                          placeholder="000000"
-                          className="pl-10 h-12 rounded-xl text-xl tracking-[0.35em] font-mono text-center bg-secondary/30 border-border/60 focus-visible:ring-primary/40 font-bold"
-                        />
-                      </div>
+                    <div className="space-y-2 flex justify-center pb-2">
+                      <InputOTP maxLength={6} autoFocus value={otp} onChange={(val) => setOtp(val)}>
+                        <InputOTPGroup>
+                          <InputOTPSlot index={0} className="w-10 h-12 sm:w-12 sm:h-14 text-xl font-bold bg-secondary/30" />
+                          <InputOTPSlot index={1} className="w-10 h-12 sm:w-12 sm:h-14 text-xl font-bold bg-secondary/30" />
+                          <InputOTPSlot index={2} className="w-10 h-12 sm:w-12 sm:h-14 text-xl font-bold bg-secondary/30" />
+                        </InputOTPGroup>
+                        <InputOTPSeparator />
+                        <InputOTPGroup>
+                          <InputOTPSlot index={3} className="w-10 h-12 sm:w-12 sm:h-14 text-xl font-bold bg-secondary/30" />
+                          <InputOTPSlot index={4} className="w-10 h-12 sm:w-12 sm:h-14 text-xl font-bold bg-secondary/30" />
+                          <InputOTPSlot index={5} className="w-10 h-12 sm:w-12 sm:h-14 text-xl font-bold bg-secondary/30" />
+                        </InputOTPGroup>
+                      </InputOTP>
                     </div>
 
                     <Button
