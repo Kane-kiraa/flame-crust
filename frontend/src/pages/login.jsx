@@ -291,6 +291,10 @@ export default function LoginPage() {
 
       const data = await response.json().catch(() => ({}));
       toast.success("Verification code sent to " + email);
+      if (data.devOtp) {
+        toast.info("Test Mode OTP: " + data.devOtp, { duration: 8000 });
+        setOtp(data.devOtp);
+      }
       // Use OTP_VERIFY_SIGNUP to distinguish from normal passwordless OTP
       setStep("OTP_VERIFY_SIGNUP");
     } catch (err) {
@@ -333,6 +337,10 @@ export default function LoginPage() {
 
       const data = await response.json().catch(() => ({}));
       toast.success("Verification code sent to " + email);
+      if (data.devOtp) {
+        toast.info("Test Mode OTP: " + data.devOtp, { duration: 8000 });
+        setOtp(data.devOtp);
+      }
       setStep("OTP_VERIFY");
     } catch (err) {
       toast.error(err.message || "Failed to send code.");
