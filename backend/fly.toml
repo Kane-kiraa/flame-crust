@@ -1,6 +1,9 @@
 app = 'backend-flame'
 primary_region = 'sin'
 
+# បែងចែក Swap Memory 512MB (ឬ 1024 សម្រាប់ 1GB)
+swap_size_mb = 512
+
 [build]
 
 [http_service]
