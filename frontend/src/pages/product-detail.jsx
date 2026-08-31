@@ -20,7 +20,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
-import { CartDrawer } from "@/components/food/cart-drawer";
 import { FoodCard } from "@/components/food/food-card";
 import { DetailSkeleton } from "@/components/shared/loading-skeleton";
 import { ErrorState } from "@/components/shared/error-state";
@@ -126,6 +125,11 @@ function ProductDetailPage() {
 
         const productReviews = allReviews.filter(r => String(r.product_id) === String(id) && r.status === 'APPROVED');
         setReviews(productReviews.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)));
+
+        // Record product view asynchronously
+        import("@/lib/api").then(api => {
+          api.recordProductView(id).catch(e => console.warn("Failed to record view", e));
+        });
 
         setLoading(false);
       } catch (err) {

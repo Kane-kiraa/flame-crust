@@ -43,4 +43,13 @@ public class ProductController {
                     .toList());
         }
     }
+
+    @org.springframework.web.bind.annotation.PostMapping("/{id}/view")
+    public ResponseEntity<?> recordView(@PathVariable Long id) {
+        return products.findById(id).map(product -> {
+            product.setViewCount(product.getViewCount() + 1);
+            products.save(product);
+            return ResponseEntity.ok(java.util.Map.of("success", true, "viewCount", product.getViewCount()));
+        }).orElse(ResponseEntity.notFound().build());
+    }
 }

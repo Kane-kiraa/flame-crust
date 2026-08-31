@@ -2,11 +2,14 @@ import { X, Phone, MessageCircle, Clock, ShoppingBag, MapPin, ChefHat, CheckCirc
 import { Button } from "@/components/ui/button";
 import { getImageUrl } from "@/lib/food-api";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
+import { OrderChatModal } from "@/components/food/order-chat-modal";
 
 export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
   if (!order) return null;
 
   const customer = customers.find(c => String(c.id) === String(order.customer_id)) || null;
+  const [chatOpen, setChatOpen] = useState(false);
 
   return (
     <div className="fixed inset-0 z-[100] flex justify-end">
@@ -75,10 +78,13 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
             </div>
             {customer && (
               <div className="flex items-center gap-2">
-                <a href={`mailto:${customer.email}`} className="flex items-center justify-center rounded-xl h-10 w-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+                <a href={`mailto:${customer.email}`} className="flex items-center justify-center rounded-xl h-10 w-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700" title="Email">
                   <MessageCircle className="size-4" />
                 </a>
-                <a href={`tel:${customer.phone}`} className="flex items-center justify-center rounded-xl h-10 w-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700">
+                <button onClick={() => setChatOpen(true)} className="flex items-center justify-center rounded-xl h-10 px-4 bg-orange-500 text-white font-bold hover:bg-orange-600 transition-colors" title="Chat with Customer">
+                  <MessageCircle className="size-4 mr-2" /> Chat
+                </button>
+                <a href={`tel:${customer.phone}`} className="flex items-center justify-center rounded-xl h-10 w-10 border border-slate-200 dark:border-white/10 dark:bg-zinc-800 dark:hover:bg-zinc-700" title="Call">
                   <Phone className="size-4" />
                 </a>
               </div>
@@ -160,6 +166,20 @@ export function OrderDetailsPanel({ order, onClose, user, customers = [] }) {
         </div>
 
       </div>
+      
+      {/* Kitchen to Customer Chat Modal */}
+      <OrderChatModal
+        open={chatOpen}
+        onOpenChange={setChatOpen}
+        orderId={order.id}
+        orderNumber={order.order_number || order.id}
+        currentUser={{ type: "KITCHEN", name: user?.name || "Chef" }}
+        recipient={{
+          name: customer?.name || order.customer_name || "Customer",
+          role: "Customer",
+          photo: customer?.avatar || ""
+        }}
+      />
     </div>
   );
 }

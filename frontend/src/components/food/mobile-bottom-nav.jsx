@@ -71,6 +71,7 @@ export function MobileBottomNav() {
       id: "food",
       label: "Food",
       to: "/",
+      replace: true,
       isActive: isHome,
       icon: UtensilsCrossed,
     },
@@ -78,6 +79,7 @@ export function MobileBottomNav() {
       id: "menu",
       label: "Menu",
       to: "/menu",
+      replace: true,
       isActive: isMenu,
       icon: Store,
     },
@@ -95,6 +97,7 @@ export function MobileBottomNav() {
       id: "cart",
       label: "Cart",
       to: "/cart",
+      replace: true,
       isActive: isCart,
       icon: ShoppingBag,
       badge: count,
@@ -103,6 +106,7 @@ export function MobileBottomNav() {
       id: "account",
       label: customer ? "Account" : (adminUser ? "Admin" : "Account"),
       to: customer ? "/profile" : (adminUser ? "/admin/dashboard" : "/login"),
+      replace: true,
       isActive: isProfile || (Boolean(adminUser) && location.pathname.startsWith("/admin")),
       icon: adminUser && !customer ? ShieldCheck : User,
       avatar: customer?.avatar,
@@ -193,6 +197,7 @@ export function MobileBottomNav() {
                 <Link
                   key={item.id}
                   to={item.to}
+                  replace={item.replace || false}
                   onClick={handleTabClick}
                   className="w-full flex items-center justify-center focus:outline-none touch-manipulation cursor-pointer active:scale-95 transition-transform duration-100"
                 >

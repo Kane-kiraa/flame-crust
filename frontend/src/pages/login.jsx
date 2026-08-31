@@ -272,6 +272,21 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
+      const checkRes = await fetch(`${API_URL}/auth/check-email`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim() }),
+      });
+      if (checkRes.ok) {
+        const checkData = await checkRes.json().catch(() => ({}));
+        if (checkData.exists) {
+          toast.error("គណនីនេះធ្លាប់បង្កើតរួចហើយ! This account already exists. Please sign in.");
+          setAuthMode("LOGIN");
+          setPassword("");
+          return;
+        }
+      }
+
       const response = await fetch(`${API_URL}/auth/send-otp`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },

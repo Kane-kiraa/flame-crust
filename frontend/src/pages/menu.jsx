@@ -6,7 +6,6 @@ import { categoryMeta, categoryOrder as defaultCategoryOrder } from "@/lib/food-
 import { fetchFoodItems, fetchCategories, getCachedFoodItems, getCachedCategories } from "@/lib/food-api";
 import { Navbar } from "@/components/food/navbar";
 import { FoodCard } from "@/components/food/food-card";
-import { CartDrawer } from "@/components/food/cart-drawer";
 import { SearchInput } from "@/components/shared/search-input";
 import { ArcCategoryNav } from "@/components/food/arc-category-nav";
 import { CardGridSkeleton } from "@/components/shared/loading-skeleton";
@@ -16,14 +15,27 @@ import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-import { Flame, Sparkles, Filter, Check, Star, Leaf, LayoutGrid } from "lucide-react";
+import { Flame, Sparkles, Filter, Check, Star, Leaf, LayoutGrid, TrendingUp } from "lucide-react";
 
-const FoodGrid = ({ items }) => {
+const FoodGrid = ({ items, topProducts = [] }) => {
   return (
     <div className="mt-5 sm:mt-8 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
-      {items.map((item, idx) => (
-        <FoodCard key={item.id} item={item} index={idx} />
-      ))}
+      {items.map((item, idx) => {
+        const topIndex = topProducts.findIndex((p) => p.id === item.id);
+        const isTop = topIndex !== -1;
+
+        return (
+          <div key={item.id} className="relative">
+            {isTop && (
+              <div className="absolute top-3 left-3 z-20 flex items-center gap-1 bg-[#ff9800] text-black rounded-full font-black shadow-md border-2 border-[#ff9800] px-2 py-0.5 text-xs sm:text-sm">
+                <TrendingUp className="size-3.5 sm:size-4 stroke-[3]" />
+                <span>#{topIndex + 1}</span>
+              </div>
+            )}
+            <FoodCard item={item} index={idx} />
+          </div>
+        );
+      })}
     </div>
   );
 };
@@ -110,6 +122,18 @@ function MenuPage() {
     return items;
   }, [allItems, active, search, dietaryFilter]);
 
+  const topProducts = useMemo(() => {
+    return [...allItems]
+      .filter((i) => (i.viewCount && i.viewCount > 0) || (i.view_count && i.view_count > 0) || (i.salesCount && i.salesCount > 0) || (i.sales_count && i.sales_count > 0) || i.popular)
+      .sort((a, b) => {
+        // Trending score prioritizes purchases (sales) heavily over just views
+        const scoreA = (a.salesCount || a.sales_count || 0) * 5 + (a.viewCount || a.view_count || 0) * 1;
+        const scoreB = (b.salesCount || b.sales_count || 0) * 5 + (b.viewCount || b.view_count || 0) * 1;
+        return scoreB - scoreA;
+      })
+      .slice(0, 4);
+  }, [allItems]);
+
   const visibleItems = useMemo(() => {
     if (active !== "all" && dietaryFilter === "all" && !search.trim()) {
       return filteredItems;
@@ -179,6 +203,7 @@ function MenuPage() {
                   className="w-full shadow-xs"
                 />
               </div>
+
 
               {/* Curved / Arched Dome Category Selector */}
               <div className="mt-2 sm:mt-5">
@@ -271,7 +296,10 @@ function MenuPage() {
                   </div>
                 ) : (
                   <>
-                    <FoodGrid items={visibleItems} />
+                    <FoodGrid 
+                      items={visibleItems} 
+                      topProducts={active === "all" && !search.trim() && dietaryFilter === "all" ? topProducts : []} 
+                    />
 
                     {active === "all" && dietaryFilter === "all" && !search.trim() && visibleCount < filteredItems.length && (
                       <div className="mt-10 sm:mt-12 text-center flex flex-col items-center gap-3">

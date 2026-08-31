@@ -27,7 +27,7 @@ import { Navbar } from "@/components/food/navbar";
 import { PageTransition } from "@/components/shared/page-transition";
 import { OrderChatModal, showChatNotificationToast } from "@/components/food/order-chat-modal";
 import { FloatingChatHead } from "@/components/food/floating-chat-head";
-import { list, get, getOrderMessages } from "@/lib/api";
+import { list, get, update, getOrderMessages } from "@/lib/api";
 import { cn, formatDate } from "@/lib/utils";
 import { getImageUrl } from "@/lib/food-api";
 import { useTheme } from "@/components/theme-provider.jsx";
@@ -156,7 +156,11 @@ export default function OrderTrackingPage() {
   const [error, setError] = useState(null);
   const [copied, setCopied] = useState(false);
   const [recenterCounter, setRecenterCounter] = useState(0);
+  const [mapInstance, setMapInstance] = useState(null);
+  
+  // Chat state
   const [chatOpen, setChatOpen] = useState(false);
+  const [chatRecipientType, setChatRecipientType] = useState("DRIVER");
   const [unreadCount, setUnreadCount] = useState(0);
   const [lastMsgText, setLastMsgText] = useState("");
   const [chatHeadDismissed, setChatHeadDismissed] = useState(false);
@@ -204,6 +208,22 @@ export default function OrderTrackingPage() {
   const [roadDistanceKm, setRoadDistanceKm] = useState(2.2);
 
   const confettiRef = useRef(false);
+  const [cancelling, setCancelling] = useState(false);
+
+  const handleCancelOrder = async () => {
+    if (!window.confirm("តើអ្នកពិតជាចង់លុបចោលការបញ្ជាទិញនេះមែនទេ? (Are you sure you want to cancel this order?)")) return;
+    
+    setCancelling(true);
+    try {
+      await update("orders", order.id, { status: "CANCELLED" });
+      setOrder({ ...order, status: "CANCELLED" });
+      toast.success("បានលុបចោលជោគជ័យ (Order cancelled)");
+    } catch (err) {
+      toast.error("មិនអាចលុបចោលបានទេ (Failed to cancel)");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   const fetchOrderData = async () => {
     try {
@@ -463,7 +483,7 @@ export default function OrderTrackingPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => navigate(-1)}
+                  onClick={() => navigate("/")}
                   className="rounded-full text-foreground/75 hover:text-foreground -ml-2 flex items-center gap-1.5 text-xs sm:text-sm font-semibold h-8"
                 >
                   <ArrowLeft className="size-4" />
@@ -742,6 +762,7 @@ export default function OrderTrackingPage() {
                             <button
                               type="button"
                               onClick={() => {
+                                setChatRecipientType("DRIVER");
                                 setChatOpen(true);
                                 setUnreadCount(0);
                               }}
@@ -766,12 +787,35 @@ export default function OrderTrackingPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className="px-4 py-3 bg-secondary/15 border-t border-border/40 text-center text-xs text-muted-foreground">
-                          {order.status === "READY" 
-                            ? "Waiting for courier to accept & pick up delivery..." 
-                            : (order.status === "ON_DELIVERY" || order.status === "OUT_FOR_DELIVERY")
-                              ? "Courier is on the way to your delivery address 🛵"
-                              : "Kitchen is preparing your order with fresh ingredients 🍕"}
+                        <div className="px-4 py-3 bg-secondary/15 border-t border-border/40 flex flex-col items-center justify-center gap-2">
+                          <span className="text-xs text-muted-foreground text-center">
+                            {order.status === "READY" 
+                              ? "Waiting for courier to accept & pick up delivery..." 
+                              : (order.status === "ON_DELIVERY" || order.status === "OUT_FOR_DELIVERY")
+                                ? "Courier is on the way to your delivery address 🛵"
+                                : "Kitchen is preparing your order with fresh ingredients 🍕"}
+                          </span>
+                          
+                          {(order.status === "CONFIRMED" || order.status === "PREPARING" || order.status === "READY") && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setChatRecipientType("KITCHEN");
+                                setChatOpen(true);
+                                setUnreadCount(0);
+                              }}
+                              className="relative flex items-center justify-center gap-1.5 bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs px-4 py-2 rounded-full border border-primary/20 shadow-xs transition-all active:scale-95 cursor-pointer mt-1"
+                              title="Chat with Chef"
+                            >
+                              <MessageSquare className="size-3.5" />
+                              <span>Chat with Chef</span>
+                              {unreadCount > 0 && (
+                                <span className="absolute -top-1.5 -right-1.5 size-4 bg-red-500 text-white rounded-full text-[9px] font-black flex items-center justify-center shadow-md">
+                                  {unreadCount}
+                                </span>
+                              )}
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>
@@ -855,6 +899,30 @@ export default function OrderTrackingPage() {
                           <span className="text-primary font-serif">${Number(order.total || 0).toFixed(2)}</span>
                         </div>
                       </div>
+                      
+                      {order.status === "PENDING" && (
+                        <div className="mt-4 pt-3 border-t border-border/40 space-y-2">
+                          <Button 
+                            className="w-full bg-primary text-primary-foreground font-bold rounded-xl"
+                            onClick={() => navigate(`/payment/${order.id}`, {
+                              state: { total: order.total }
+                            })}
+                          >
+                            Pay Now
+                          </Button>
+                          <Button 
+                            variant="outline"
+                            className="w-full text-destructive hover:text-destructive font-bold rounded-xl border-destructive/20 hover:bg-destructive/10"
+                            onClick={handleCancelOrder}
+                            disabled={cancelling}
+                          >
+                            {cancelling ? "Cancelling..." : "Cancel Order"}
+                          </Button>
+                          <p className="text-[10px] text-muted-foreground text-center pt-1">
+                            ការបញ្ជាទិញរបស់អ្នកនឹងត្រូវបានចម្អិនបន្ទាប់ពីទូទាត់ប្រាក់រួចរាល់
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
@@ -880,10 +948,10 @@ export default function OrderTrackingPage() {
             name: order.customer_name || address?.name || "Customer"
           }}
           recipient={{
-            name: driver?.name || "Courier Partner",
-            photo: driver?.profilePhoto || driver?.profile_photo,
-            role: driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner",
-            phone: driver?.phone || "0965755963"
+            name: chatRecipientType === "DRIVER" ? (driver?.name || "Courier Partner") : "Flame & Crust Kitchen",
+            photo: chatRecipientType === "DRIVER" ? (driver?.profilePhoto || driver?.profile_photo) : null,
+            role: chatRecipientType === "DRIVER" ? (driver?.vehicleInfo || driver?.vehicle_info || "Courier Partner") : "Master Chef",
+            phone: chatRecipientType === "DRIVER" ? (driver?.phone || "0965755963") : ""
           }}
         />
       )}

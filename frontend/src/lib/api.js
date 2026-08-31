@@ -160,6 +160,10 @@ export function remove(resource, id, options = {}) {
   });
 }
 
+export function recordProductView(id, options = {}) {
+  return request(`/products/${encodeURIComponent(id)}/view`, { ...options, method: "POST" });
+}
+
 export const resources = Object.freeze([
   "roles", "users", "customers", "addresses", "categories", "products",
   "product_options", "product_variants", "reviews", "carts", "cart_items",

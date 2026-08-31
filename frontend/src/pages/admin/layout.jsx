@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Routes, Route, Navigate, useNavigate, useLocation, Link } from "react-router-dom";
-import { Menu as MenuIcon, X, Sun, Moon, Store, ShieldCheck, ChevronRight, KeyRound } from "lucide-react";
+import { Menu as MenuIcon, X, Sun, Moon, Store, ShieldCheck, ChevronRight, KeyRound, LogOut, PanelLeftClose, PanelLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useTheme } from "@/components/theme-provider.jsx";
 import AdminSidebar from "./sidebar.jsx";
@@ -33,9 +33,16 @@ const adminResources = [
 function AdminLayout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    return localStorage.getItem("sidebarCollapsed") === "true";
+  });
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    localStorage.setItem("sidebarCollapsed", isCollapsed);
+  }, [isCollapsed]);
 
   const [adminAuth, setAdminAuth] = useState(() => {
     try {
@@ -50,6 +57,11 @@ function AdminLayout() {
 
   const currentPath = location.pathname.replace("/admin/", "").replace("/admin", "") || "dashboard";
 
+  const handleSignOut = () => {
+    localStorage.removeItem("adminAuth");
+    navigate("/login", { replace: true });
+  };
+
   if (!isAuthorized) {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
@@ -60,10 +72,10 @@ function AdminLayout() {
   };
 
   return (
-    <div className="min-h-screen flex bg-background selection:bg-primary selection:text-primary-foreground">
+    <div className="h-screen overflow-hidden flex bg-background selection:bg-primary selection:text-primary-foreground">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block">
-        <AdminSidebar />
+      <div className="hidden lg:block h-full">
+        <AdminSidebar isCollapsed={isCollapsed} toggleCollapse={() => setIsCollapsed(!isCollapsed)} />
       </div>
 
       {/* Mobile Sidebar Overlay Drawer */}
@@ -74,7 +86,7 @@ function AdminLayout() {
             onClick={() => setMobileOpen(false)}
           />
           <div className="fixed top-0 left-0 bottom-0 z-50 w-64 lg:hidden shadow-2xl">
-            <AdminSidebar onNavigate={() => setMobileOpen(false)} />
+            <AdminSidebar onNavigate={() => setMobileOpen(false)} isCollapsed={false} />
           </div>
         </>
       )}
@@ -96,7 +108,7 @@ function AdminLayout() {
             </Button>
 
             {/* Breadcrumb / Page Title */}
-            <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground font-bold uppercase tracking-wider ml-1">
               <span className="hidden sm:inline bg-secondary/80 px-2 py-1 rounded-md">Admin Space</span>
               <ChevronRight className="size-3 hidden sm:inline opacity-50" />
               <span className="text-foreground font-black tracking-tight text-sm sm:text-base capitalize">
@@ -107,31 +119,6 @@ function AdminLayout() {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-2">
-            {/* Change Password Button */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setChangePasswordOpen(true)}
-              className="rounded-xl border-border/50 text-xs font-bold h-9 px-3.5 bg-secondary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 flex items-center gap-2 group"
-              title="Change Admin Password"
-            >
-              <KeyRound className="size-3.5 text-primary group-hover:text-primary-foreground transition-colors" />
-              <span className="hidden md:inline">Password</span>
-            </Button>
-
-            {/* Direct Storefront Link */}
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="hidden sm:inline-flex rounded-xl border-border/50 text-xs font-bold h-9 px-3.5 bg-secondary/30 hover:bg-primary hover:text-primary-foreground hover:border-primary transition-all duration-300 group"
-            >
-              <Link to="/">
-                <Store className="size-3.5 mr-2 text-primary group-hover:text-primary-foreground transition-colors" />
-                Storefront
-              </Link>
-            </Button>
-
             {/* Theme Toggle */}
             <Button
               variant="ghost"
@@ -141,6 +128,18 @@ function AdminLayout() {
               aria-label="Toggle theme"
             >
               {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
+            </Button>
+
+            {/* Sign Out Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/15 transition-colors"
+              onClick={handleSignOut}
+              aria-label="Sign out"
+              title="Sign Out"
+            >
+              <LogOut className="size-4" />
             </Button>
           </div>
         </header>

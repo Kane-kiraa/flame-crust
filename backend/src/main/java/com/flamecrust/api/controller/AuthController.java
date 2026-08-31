@@ -259,6 +259,21 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("customer", customer, "token", token));
     }
 
+    @PostMapping("/check-email")
+    public ResponseEntity<?> checkEmail(@RequestBody Map<String, String> body) {
+        String rawEmail = body.get("email");
+        if (rawEmail == null || rawEmail.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Email is required"));
+        }
+        String email = rawEmail.toLowerCase().trim();
+
+        boolean exists = !jdbc.queryForList("SELECT id FROM customers WHERE LOWER(email) = ? LIMIT 1", email).isEmpty()
+                || !jdbc.queryForList("SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1", email).isEmpty()
+                || !jdbc.queryForList("SELECT id FROM drivers WHERE LOWER(email) = ? LIMIT 1", email).isEmpty();
+
+        return ResponseEntity.ok(Map.of("email", email, "exists", exists));
+    }
+
     @PostMapping("/customer-register")
     public ResponseEntity<?> customerRegister(@RequestBody Map<String, String> body) {
         String name = body.get("name");
@@ -283,10 +298,18 @@ public class AuthController {
         email = email.toLowerCase().trim();
         otp = otp.trim();
 
-        // Check if customer already exists
+        // Check if account already exists (customers, users, or drivers)
         List<Map<String, Object>> existing = jdbc.queryForList("SELECT id FROM customers WHERE LOWER(email) = ? LIMIT 1", email);
         if (!existing.isEmpty()) {
-            return ResponseEntity.badRequest().body(Map.of("error", "An account with this email already exists. Please sign in."));
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "An account with this email already exists. Please sign in."));
+        }
+        existing = jdbc.queryForList("SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1", email);
+        if (!existing.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "An account with this email already exists. Please sign in."));
+        }
+        existing = jdbc.queryForList("SELECT id FROM drivers WHERE LOWER(email) = ? LIMIT 1", email);
+        if (!existing.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", "An account with this email already exists. Please sign in."));
         }
 
         // Verify OTP

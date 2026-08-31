@@ -29,6 +29,12 @@ public class Product {
     private boolean spicy;
     private boolean vegetarian;
     private boolean active = true;
+    
+    @Column(name = "view_count")
+    private int viewCount = 0;
+
+    @Column(name = "sales_count")
+    private int salesCount = 0;
 
     @jakarta.persistence.OneToMany(cascade = jakarta.persistence.CascadeType.ALL, fetch = jakarta.persistence.FetchType.EAGER)
     @jakarta.persistence.JoinColumn(name = "product_id")
@@ -68,6 +74,10 @@ public class Product {
     public boolean isSpicy() { return spicy; }
     public boolean isVegetarian() { return vegetarian; }
     public boolean isActive() { return active; }
+    public int getViewCount() { return viewCount; }
+    public int getSalesCount() { return salesCount; }
+    public void setSalesCount(int salesCount) { this.salesCount = salesCount; }
+
     public java.util.List<ProductOption> getOptions() { return options; }
     
     // Setters
@@ -86,5 +96,6 @@ public class Product {
     public void setSpicy(boolean spicy) { this.spicy = spicy; }
     public void setVegetarian(boolean vegetarian) { this.vegetarian = vegetarian; }
     public void setActive(boolean active) { this.active = active; }
+    public void setViewCount(int viewCount) { this.viewCount = viewCount; }
     public void setOptions(java.util.List<ProductOption> options) { this.options = options; }
 }

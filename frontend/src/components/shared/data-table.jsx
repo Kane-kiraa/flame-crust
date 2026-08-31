@@ -14,7 +14,7 @@ import { TableSkeleton } from "./loading-skeleton";
 import { EmptyState } from "./empty-state";
 import { cn } from "@/lib/utils";
 
-const PAGE_SIZES = [5, 10, 20, 50, "All"];
+const PAGE_SIZES = [6, 12, 24, 48, "All"];
 
 export function DataTable({
   columns,
@@ -34,12 +34,14 @@ export function DataTable({
   emptyTitle = "No items found",
   emptyDescription = "There are no items to display.",
   className,
+  renderCustomGrid,
+  headerContent,
 }) {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState(columns[0]?.key || "id");
   const [sortDir, setSortDir] = useState("asc");
   const [localPage, setLocalPage] = useState(0);
-  const [pageSize, setPageSize] = useState(controlledPageSize || 10);
+  const [pageSize, setPageSize] = useState(controlledPageSize || 12);
 
   const currentPage = serverSide ? (controlledPage ?? 0) : localPage;
 
@@ -118,16 +120,28 @@ export function DataTable({
 
   return (
     <div className={cn("space-y-4", className)}>
-      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 sm:gap-4 mb-2">
+        {/* Left Content (Header) */}
+        <div className="flex-1 w-full">
+          {headerContent}
+        </div>
+        
+        {/* Centered Search Bar */}
         {searchable && (
-          <SearchInput
-            value={search}
-            onChange={handleSearch}
-            placeholder={searchPlaceholder}
-            className="sm:max-w-xs flex-1"
-          />
+          <div className="flex-1 flex justify-center w-full">
+            <SearchInput
+              value={search}
+              onChange={handleSearch}
+              placeholder={searchPlaceholder}
+              className="w-full sm:max-w-md"
+            />
+          </div>
         )}
-        {actions && <div className="flex items-center gap-2 ml-auto">{actions}</div>}
+
+        {/* Right Actions */}
+        <div className="flex-1 flex items-center gap-2 sm:justify-end w-full">
+          {actions}
+        </div>
       </div>
 
       {pagedData.length === 0 && !loading ? (
@@ -140,56 +154,62 @@ export function DataTable({
                 <div className="size-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
               </div>
             )}
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-secondary/20 hover:bg-secondary/20 border-border/40">
-                  {columns.map((col) => (
-                    <TableHead
-                      key={col.key}
-                      className={cn(
-                        "text-[11px] font-black text-muted-foreground uppercase tracking-[0.15em] py-4",
-                        col.className
-                      )}
-                    >
-                      {col.sortable && !serverSide ? (
-                        <button
-                          type="button"
-                          onClick={() => handleSort(col.key)}
-                          className="flex items-center gap-1.5 hover:text-foreground transition-colors font-semibold"
-                        >
-                          {col.label}
-                          {sortKey === col.key ? (
-                            sortDir === "asc" ? (
-                              <ArrowUp className="size-3 text-primary" />
-                            ) : (
-                              <ArrowDown className="size-3 text-primary" />
-                            )
-                          ) : (
-                            <ArrowUpDown className="size-3 opacity-40" />
+            {renderCustomGrid ? (
+              renderCustomGrid({ data: pagedData, columns })
+            ) : (
+              <div className="overflow-x-auto">
+                <Table className="w-full">
+                  <TableHeader>
+                    <TableRow className="bg-secondary/20 hover:bg-secondary/20 border-border/40">
+                      {columns.map((col) => (
+                        <TableHead
+                          key={col.key}
+                          className={cn(
+                            "text-[11px] font-black text-muted-foreground uppercase tracking-[0.15em] py-4",
+                            col.className
                           )}
-                        </button>
-                      ) : (
-                        col.label
-                      )}
-                    </TableHead>
-                  ))}
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pagedData.map((row, idx) => (
-                  <TableRow
-                    key={row.id ?? idx}
-                    className="border-border/40 hover:bg-secondary/40 transition-colors group"
-                  >
-                    {columns.map((col) => (
-                      <TableCell key={col.key} className={cn("py-4 text-sm font-medium", col.className)}>
-                        {col.render ? col.render(row[col.key], row) : (row[col.key] ?? "—")}
-                      </TableCell>
+                        >
+                          {col.sortable && !serverSide ? (
+                            <button
+                              type="button"
+                              onClick={() => handleSort(col.key)}
+                              className="flex items-center gap-1.5 hover:text-foreground transition-colors font-semibold"
+                            >
+                              {col.label}
+                              {sortKey === col.key ? (
+                                sortDir === "asc" ? (
+                                  <ArrowUp className="size-3 text-primary" />
+                                ) : (
+                                  <ArrowDown className="size-3 text-primary" />
+                                )
+                              ) : (
+                                <ArrowUpDown className="size-3 opacity-40" />
+                              )}
+                            </button>
+                          ) : (
+                            col.label
+                          )}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pagedData.map((row, idx) => (
+                      <TableRow
+                        key={row.id ?? idx}
+                        className="border-border/40 hover:bg-secondary/40 transition-colors group"
+                      >
+                        {columns.map((col) => (
+                          <TableCell key={col.key} className={cn("py-4 text-sm font-medium", col.className)}>
+                            {col.render ? col.render(row[col.key], row) : (row[col.key] ?? "—")}
+                          </TableCell>
+                        ))}
+                      </TableRow>
                     ))}
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                  </TableBody>
+                </Table>
+              </div>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-muted-foreground">

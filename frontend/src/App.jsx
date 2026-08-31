@@ -6,8 +6,8 @@ import { ScrollToTop } from "@/components/shared/scroll-to-top.jsx";
 import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
-import { CartDrawer } from "@/components/food/cart-drawer.jsx";
 import { GlobalActiveCallManager } from "@/components/food/global-call-manager.jsx";
+import { SplashScreen } from "@/components/shared/splash-screen.jsx";
 import { API_URL } from "@/lib/api";
 
 const Home = lazy(() => import("./pages/home.jsx"));
@@ -158,13 +158,13 @@ export default function App() {
 
   return (
     <Suspense fallback={<PageLoader />}>
+      <SplashScreen />
       <ScrollToTop />
       <Toaster position="top-center" richColors closeButton />
       <GlobalActiveCallManager />
       {!isStaff && <ActiveOrderWidget />}
       {!isStaff && <FlyToCart />}
-      {!isStaff && <CartDrawer />}
-      {!isStaff && <MobileBottomNav />}
+      <MobileBottomNav />
       <RoleRedirectGuard>
         <Routes>
           <Route path="/" element={<Home />} />
@@ -172,6 +172,7 @@ export default function App() {
           <Route path="/product/:id" element={<ProductDetailPage />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
+          <Route path="/payment" element={<PaymentGatewayPage />} />
           <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
           <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
           <Route path="/track/:orderId" element={<OrderTrackingPage />} />

@@ -150,7 +150,8 @@ export function OrderChatModal({
     if (!orderId) return;
     try {
       const data = await getOrderMessages(orderId);
-      const list = Array.isArray(data) ? data : [];
+      let list = Array.isArray(data) ? data : [];
+      list = list.filter(m => !(m.message && m.message.startsWith("__WEBRTC__:")));
       setMessages(list);
 
       // Auto mark messages as read

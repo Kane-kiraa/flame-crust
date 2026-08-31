@@ -8,6 +8,7 @@ import {
   Minus,
   Trash2,
   ArrowRight,
+  ArrowLeft,
   Tag,
   Ticket,
   X,
@@ -45,9 +46,32 @@ function CartPage() {
       <main className="flex-1 pt-[calc(3.75rem+env(safe-area-inset-top))] sm:pt-24 pb-52 sm:pb-16">
         <PageTransition>
           <div className="mx-auto max-w-3xl px-3 sm:px-6 lg:px-8 py-2 sm:py-6">
+            {/* Top Title (Mobile) */}
+            <div className="flex sm:hidden items-center gap-3 mb-4">
+              <button
+                onClick={() => navigate("/menu")}
+                className="size-9 flex items-center justify-center rounded-full hover:bg-muted/50 transition-colors"
+                aria-label="Back to menu"
+              >
+                <ArrowLeft className="size-5" />
+              </button>
+              <h1 className="font-serif text-xl font-bold text-foreground">Your Cart</h1>
+              <span className="ml-auto text-xs text-muted-foreground font-medium">
+                {itemCount} {itemCount === 1 ? "item" : "items"}
+              </span>
+            </div>
             {/* Top Title (Desktop) */}
             <div className="hidden sm:flex items-center justify-between border-b border-border/40 pb-4 mb-6">
-              <h1 className="font-serif text-3xl font-bold text-foreground">Your Cart</h1>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => navigate("/menu")}
+                  className="size-9 flex items-center justify-center rounded-full hover:bg-muted/50 transition-colors"
+                  aria-label="Back to menu"
+                >
+                  <ArrowLeft className="size-5" />
+                </button>
+                <h1 className="font-serif text-3xl font-bold text-foreground">Your Cart</h1>
+              </div>
               <span className="text-sm text-muted-foreground font-medium">
                 {itemCount} {itemCount === 1 ? "item" : "items"}
               </span>

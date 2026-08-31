@@ -43,6 +43,20 @@ public class PaymentVerificationController {
         }
 
         try {
+            // 0. Enforce 5-minute QR validity: payments made after 5 minutes are rejected.
+            //    A small grace (10s) lets the decisive close check at exactly 300s land
+            //    before the QR is invalidated. After close, no further checks are issued,
+            //    so payments scanned past the closed QR are never accepted.
+            if (request.getQrCreatedAt() != null) {
+                long qrAgeMs = System.currentTimeMillis() - request.getQrCreatedAt();
+                if (qrAgeMs > 310_000L) {
+                    System.out.println("Rejected KHQR verification: QR older than 5 minutes (" + qrAgeMs + " ms)");
+                    response.put("status", "EXPIRED");
+                    response.put("message", "QR session expired (5 minutes). Payment not accepted. Please generate a new QR.");
+                    return ResponseEntity.ok(response);
+                }
+            }
+
             // 1. Generate MD5 of the QR Code string or use provided MD5
             String md5Hash = hasMd5 ? request.getMd5().trim() : DigestUtils.md5DigestAsHex(request.getQrCodeString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
             System.out.println("Verifying Bakong Transaction with MD5: " + md5Hash);

@@ -8,11 +8,9 @@ import { HowItWorks } from "@/components/food/how-it-works";
 import { Features } from "@/components/food/features";
 import { Testimonials } from "@/components/food/testimonials";
 import { Footer } from "@/components/food/footer";
-import { CartDrawer } from "@/components/food/cart-drawer";
 function Home() {
   return /* @__PURE__ */ jsxs("div", { className: "min-h-screen flex flex-col bg-background", children: [
     /* @__PURE__ */ jsx(Navbar, {}),
-    /* @__PURE__ */ jsx(CartDrawer, {}),
     /* @__PURE__ */ jsxs("main", { className: "flex-1", children: [
       /* @__PURE__ */ jsx(Hero, {}),
       /* @__PURE__ */ jsx(Featured, {}),

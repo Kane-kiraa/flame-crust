@@ -20,6 +20,10 @@ public class BakongVerificationRequest {
     @JsonAlias({"confirmFallback", "confirm_fallback", "force_confirm", "forceConfirm"})
     private Boolean confirmFallback;
 
+    @JsonProperty("qr_created_at")
+    @JsonAlias({"qrCreatedAt", "qr_created_at", "qr_created_at_ms"})
+    private Long qrCreatedAt;
+
     public String getOrderId() {
         return orderId;
     }
@@ -50,5 +54,13 @@ public class BakongVerificationRequest {
 
     public void setConfirmFallback(Boolean confirmFallback) {
         this.confirmFallback = confirmFallback;
+    }
+
+    public Long getQrCreatedAt() {
+        return qrCreatedAt;
+    }
+
+    public void setQrCreatedAt(Long qrCreatedAt) {
+        this.qrCreatedAt = qrCreatedAt;
     }
 }

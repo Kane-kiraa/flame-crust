@@ -173,6 +173,17 @@ public class AdminCrudController {
                 }
             }
 
+            // Increment product sales_count when an order_item is created
+            if ("order_items".equalsIgnoreCase(resource) && mutableBody.containsKey("product_id") && mutableBody.containsKey("quantity")) {
+                try {
+                    Long productId = Long.valueOf(mutableBody.get("product_id").toString());
+                    int quantity = Integer.parseInt(mutableBody.get("quantity").toString());
+                    jdbc.update("UPDATE products SET sales_count = sales_count + ? WHERE id = ?", quantity, productId);
+                } catch (Exception ex) {
+                    System.err.println("Failed to increment product sales count: " + ex.getMessage());
+                }
+            }
+
             return ResponseEntity.status(HttpStatus.CREATED).body(saved);
         } catch (DataIntegrityViolationException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Database constraint failed: " + e.getMostSpecificCause().getMessage()));

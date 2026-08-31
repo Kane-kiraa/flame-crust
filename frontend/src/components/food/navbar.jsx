@@ -517,19 +517,7 @@ function Navbar() {
               {theme === "dark" ? <Sun className="size-4 sm:size-5" /> : <Moon className="size-4 sm:size-5" />}
             </Button>
 
-            {isAdmin && (
-              <Button 
-                variant="outline" 
-                className="hidden md:inline-flex shrink-0 rounded-full border-primary/40 bg-primary/10 hover:bg-primary hover:text-primary-foreground text-primary gap-1.5 px-3.5 h-11 font-semibold text-xs transition-all shadow-sm"
-                onClick={() => {
-                  setMobileOpen(false);
-                  navigate("/admin/dashboard");
-                }}
-              >
-                <LayoutDashboard className="size-4" />
-                <span>Admin Dashboard</span>
-              </Button>
-            )}
+
 
             {customer ? (
               <button 
@@ -553,17 +541,21 @@ function Navbar() {
             ) : adminUser ? (
               <button 
                 type="button"
-                className="hidden sm:flex shrink-0 items-center gap-2 p-0.5 pr-2.5 rounded-full border border-primary/40 hover:border-primary bg-primary/10 transition-all cursor-pointer shadow-xs"
+                className="hidden sm:flex shrink-0 items-center gap-2 p-0.5 pr-3 rounded-full border border-border/60 hover:border-primary/50 bg-secondary/60 hover:bg-secondary transition-all cursor-pointer shadow-sm"
                 onClick={() => {
                   setMobileOpen(false);
-                  navigate("/admin/dashboard");
+                  navigate("/admin/dashboard", { replace: true });
                 }}
                 aria-label="Admin Dashboard"
               >
-                <div className="size-8 rounded-full bg-primary/20 flex items-center justify-center overflow-hidden shrink-0 border border-primary/40 font-bold text-xs text-primary">
-                  {adminUser.name ? adminUser.name.slice(0, 2).toUpperCase() : "AD"}
+                <div className="size-9 rounded-full bg-gradient-to-tr from-primary/80 to-amber-500/80 flex items-center justify-center overflow-hidden shrink-0 border border-primary/20 shadow-inner">
+                  <span className="font-black text-xs text-white tracking-wider">
+                    {adminUser.name ? adminUser.name.slice(0, 2).toUpperCase() : "AD"}
+                  </span>
                 </div>
-                <span className="hidden md:inline text-xs font-semibold truncate max-w-[110px] text-primary">{adminUser.name || "Admin"}</span>
+                <span className="hidden md:inline text-[13px] font-bold truncate max-w-[110px] text-foreground">
+                  {adminUser.name || "Admin"}
+                </span>
               </button>
             ) : location.pathname !== "/login" ? (
               <Button 
@@ -613,17 +605,11 @@ function Navbar() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.94 }}
                 transition={{ duration: 0.15, ease: "easeOut" }}
-                onClick={() => {
-                  if (window.innerWidth < 640) {
-                    navigate("/cart");
-                  } else {
-                    openCart();
-                  }
-                }}
-                className="relative size-full aspect-square rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-warm flex items-center justify-center cursor-pointer transition-colors outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                onClick={() => navigate("/cart")}
+                className="relative size-full aspect-square rounded-full bg-gradient-to-tr from-primary to-amber-500 text-white shadow-[0_4px_14px_rgba(239,68,68,0.3)] hover:shadow-[0_6px_20px_rgba(239,68,68,0.4)] flex items-center justify-center cursor-pointer transition-all outline-none focus-visible:ring-2 focus-visible:ring-ring border-none"
                 aria-label="Open cart"
               >
-                <ShoppingBag className="size-4 sm:size-5" />
+                <ShoppingBag className="size-4 sm:size-5 drop-shadow-sm" />
                 <AnimatePresence>
                   {count > 0 && (
                     <motion.span

@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { startActiveCall, getActiveCall, answerActiveCall, endActiveCall } from "@/lib/api";
+import { WebRTCManager } from "@/lib/webrtc";
 import { cn } from "@/lib/utils";
 
 // Tone synthesizers using Web Audio API for ringing & connect sounds
@@ -131,6 +132,8 @@ export function OnlineCallModal({
   const [isMinimized, setIsMinimized] = useState(false);
   const stopRingRef = useRef(null);
   const callStatusRef = useRef(callStatus);
+  const audioRef = useRef(null);
+  const webrtcRef = useRef(null);
 
   useEffect(() => {
     callStatusRef.current = callStatus;
@@ -147,6 +150,10 @@ export function OnlineCallModal({
       setCallStatus("connecting");
       setSecondsElapsed(0);
       setIsMinimized(false);
+      if (webrtcRef.current) {
+        webrtcRef.current.stopAll();
+        webrtcRef.current = null;
+      }
       return;
     }
 
@@ -195,6 +202,27 @@ export function OnlineCallModal({
               stopRingRef.current = null;
             }
             setCallStatus("connected");
+            
+            // WebRTC Connection Logic (if not already started)
+            if (!webrtcRef.current) {
+              webrtcRef.current = new WebRTCManager(orderId, callerType);
+              webrtcRef.current.onRemoteTrack = (stream) => {
+                if (audioRef.current && audioRef.current.srcObject !== stream) {
+                  audioRef.current.srcObject = stream;
+                }
+              };
+              
+              const micReady = await webrtcRef.current.startLocalAudio();
+              if (micReady) {
+                webrtcRef.current.startPolling();
+                // If caller, send OFFER
+                if (!isIncoming) {
+                  webrtcRef.current.createOffer();
+                }
+              } else {
+                toast.error("Microphone access denied or error");
+              }
+            }
           } else if (res.call.status === "ENDED" || res.call.status === "REJECTED") {
             if (callStatusRef.current !== "ended") {
               handleLocalEnd();
@@ -262,6 +290,14 @@ export function OnlineCallModal({
     playEndCallTone();
     setCallStatus("ended");
     setIsMinimized(false);
+    
+    if (webrtcRef.current) {
+      webrtcRef.current.stopAll();
+      webrtcRef.current = null;
+    }
+    if (audioRef.current) {
+      audioRef.current.srcObject = null;
+    }
 
     // Save call record to chat thread
     const dur = secondsElapsedRef.current;
@@ -302,8 +338,15 @@ export function OnlineCallModal({
 
   const isCallActive = (callStatus === "connected" || callStatus === "ringing" || callStatus === "connecting");
 
+  useEffect(() => {
+    if (webrtcRef.current) {
+      webrtcRef.current.setMuted(isMuted);
+    }
+  }, [isMuted]);
+
   return (
     <>
+      <audio ref={audioRef} autoPlay playsInline className="hidden" />
       {/* 🟢 TOP FLOATING DYNAMIC ISLAND ACTIVE CALL BAR (When Minimized) */}
       {open && isMinimized && isCallActive && (
         <div 

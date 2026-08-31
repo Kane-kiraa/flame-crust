@@ -129,21 +129,22 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[440px] p-6 rounded-2xl border-border/80 bg-card shadow-2xl backdrop-blur-xl">
-        <DialogHeader className="space-y-2">
-          <div className="size-12 rounded-2xl bg-gradient-to-tr from-primary to-amber-500 text-white flex items-center justify-center shadow-lg shadow-primary/20 mb-1">
-            <KeyRound className="size-6" />
-          </div>
-          <DialogTitle className="text-xl font-bold text-foreground font-serif">
-            ប្តូរលេខសម្ងាត់ Admin
-          </DialogTitle>
-          <DialogDescription className="text-xs text-muted-foreground">
-            ផ្លាស់ប្តូរលេខសម្ងាត់សុវត្ថិភាពសម្រាប់គណនី{" "}
-            <span className="font-semibold text-foreground underline underline-offset-2">
-              {adminEmail}
-            </span>
-          </DialogDescription>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-[460px] p-0 rounded-[28px] border-border/30 bg-card/70 shadow-2xl backdrop-blur-3xl overflow-hidden outline-none">
+        <div className="p-8 pb-6">
+          <DialogHeader className="space-y-3 mb-6">
+            <div className="mx-auto size-16 rounded-full bg-primary/10 flex items-center justify-center relative">
+              <div className="absolute inset-0 rounded-full bg-primary/20 animate-ping opacity-25" />
+              <KeyRound className="size-8 text-primary relative z-10" />
+            </div>
+            <div className="space-y-1.5 text-center">
+              <DialogTitle className="text-2xl font-black text-foreground tracking-tight font-serif">
+                ប្តូរលេខសម្ងាត់សុវត្ថិភាព
+              </DialogTitle>
+              <DialogDescription className="text-[13px] text-muted-foreground">
+                គណនី Admin: <span className="font-bold text-primary">{adminEmail}</span>
+              </DialogDescription>
+            </div>
+          </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 py-2">
           {error && (
@@ -154,12 +155,12 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
           )}
 
           {/* Current Password */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground/90">
-              លេខសម្ងាត់បច្ចុប្បន្ន (Current Password) <span className="text-destructive">*</span>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-foreground/80 uppercase tracking-wider ml-1">
+              Current Password <span className="text-destructive">*</span>
             </Label>
-            <div className="relative">
-              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <div className="relative group">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 size-4.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
                 type={showOld ? "text" : "password"}
                 value={oldPassword}
@@ -168,14 +169,14 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
                   if (error) setError("");
                 }}
                 placeholder="••••••••"
-                className="pl-10 pr-10 rounded-xl h-11 border-border/80 focus:border-primary text-sm"
+                className="pl-11 pr-11 rounded-2xl h-12 bg-secondary/30 border-border/40 hover:bg-secondary/50 focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all duration-300 text-sm font-medium placeholder:text-muted-foreground/50"
                 required
                 autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowOld(!showOld)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-lg p-1.5 transition-colors"
                 tabIndex={-1}
               >
                 {showOld ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -184,12 +185,12 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
           </div>
 
           {/* New Password */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground/90">
-              លេខសម្ងាត់ថ្មី (New Password) <span className="text-destructive">*</span>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-foreground/80 uppercase tracking-wider ml-1">
+              New Password <span className="text-destructive">*</span>
             </Label>
-            <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <div className="relative group">
+              <KeyRound className="absolute left-4 top-1/2 -translate-y-1/2 size-4.5 text-muted-foreground group-focus-within:text-primary transition-colors" />
               <Input
                 type={showNew ? "text" : "password"}
                 value={newPassword}
@@ -197,15 +198,15 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
                   setNewPassword(e.target.value);
                   if (error) setError("");
                 }}
-                placeholder="យ៉ាងហោចណាស់ ៦ តួអក្សរ"
-                className="pl-10 pr-10 rounded-xl h-11 border-border/80 focus:border-primary text-sm"
+                placeholder="Enter a strong password"
+                className="pl-11 pr-11 rounded-2xl h-12 bg-secondary/30 border-border/40 hover:bg-secondary/50 focus:bg-background focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all duration-300 text-sm font-medium placeholder:text-muted-foreground/50"
                 required
                 autoComplete="new-password"
               />
               <button
                 type="button"
                 onClick={() => setShowNew(!showNew)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-lg p-1.5 transition-colors"
                 tabIndex={-1}
               >
                 {showNew ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
@@ -214,11 +215,11 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
 
             {/* Strength Meter */}
             {newPassword && (
-              <div className="space-y-1 pt-1">
-                <div className="flex gap-1 h-1.5 w-full bg-secondary rounded-full overflow-hidden">
+              <div className="space-y-1.5 pt-1 px-1">
+                <div className="flex gap-1 h-1.5 w-full bg-secondary/50 rounded-full overflow-hidden p-[1px]">
                   <div
                     className={cn(
-                      "h-full transition-all duration-300 rounded-full",
+                      "h-full transition-all duration-500 rounded-full shadow-[inset_0_1px_1px_rgba(255,255,255,0.2)]",
                       strength.color,
                       strength.score === 1 && "w-1/4",
                       strength.score === 2 && "w-2/4",
@@ -227,20 +228,20 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
                     )}
                   />
                 </div>
-                <p className={cn("text-[11px] font-medium text-right", strength.textColor)}>
-                  កម្រិតសុវត្ថិភាព: {strength.label}
+                <p className={cn("text-[10px] font-bold uppercase tracking-wider text-right transition-colors duration-300", strength.textColor)}>
+                  {strength.label}
                 </p>
               </div>
             )}
           </div>
 
           {/* Confirm New Password */}
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold text-foreground/90">
-              បញ្ជាក់លេខសម្ងាត់ថ្មី (Confirm Password) <span className="text-destructive">*</span>
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-foreground/80 uppercase tracking-wider ml-1">
+              Confirm Password <span className="text-destructive">*</span>
             </Label>
-            <div className="relative">
-              <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+            <div className="relative group">
+              <ShieldCheck className="absolute left-4 top-1/2 -translate-y-1/2 size-4.5 text-muted-foreground group-focus-within:text-emerald-500 transition-colors" />
               <Input
                 type={showConfirm ? "text" : "password"}
                 value={confirmPassword}
@@ -248,53 +249,54 @@ export default function AdminChangePasswordDialog({ open, onOpenChange }) {
                   setConfirmPassword(e.target.value);
                   if (error) setError("");
                 }}
-                placeholder="វាយលេខសម្ងាត់ថ្មីម្តងទៀត"
-                className="pl-10 pr-10 rounded-xl h-11 border-border/80 focus:border-primary text-sm"
+                placeholder="Confirm your new password"
+                className="pl-11 pr-11 rounded-2xl h-12 bg-secondary/30 border-border/40 hover:bg-secondary/50 focus:bg-background focus:border-emerald-500/50 focus:ring-4 focus:ring-emerald-500/10 transition-all duration-300 text-sm font-medium placeholder:text-muted-foreground/50"
                 required
                 autoComplete="new-password"
               />
               <button
                 type="button"
                 onClick={() => setShowConfirm(!showConfirm)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground hover:bg-secondary/80 rounded-lg p-1.5 transition-colors"
                 tabIndex={-1}
               >
                 {showConfirm ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
               </button>
             </div>
             {confirmPassword && newPassword === confirmPassword && (
-              <p className="text-[11px] text-emerald-500 font-medium flex items-center gap-1">
-                <CheckCircle2 className="size-3" /> លេខសម្ងាត់ផ្ទៀងផ្ទាត់ត្រឹមត្រូវ
+              <p className="text-[11px] text-emerald-500 font-bold flex items-center gap-1.5 ml-1 animate-in slide-in-from-top-1 fade-in duration-300">
+                <CheckCircle2 className="size-3.5" /> Matched securely
               </p>
             )}
           </div>
 
-          <DialogFooter className="pt-3 gap-2 sm:gap-0">
+          <DialogFooter className="pt-4 grid grid-cols-2 gap-3 sm:space-x-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => handleClose(false)}
               disabled={loading}
-              className="rounded-xl border-border/80 text-xs font-semibold h-10 px-4"
+              className="rounded-2xl border-border/50 bg-secondary/30 hover:bg-secondary/60 text-xs font-bold h-12 transition-all w-full"
             >
-              បោះបង់ (Cancel)
+              Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading || !oldPassword || !newPassword || !confirmPassword}
-              className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-10 px-5 shadow-md shadow-primary/25 transition-all"
+              className="rounded-2xl bg-gradient-to-br from-primary to-amber-500 hover:from-primary/90 hover:to-amber-500/90 text-white text-xs font-bold h-12 shadow-lg shadow-primary/25 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all w-full"
             >
               {loading ? (
                 <>
                   <Loader2 className="size-4 mr-2 animate-spin" />
-                  កំពុងរក្សាទុក...
+                  Saving...
                 </>
               ) : (
-                "រក្សាទុកលេខសម្ងាត់ថ្មី"
+                "Update Password"
               )}
             </Button>
           </DialogFooter>
         </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

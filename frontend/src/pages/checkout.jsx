@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import {
   ArrowLeft,
   ArrowRight,
+  Bookmark,
   CreditCard,
   Landmark,
   QrCode,
@@ -40,7 +41,6 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/food/navbar";
 import { Footer } from "@/components/food/footer";
-import { CartDrawer } from "@/components/food/cart-drawer";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PageTransition } from "@/components/shared/page-transition";
 import { MapPicker } from "@/components/food/map-picker";
@@ -90,7 +90,13 @@ function CheckoutPage() {
   const [couponCode, setCouponCode] = useState("");
   const [couponError, setCouponError] = useState("");
   const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
-  const [savedAddresses, setSavedAddresses] = useState([]);
+  const [savedAddresses, setSavedAddresses] = useState(() => {
+    try {
+      const stored = localStorage.getItem("flamecrust_saved_addresses");
+      return stored ? JSON.parse(stored) : [];
+    } catch { return []; }
+  });
+  const [addressTab, setAddressTab] = useState("new"); // "new" | "saved"
   const [selectedAddressId, setSelectedAddressId] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -100,7 +106,6 @@ function CheckoutPage() {
   const [showMapModal, setShowMapModal] = useState(false);
   const [isSuccessRedirecting, setIsSuccessRedirecting] = useState(false);
   const [showCouponModal, setShowCouponModal] = useState(false);
-  const [showPaymentConfirmModal, setShowPaymentConfirmModal] = useState(false);
   const [allCoupons, setAllCoupons] = useState([]);
   const [loadingCoupons, setLoadingCoupons] = useState(false);
 
@@ -188,6 +193,24 @@ function CheckoutPage() {
     setValue("notes", addr.notes || "");
   };
 
+  const saveAddressToLocal = (address, city, label = "Home", fullName = "", phone = "") => {
+    if (!address?.trim()) return;
+    const newAddr = {
+      id: `local-${Date.now()}`,
+      label,
+      address_line: address.trim(),
+      city: city || "Phnom Penh",
+      full_name: fullName,
+      phone: phone,
+      is_default: savedAddresses.length === 0,
+      saved_at: new Date().toISOString()
+    };
+    const updated = [newAddr, ...savedAddresses.filter(a => a.address_line !== address.trim())].slice(0, 5);
+    setSavedAddresses(updated);
+    localStorage.setItem("flamecrust_saved_addresses", JSON.stringify(updated));
+    setSelectedAddressId(newAddr.id);
+  };
+
   const handleAutoLocation = () => {
     if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser");
@@ -204,15 +227,20 @@ function CheckoutPage() {
           );
           const data = await res.json();
           
-          if (data && data.address) {
-            const addr = data.address;
-            const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
-              c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
-            );
-            
-            setValue("address1", data.display_name || "");
-            setValue("city", cityMatch || "Phnom Penh");
-            toast.success("Location auto-detected successfully!");
+            if (data && data.address) {
+              const addr = data.address;
+              const cityMatch = ["Phnom Penh", "Kandal", "Siem Reap", "Sihanoukville", "Battambang", "Kampong Cham"].find(
+                c => addr.city?.includes(c) || addr.state?.includes(c) || addr.province?.includes(c)
+              );
+              const detectedCity = cityMatch || "Phnom Penh";
+              const detectedAddress = data.display_name || "";
+              
+              setValue("address1", detectedAddress);
+              setValue("city", detectedCity);
+              const fn = getValues("fullName") || "";
+              const ph = getValues("phone") || "";
+              saveAddressToLocal(detectedAddress, detectedCity, "Auto Location", fn, ph);
+              toast.success("Location auto-detected and saved!");
           }
         } catch (err) {
           toast.error("Failed to get location address");
@@ -247,9 +275,11 @@ function CheckoutPage() {
   const [qrMd5, setQrMd5] = useState("");
   const [isPaymentVerified, setIsPaymentVerified] = useState(false);
   const [isCheckingPayment, setIsCheckingPayment] = useState(false);
+  const qrCreatedAtRef = useRef(0);
 
   const generateNewQR = () => {
     if (total <= 0) return;
+    qrCreatedAtRef.current = Date.now();
     try {
       const accountId = import.meta.env.VITE_BAKONG_ACCOUNT_ID || "khemara_chantha1@bkrt";
       const merchantName = import.meta.env.VITE_BAKONG_MERCHANT_NAME || "Flame Crust";
@@ -289,6 +319,13 @@ function CheckoutPage() {
 
   const verifyPaymentWithBakong = async (showToast = false) => {
     if (!qrCodeString) return false;
+
+    // 5-minute QR validity guard (frontend side)
+    if (Date.now() - qrCreatedAtRef.current > 5 * 60 * 1000) {
+      if (showToast) toast.error("QR អស់សុពលភាពក្រោយ 5 នាទី។ បានបង្កើត QR ថ្មី — សូមស្កេនម្ដងទៀត។");
+      generateNewQR();
+      return false;
+    }
     
     setIsCheckingPayment(true);
 
@@ -298,7 +335,8 @@ function CheckoutPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           qr_code_string: qrCodeString,
-          md5: qrMd5
+          md5: qrMd5,
+          qr_created_at: qrCreatedAtRef.current
         })
       });
       const data = await res.json();
@@ -373,35 +411,8 @@ function CheckoutPage() {
 
   const isAutoSubmittingRef = useRef(false);
 
-  // 100% Automatic Polling for KHQR / ABA_PAY when Modal is Open - 40s interval
-  useEffect(() => {
-    if (!showPaymentConfirmModal || isPaymentVerified || (paymentMethod !== "KHQR" && paymentMethod !== "ABA_PAY") || !qrCodeString) return;
-
-    let pollCount = 0;
-    const maxPolls = 15; // 15 * 40s = 10 minutes
-
-    // Poll automatically every 40 seconds (40000ms)
-    const pollTimer = setInterval(async () => {
-      if (isAutoSubmittingRef.current || isPaymentVerified) return;
-      pollCount++;
-      if (pollCount > maxPolls) {
-        clearInterval(pollTimer);
-        return;
-      }
-      const isSuccess = await verifyPaymentWithBakong(false);
-      if (isSuccess && !isAutoSubmittingRef.current) {
-        isAutoSubmittingRef.current = true;
-        setIsPaymentVerified(true);
-        toast.success("🎉 ទទួលបានការផ្ទេរប្រាក់ជោគជ័យពី Bakong! កំពុងបញ្ចប់ការកុម្ម៉ង់...");
-        setTimeout(() => {
-          setShowPaymentConfirmModal(false);
-          executeOrderCreation(true);
-        }, 1000);
-      }
-    }, 40000);
-
-    return () => clearInterval(pollTimer);
-  }, [showPaymentConfirmModal, qrCodeString, paymentMethod, isPaymentVerified]);
+  // Payment polling is now handled in the dedicated payment page (/payment)
+  // This checkout page navigates to /payment for KHQR/ABA_PAY payments
 
   const handleApplyCoupon = async (e) => {
     if (e) e.preventDefault();
@@ -467,11 +478,7 @@ function CheckoutPage() {
       return;
     }
 
-    // Strict Bank Verification for KHQR and ABA_PAY:
-    if ((paymentMethod === "KHQR" || paymentMethod === "ABA_PAY") && !isPaymentVerified) {
-      setShowPaymentConfirmModal(true);
-      return;
-    }
+
 
     await executeOrderCreation(isPaymentVerified);
   };
@@ -507,7 +514,7 @@ function CheckoutPage() {
       }
 
       let addressId = selectedAddressId;
-      if (!addressId) {
+      if (!addressId || String(addressId).startsWith("local-")) {
         try {
           const address = await create("addresses", {
             customer_id: customerId || null,
@@ -523,20 +530,23 @@ function CheckoutPage() {
         }
       }
 
+      const finalCustomerId = customerId ? Number(customerId) : null;
+      const finalAddressId = addressId ? Number(addressId) : null;
+
       const isDigitalPaid = verifiedPayment || isPaymentVerified || (paymentMethod === "CARD");
       const orderStatus = isDigitalPaid ? "CONFIRMED" : "PENDING";
       const paymentStatus = isDigitalPaid ? "PAID" : "PENDING";
 
       const order = await create("orders", {
         order_number: `FC-${Date.now()}`,
-        customer_id: customerId || null,
-        address_id: addressId || null,
+        customer_id: finalCustomerId,
+        address_id: finalAddressId,
         status: orderStatus,
         order_type: "DELIVERY",
         subtotal: Number(subtotal.toFixed(2)),
         discount_amount: Number(discount.toFixed(2)),
         delivery_fee: Number(deliveryFee.toFixed(2)),
-        driver_commission: 0,
+        driver_commission: 0.00,
         total: Number(total.toFixed(2)),
         notes: notes || null,
       });
@@ -575,16 +585,28 @@ function CheckoutPage() {
         if (typeof removeCoupon === "function") removeCoupon();
       }, 200);
 
-      navigate("/order-confirmation", {
-        replace: true,
-        state: {
-          orderId,
-          total: targetTotal,
-          itemCount: targetItemCount,
-          paymentMethod: targetMethod,
-          address: targetAddress,
-        },
-      });
+      if ((targetMethod === "KHQR" || targetMethod === "ABA_PAY") && !verifiedPayment) {
+        navigate(`/payment/${orderId}`, {
+          replace: true,
+          state: {
+            total: targetTotal,
+            paymentMethod: targetMethod,
+            itemCount: targetItemCount,
+            address: targetAddress
+          }
+        });
+      } else {
+        navigate("/order-confirmation", {
+          replace: true,
+          state: {
+            orderId,
+            total: targetTotal,
+            itemCount: targetItemCount,
+            paymentMethod: targetMethod,
+            address: targetAddress,
+          },
+        });
+      }
     } catch (err) {
       console.error("Order submission error:", err);
       toast.error(err.message || "Failed to place order. Please try again.");
@@ -801,8 +823,91 @@ function CheckoutPage() {
                     </div>
                   </div>
 
-                  {/* Compact Single Selected Address View */}
-                  {watchedAddress1 ? (
+                  {/* Address Tabs */}
+                  <div className="flex gap-1.5 p-1 bg-muted/30 rounded-xl mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setAddressTab("new")}
+                      className={cn(
+                        "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all",
+                        addressTab === "new"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <MapPin className="inline size-3.5 mr-1 -mt-0.5" />
+                      New Address
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAddressTab("saved")}
+                      className={cn(
+                        "flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all relative",
+                        addressTab === "saved"
+                          ? "bg-background text-foreground shadow-sm"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Bookmark className="inline size-3.5 mr-1 -mt-0.5" />
+                      Saved Addresses
+                      {savedAddresses.length > 0 && (
+                        <span className="absolute -top-1 -right-1 size-4 bg-primary text-primary-foreground text-[9px] font-bold rounded-full flex items-center justify-center">
+                          {savedAddresses.length}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Saved Addresses Tab Content */}
+                  {addressTab === "saved" && (
+                    <div className="space-y-2 mb-4">
+                      {savedAddresses.length > 0 ? (
+                        <div className="grid gap-2">
+                          {savedAddresses.map((addr) => (
+                            <button
+                              key={addr.id}
+                              type="button"
+                              onClick={() => {
+                                setValue("address1", addr.address_line);
+                                setValue("city", addr.city);
+                                setValue("fullName", addr.full_name || "");
+                                setValue("phone", addr.phone || "");
+                                setSelectedAddressId(addr.id);
+                                setAddressTab("new");
+                                toast.success(`Selected: ${addr.label}`);
+                              }}
+                              className={cn(
+                                "w-full text-left p-3 rounded-xl border transition-all",
+                                selectedAddressId === addr.id
+                                  ? "border-primary bg-primary/10 ring-2 ring-primary/30"
+                                  : "border-border/60 bg-secondary/20 hover:border-primary/50"
+                              )}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <MapPin className="size-3.5 text-primary" />
+                                <span className="font-bold text-sm text-foreground">{addr.label}</span>
+                                {addr.is_default && (
+                                  <span className="text-[8px] bg-primary/15 text-primary px-1.5 py-0.2 rounded font-bold uppercase">
+                                    Default
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground line-clamp-2">{addr.address_line}</p>
+                              <p className="text-[10px] text-muted-foreground mt-0.5">{addr.city}</p>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-6 text-muted-foreground">
+                          <Bookmark className="size-8 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">No saved addresses yet</p>
+                          <p className="text-xs mt-1">Use "Pin on Map" or "Auto Location" to save one</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* New Address Form Fields */}
                     <div className="flex items-start justify-between gap-3 pt-0.5">
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
@@ -849,8 +954,6 @@ function CheckoutPage() {
                         </Button>
                       </div>
                     </div>
-                  ) : null}
-
                   {/* Delivery Form Details (Always mounted in DOM to retain input state) */}
                   <div className={cn("space-y-3.5 pt-1", (!showDeliveryDetails && watchedAddress1) ? "hidden" : "block")}>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
@@ -974,22 +1077,39 @@ function CheckoutPage() {
                           type="button"
                           onClick={() => setPaymentMethod(id)}
                           className={cn(
-                            "relative flex flex-col items-start p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all duration-200 cursor-pointer",
+                            "relative flex flex-col items-start p-2.5 sm:p-4 rounded-xl sm:rounded-2xl border text-left transition-all duration-200 cursor-pointer group",
                             isSelected
                               ? "border-primary bg-primary/10 shadow-xs ring-2 ring-primary/30 text-primary"
-                              : "border-border/70 bg-secondary/20 hover:border-border hover:bg-secondary/50 text-foreground"
+                              : "border-border/70 bg-secondary/20 hover:border-primary/50 hover:bg-secondary/50 text-foreground"
                           )}
                         >
                           {badge && (
-                            <span className="absolute top-1.5 right-1.5 text-[8px] sm:text-[9px] font-bold bg-primary text-white px-1.5 py-0.2 rounded-full uppercase">
+                            <span className={cn(
+                              "absolute top-1.5 right-1.5 text-[8px] sm:text-[9px] font-bold px-1.5 py-0.2 rounded-full uppercase",
+                              id === "KHQR" 
+                                ? "bg-gradient-to-r from-primary to-orange-500 text-white shadow-md shadow-primary/20" 
+                                : "bg-primary text-white"
+                            )}>
                               {badge}
                             </span>
                           )}
                           <div className="flex items-center gap-1.5 sm:gap-2 mb-1">
-                            <div className={cn("size-6 sm:size-7 rounded-lg flex items-center justify-center shrink-0", isSelected ? "bg-primary text-white" : "bg-secondary text-muted-foreground")}>
+                            <div className={cn(
+                              "size-6 sm:size-7 rounded-lg flex items-center justify-center shrink-0 transition-colors",
+                              isSelected 
+                                ? "bg-primary text-white" 
+                                : id === "KHQR" 
+                                  ? "bg-gradient-to-br from-primary/20 to-orange-500/20 text-primary group-hover:from-primary/30 group-hover:to-orange-500/30" 
+                                  : "bg-secondary text-muted-foreground"
+                            )}>
                               <Icon className="size-3.5 sm:size-4" />
                             </div>
-                            <span className="font-bold text-xs sm:text-sm leading-tight text-foreground">{label}</span>
+                            <span className={cn(
+                              "font-bold text-xs sm:text-sm leading-tight",
+                              id === "KHQR" && !isSelected 
+                                ? "bg-gradient-to-r from-primary to-orange-500 bg-clip-text text-transparent" 
+                                : ""
+                            )}>{label}</span>
                           </div>
                           <p className="text-[10px] sm:text-[11px] text-muted-foreground truncate w-full">{sublabel}</p>
                         </button>
@@ -1381,10 +1501,15 @@ function CheckoutPage() {
           <div className="py-2">
             <MapPicker
               onConfirm={(loc) => {
-                if (loc.address) setValue("address1", loc.address);
-                if (loc.city) setValue("city", loc.city);
+                const pinnedAddress = loc.address || "";
+                const pinnedCity = loc.city || "Phnom Penh";
+                if (pinnedAddress) setValue("address1", pinnedAddress);
+                if (pinnedCity) setValue("city", pinnedCity);
+                const fn = getValues("fullName") || "";
+                const ph = getValues("phone") || "";
+                saveAddressToLocal(pinnedAddress, pinnedCity, "Pinned Location", fn, ph);
                 setShowMapModal(false);
-                toast.success("Location pinned from map!");
+                toast.success("Location pinned and saved from map!");
               }}
               onClose={() => setShowMapModal(false)}
             />
@@ -1477,97 +1602,7 @@ function CheckoutPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Payment Confirmation Modal */}
-      <Dialog open={showPaymentConfirmModal} onOpenChange={setShowPaymentConfirmModal}>
-        <DialogContent className="max-w-sm w-[92vw] rounded-3xl p-5 border-border/60">
-          <DialogHeader className="pb-3 border-b border-border/60">
-            <DialogTitle className="font-serif text-lg font-bold flex items-center gap-2">
-              <QrCode className="size-5 text-primary" /> Scan & Pay
-            </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
-              Scan the KHQR code using your banking app to complete payment.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col items-center py-4 space-y-4">
-            <div id="khqr-canvas-element" className="bg-white p-3.5 rounded-2xl shadow-md border border-border/40 inline-flex flex-col items-center relative group overflow-hidden">
-              {qrCodeString ? (
-                <QRCodeCanvas
-                  value={qrCodeString}
-                  size={160}
-                  level="H"
-                  includeMargin={true}
-                />
-              ) : (
-                <div className="size-40 flex items-center justify-center bg-secondary/50 rounded-xl">
-                  <Loader2 className="size-6 animate-spin text-primary" />
-                </div>
-              )}
-              {qrCodeString && (
-                <motion.div
-                  className="absolute top-3.5 left-3.5 h-0.5 bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)] rounded-full z-10 pointer-events-none"
-                  style={{ width: "160px" }}
-                  animate={{ y: [0, 160, 0] }}
-                  transition={{ repeat: Infinity, duration: 2.5, ease: "easeInOut" }}
-                />
-              )}
-            </div>
-            <div className="space-y-1 text-center">
-              <p className="font-serif font-bold text-lg sm:text-xl text-primary">
-                ${total.toFixed(2)} USD
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                {paymentMethod === "KHQR" ? "Scan with any Cambodian banking app to pay." : "Open ABA Mobile app to scan and pay."}
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
-              <button
-                type="button"
-                onClick={handleDownloadQR}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 text-xs font-semibold transition-all"
-              >
-                <Download className="size-3.5" /> Save QR
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyAccount}
-                className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-secondary hover:bg-secondary/80 text-foreground border border-border/60 text-xs font-medium transition-all"
-              >
-                {copiedAccount ? <Check className="size-3.5 text-green-500" /> : <Copy className="size-3.5 text-muted-foreground" />}
-                {copiedAccount ? "Copied" : "Copy Account"}
-              </button>
-            </div>
-            
-            <div className="w-full space-y-2 pt-2">
-              {isPaymentVerified ? (
-                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-green-500/10 border border-green-500/30 text-xs font-bold text-green-600 w-full justify-center animate-bounce">
-                  <CheckCircle2 className="size-4 text-green-600" />
-                  <span>✅ ទទួលបានការផ្ទេរប្រាក់ជោគជ័យ! កំពុងបញ្ចប់...</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary animate-pulse w-full justify-center">
-                  <Loader2 className="size-3.5 animate-spin text-primary" />
-                  <span>កំពុងរង់ចាំការទូទាត់ប្រាក់...</span>
-                </div>
-              )}
-            </div>
-            
-            {!isPaymentVerified && (
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full rounded-full border-border/60 text-xs h-9"
-                onClick={() => {
-                  setShowPaymentConfirmModal(false);
-                  setSubmitting(false);
-                }}
-              >
-                Cancel / Pay Later
-              </Button>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Payment is now handled in dedicated /payment page */}
     </div>
   );
 }
