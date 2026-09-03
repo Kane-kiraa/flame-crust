@@ -65,7 +65,7 @@ z-folder1/
 __pycache__/
 run_tunnels.py
 .vscode/
-
+backup.sql
 
 #file automation
 start.sh
