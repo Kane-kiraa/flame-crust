@@ -20,29 +20,28 @@ jobs:
           host: ${{ secrets.ALIBABA_HOST }}
           username: ${{ secrets.ALIBABA_USER }}
           key: ${{ secrets.ALIBABA_SSH_KEY }}
-          passphrase: ${{ secrets.ALIBABA_SSH_PASSPHRASE }} # Optional if key has passphrase
-          password: ${{ secrets.ALIBABA_PASSWORD }} # Alternative if using password instead of key
-          port: ${{ secrets.ALIBABA_PORT || 22 }}
+          port: 22
+          script_stop: true
           script: |
             echo "🚀 Connecting to Alibaba Cloud ECS..."
-            cd ~/flame-crust || exit 1
+            cd ~/flame-crust
             
-            echo "📥 Pulling latest changes from Git..."
-            git pull origin main
+            echo "📥 Fetching latest code..."
+            git fetch origin main
+            git reset --hard origin/main
             
-            echo "🐳 Deploying with Docker Compose..."
-            cd backend || exit 1
+            echo "🐳 Deploying backend containers..."
+            cd backend
             
-            # If you have docker-compose or docker compose:
             if command -v docker-compose &> /dev/null; then
-              docker-compose down
+              docker-compose down || true
               docker-compose up -d --build
             else
-              docker compose down
+              docker compose down || true
               docker compose up -d --build
             fi
             
             echo "🧹 Cleaning up unused Docker images..."
-            docker image prune -f
+            docker image prune -f || true
             
             echo "✅ Deployment completed successfully!"
