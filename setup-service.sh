@@ -18,7 +18,7 @@ pkill -f "java.*flame-crust" || true
 
 # Write systemd service file
 echo "Writing $SERVICE_PATH..."
-sudo bash -c "cat << 'EOF' > $SERVICE_PATH
+sudo bash -c "cat << EOF > $SERVICE_PATH
 [Unit]
 Description=Flame Crust Spring Boot Backend API (24/7 Auto-Restart)
 After=network.target
