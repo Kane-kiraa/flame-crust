@@ -16,11 +16,7 @@ public class CorsConfig {
     public CorsFilter corsFilter() {
         CorsConfiguration config = new CorsConfiguration();
         
-        config.setAllowedOrigins(List.of(
-            "https://flame-crust-4dw.pages.dev",
-            "http://localhost:5173",
-            "http://localhost:3000"
-        ));
+        config.setAllowedOriginPatterns(List.of("*"));
         
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
