@@ -84,18 +84,23 @@ export function DataTable({
   };
 
   const filteredData = useMemo(() => {
-    if (serverSide || !search || searchKeys.length === 0) return data;
-    const lower = search.toLowerCase();
+    if (!search || !search.trim() || searchKeys.length === 0) return data;
+    if (serverSide && onSearchChange) return data;
+
+    const lower = search.trim().toLowerCase();
+    const tokens = lower.split(/\s+/).filter(Boolean);
     return data.filter((row) =>
-      searchKeys.some((key) => {
-        const val = row[key];
-        return val != null && String(val).toLowerCase().includes(lower);
-      })
+      tokens.every((token) =>
+        searchKeys.some((key) => {
+          const val = row[key];
+          return val != null && String(val).toLowerCase().includes(token);
+        })
+      )
     );
-  }, [data, search, searchKeys, serverSide]);
+  }, [data, search, searchKeys, serverSide, onSearchChange]);
 
   const sortedData = useMemo(() => {
-    if (serverSide || !sortKey) return filteredData;
+    if ((serverSide && !search) || !sortKey) return filteredData;
     return [...filteredData].sort((a, b) => {
       const aVal = a[sortKey];
       const bVal = b[sortKey];
@@ -106,13 +111,14 @@ export function DataTable({
         : String(aVal).localeCompare(String(bVal));
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [filteredData, sortKey, sortDir, serverSide]);
+  }, [filteredData, sortKey, sortDir, serverSide, search]);
 
-  const totalItems = serverSide ? (totalCount ?? data.length) : sortedData.length;
+  const isSearchActive = Boolean(search && search.trim());
+  const totalItems = (serverSide && !isSearchActive) ? (totalCount ?? data.length) : sortedData.length;
   const actualPageSize = pageSize === "All" ? Math.max(totalItems, 1) : Number(pageSize || 10);
   const totalPages = Math.max(1, Math.ceil(totalItems / actualPageSize));
   const safePage = Math.min(currentPage, totalPages - 1);
-  const pagedData = serverSide ? data : sortedData.slice(safePage * actualPageSize, (safePage + 1) * actualPageSize);
+  const pagedData = (serverSide && !isSearchActive) ? data : sortedData.slice(safePage * actualPageSize, (safePage + 1) * actualPageSize);
 
   if (loading && pagedData.length === 0) {
     return <TableSkeleton rows={5} cols={columns.length} className={className} />;

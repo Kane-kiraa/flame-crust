@@ -5,7 +5,7 @@ export const resourceConfig = {
   products: {
     label: "Products",
     icon: "📦",
-    searchKeys: ["name", "category"],
+    searchKeys: ["name", "category", "sku", "description", "tags"],
     columns: [
       { key: "_index", label: "No.", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
       { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm max-w-[120px] sm:max-w-none truncate" },

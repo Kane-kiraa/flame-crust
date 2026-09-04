@@ -53,8 +53,8 @@ function AdminResourcePage({ resource }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const fetchData = useCallback(async (targetPage = page, targetSize = pageSize, forceRefresh = false) => {
-    const cacheKey = `${resource}:${targetPage}:${targetSize}`;
+  const fetchData = useCallback(async (forceRefresh = false) => {
+    const cacheKey = `${resource}:all`;
 
     // If already cached and not force refreshing, load instantly (0ms)
     if (!forceRefresh && resourcePagesCache.has(cacheKey)) {
@@ -69,8 +69,7 @@ function AdminResourcePage({ resource }) {
     setError(null);
     try {
       const result = await list(resource, {
-        page: targetPage,
-        limit: targetSize === "All" ? -1 : targetSize,
+        limit: -1,
         paginate: true,
       });
 
@@ -91,11 +90,9 @@ function AdminResourcePage({ resource }) {
         total = result.total ?? items.length;
       }
 
-      const numericSize = targetSize === "All" ? Math.max(total, 1) : Number(targetSize || 10);
-      const baseIndex = (targetPage * numericSize) + 1;
       const formattedItems = items.map((item, index) => ({
         ...item,
-        _index: item.id !== undefined ? item.id : (baseIndex + index)
+        _index: item.id !== undefined ? item.id : (index + 1)
       }));
 
       // Cache for instant navigation
@@ -113,11 +110,10 @@ function AdminResourcePage({ resource }) {
     } finally {
       setLoading(false);
     }
-  }, [resource, page, pageSize]);
+  }, [resource]);
 
   useEffect(() => {
-    setPage(0);
-    fetchData(0, pageSize);
+    fetchData();
   }, [resource]);
 
   useEffect(() => {
@@ -226,7 +222,7 @@ function AdminResourcePage({ resource }) {
       }
       clearResourceCache(resource);
       setFormOpen(false);
-      fetchData(page, pageSize, true);
+      fetchData(true);
     } catch (err) {
       toast.error(err.message || "Failed to save");
     } finally {
@@ -241,7 +237,7 @@ function AdminResourcePage({ resource }) {
       toast.success(`${config.label.slice(0, -1)} deleted`);
       clearResourceCache(resource);
       setDeleteOpen(false);
-      fetchData(page, pageSize, true);
+      fetchData(true);
     } catch (err) {
       toast.error(err.message || "Failed to delete");
     } finally {
@@ -258,8 +254,9 @@ function AdminResourcePage({ resource }) {
     return <ErrorState title="Unknown resource" description={`No configuration found for "${resource}"`} />;
   }
 
+  // Add actions column
   const columnsWithActions = [
-    ...config.columns.map(col => ({
+    ...config.columns.map((col) => ({
       ...col,
       render: col.render ? (v, row) => col.render(v, row, async (updates) => {
         try {
@@ -267,7 +264,7 @@ function AdminResourcePage({ resource }) {
           await update(resource, row.id, updates);
           toast.success("Updated successfully");
           clearResourceCache(resource);
-          fetchData(page, pageSize, true);
+          fetchData(true);
         } catch(err) {
           toast.error("Failed to update: " + err.message);
         }
@@ -277,23 +274,25 @@ function AdminResourcePage({ resource }) {
       key: "actions",
       label: "Actions",
       render: (_, row) => (
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <Button
             variant="ghost"
             size="icon"
-            className="size-8 rounded-lg text-muted-foreground hover:text-foreground"
             onClick={() => openEdit(row.id)}
+            className="size-8 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground"
           >
             <Pencil className="size-3.5" />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="size-8 rounded-lg text-muted-foreground hover:text-destructive"
-            onClick={() => openDelete(row.id)}
-          >
-            <Trash2 className="size-3.5" />
-          </Button>
+          {!config.disableDelete && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => openDelete(row.id)}
+              className="size-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+            >
+              <Trash2 className="size-3.5" />
+            </Button>
+          )}
         </div>
       ),
     },
@@ -308,7 +307,7 @@ function AdminResourcePage({ resource }) {
           <ErrorState
             title="Failed to load data"
             description={error}
-            onRetry={() => fetchData(page, pageSize)}
+            onRetry={() => fetchData(true)}
           />
         ) : (
           <DataTable
@@ -319,7 +318,7 @@ function AdminResourcePage({ resource }) {
                     {config.label}
                   </h1>
                   <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 shadow-sm">
-                    {totalCount} {totalCount === 1 ? "item" : "items"}
+                    {data.length} {data.length === 1 ? "item" : "items"}
                   </span>
                 </div>
                 <p className="mt-1.5 text-xs sm:text-sm font-medium text-muted-foreground line-clamp-1">
@@ -330,19 +329,8 @@ function AdminResourcePage({ resource }) {
             columns={columnsWithActions}
             data={data}
             loading={loading}
-            serverSide={true}
-            page={page}
-            pageSize={pageSize}
-            totalCount={totalCount}
-            onPageChange={(newPage) => {
-              setPage(newPage);
-              fetchData(newPage, pageSize);
-            }}
-            onPageSizeChange={(newSize) => {
-              setPageSize(newSize);
-              setPage(0);
-              fetchData(0, newSize);
-            }}
+            serverSide={false}
+            pageSize={config.pageSize || (resource === "products" ? 12 : 10)}
             searchKeys={config.searchKeys}
             searchPlaceholder={`Search ${config.label.toLowerCase()}...`}
             emptyTitle={`No ${config.label.toLowerCase()} found`}
