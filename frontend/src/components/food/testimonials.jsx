@@ -6,57 +6,57 @@ import { list } from "@/lib/api";
 
 const DEFAULT_TESTIMONIALS = [
   {
-    name: "Sarah K.",
+    name: "Chantha Khemara",
     role: "Verified Customer",
-    initials: "SK",
-    avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+    initials: "CK",
+    avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787833850/sn9trvzopyumdrlxqkl2.jpg",
     rating: 5,
-    body: "I've ordered the Margherita Classica four times this month. The crust is the best I've had outside of Naples — airy, slightly charred, and delivered hot every single time.",
-    color: "bg-rose-500"
-  },
-  {
-    name: "Marcus T.",
-    role: "Burger Devotee",
-    initials: "MT",
-    avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
-    rating: 5,
-    body: "The Flame & Crust Signature burger ruined every other burger for me. The bacon jam is criminally good and the patties are juicy without being greasy.",
+    body: "Burger សាច់ Angus ពីរជាន់ juicy ខ្លាំង! Caramelized onion និង bacon jam ធ្វើឱ្យរសជាតិដាច់គេតែម្តង។ 10/10 ត្រូវចិត្តខ្លាំង!",
     color: "bg-amber-500"
   },
   {
-    name: "Priya R.",
-    role: "Pizza Bagel Fan",
-    initials: "PR",
-    avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    name: "Sokleng",
+    role: "Verified Foodie",
+    initials: "SL",
+    avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787834892/ctkcvof8bskcurmrrryu.jpg",
     rating: 5,
-    body: "Didn't know pizza bagels could be this good. The everything-bagel crust is genius. Ordered a tray for a party and they disappeared in five minutes flat.",
+    body: "ឈីសច្រើន pepperoni ស្រួយឆ្ងាញ់ ដឹកមកដល់នៅក្តៅហុយៗ។ Recommend សម្រាប់អ្នកចូលចិត្តរសជាតិបែប American-Italian!",
+    color: "bg-rose-500"
+  },
+  {
+    name: "Khemara",
+    role: "Regular Customer",
+    initials: "KM",
+    avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1788378288/isqcmoousnfzttu3bimz.jpg",
+    rating: 5,
+    body: "Pizza Bagel នេះប្លែកហើយឆ្ងាញ់ណាស់! Bagel ខាងក្រៅស្រួយ ខាងក្នុងទន់ ឈីសពេញៗមាត់។ កូនៗខ្ញុំចូលចិត្តខ្លាំង។",
     color: "bg-emerald-500"
   },
   {
-    name: "David L.",
-    role: "Weekly Regular",
-    initials: "DL",
-    avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    name: "Khen Chet",
+    role: "Verified Buyer",
+    initials: "KC",
+    avatar: "https://lh3.googleusercontent.com/a/ACg8ocJH3fTCAuRs8dcJYJuoy3PtVLRXgOAlVNWEQVJP8EzRf-AmrJYa=s96-c",
     rating: 5,
-    body: "Consistently excellent. I order every Friday night for family movie night and the kids love it every time the box opens. The garlic knots are a must-order.",
+    body: "The authentic Neapolitan taste in town! Crust is airy, chewy, and light with perfectly balanced tomato sauce. Best pizza in Phnom Penh!",
     color: "bg-purple-500"
   },
   {
-    name: "Jenna M.",
-    role: "Food Blogger",
-    initials: "JM",
-    avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+    name: "Srey Leak",
+    role: "Weekly Regular",
+    initials: "SL",
+    avatar: "https://lh3.googleusercontent.com/a/ACg8ocK0urhPkTM23sGDETFZ8yhhfe--YZst2CP9QTcjSCfAHUpzmBQ=s96-c",
     rating: 5,
-    body: "Reviewed 40+ pizzerias this year — Flame & Crust is in my top three. The four-cheese with truffle honey is a religious experience. Highly recommend.",
+    body: "ភីហ្សាឆ្ងាញ់ ក្តៅៗស្រួយល្អ សេវាកម្មដឹកជញ្ជូនរហ័សទាន់ចិត្ត គ្រាន់តែបើកប្រអប់ភ្លាមឈ្ងុយសាយភាយពេញផ្ទះ!",
     color: "bg-blue-500"
   },
   {
-    name: "Tom H.",
-    role: "Office Team Lead",
-    initials: "TH",
-    avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    name: "Khemara (kira)",
+    role: "Food Blogger",
+    initials: "KK",
+    avatar: "https://lh3.googleusercontent.com/a/ACg8ocLd9RuuN9RwU2tZa9lL0iI10bL5Z3xAIAKCXcpH30PVL8iw5A=s96-c",
     rating: 5,
-    body: "Ordered 12 pizzas for a team lunch — arrived hot, on time, and everyone asked where it was from. The online ordering flow was the easiest I've used.",
+    body: "ដំឡូងបារាំងបំពងក្លិន Truffle ឈ្ងុយសាយភាយ ជាមួយ Parmesan ម៉ត់ និង garlic aioli dip ឆ្ងាញ់ញៀនជាប់ចិត្ត!",
     color: "bg-orange-500"
   }
 ];
