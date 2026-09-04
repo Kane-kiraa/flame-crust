@@ -44,8 +44,14 @@ jobs:
             else
               echo "⚠️ Docker not found, building with maven..."
               ./mvnw clean package -DskipTests
-              pkill -f "spring-boot:run" || true
-              nohup ./mvnw spring-boot:run > backend.log 2>&1 &
+              if systemctl list-unit-files | grep -q "flame-crust.service"; then
+                echo "🔄 Restarting flame-crust systemd service..."
+                sudo systemctl restart flame-crust
+              else
+                echo "🚀 Starting optimized JAR..."
+                pkill -f "java.*flame-crust" || true
+                nohup java -XX:+UseSerialGC -Xms64m -Xmx180m -XX:MaxMetaspaceSize=96m -jar target/*.jar > backend.log 2>&1 &
+              fi
             fi
             
             echo "🧹 Cleaning up unused Docker images..."
