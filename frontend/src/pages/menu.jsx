@@ -51,11 +51,11 @@ function MenuPage() {
   const [loading, setLoading] = useState(() => getCachedFoodItems().length === 0);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
-  const [visibleCount, setVisibleCount] = useState(8);
+  const [visibleCount, setVisibleCount] = useState(16);
   const [loadingMore, setLoadingMore] = useState(false);
 
   const handleLoadMore = () => {
-    setVisibleCount((prev) => prev + 8);
+    setVisibleCount((prev) => prev + 16);
   };
 
   useEffect(() => {
@@ -63,7 +63,7 @@ function MenuPage() {
   }, [categoryFromUrl]);
 
   useEffect(() => {
-    setVisibleCount(8);
+    setVisibleCount(16);
   }, [active, search, dietaryFilter]);
 
   useEffect(() => {
@@ -143,9 +143,10 @@ function MenuPage() {
   }, [filteredItems, visibleCount, active, dietaryFilter, search]);
 
   const handleCategoryChange = (cat) => {
+    if (active === cat) return;
     setActive(cat);
     setDietaryFilter("all");
-    setSearchParams({ category: cat });
+    setSearchParams({ category: cat }, { replace: true });
   };
 
   const retry = () => {

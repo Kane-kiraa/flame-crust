@@ -218,8 +218,11 @@
 }
 
 .menu-desc-banner {
-  margin-top: 0.75rem;
-  min-height: 2rem;
+  margin-top: 0.5rem;
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .menu-desc-text {

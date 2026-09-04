@@ -51,7 +51,7 @@ export function ArcCategoryNav({
         {/* Full-width Container (no horizontal scroll) */}
         <div 
           ref={containerRef}
-          className="flex items-center justify-between w-full px-1 py-4"
+          className="flex items-center justify-between w-full px-1 py-2"
         >
           {reorderedList.map((item) => {
             const isActive = active === item.key;
@@ -60,37 +60,44 @@ export function ArcCategoryNav({
               <button
                 key={item.key}
                 type="button"
-                onClick={() => onSelectCategory(item.key)}
-                className="flex flex-col items-center justify-center flex-1 cursor-pointer relative shrink-0 group transition-all duration-300 px-0.5"
+                onClick={() => {
+                  if (active !== item.key) {
+                    onSelectCategory(item.key);
+                  }
+                }}
+                className="flex flex-col items-center justify-start flex-1 cursor-pointer relative shrink-0 group px-0.5 select-none"
               >
-                {/* Background glow for active item */}
-                {isActive && (
-                  <div className="absolute top-[30%] left-1/2 -translate-x-1/2 -translate-y-1/2 w-14 h-14 bg-red-500/15 rounded-full blur-xl pointer-events-none" />
-                )}
+                {/* Fixed-height Icon Wrapper to prevent vertical layout shifting */}
+                <div className="h-[3.25rem] w-full flex items-center justify-center relative">
+                  {/* Background glow for active item */}
+                  {isActive && (
+                    <div className="absolute inset-0 bg-red-500/15 rounded-full blur-xl pointer-events-none" />
+                  )}
 
-                {/* Circular Icon Container */}
-                <div
-                  className={cn(
-                    "flex items-center justify-center rounded-full bg-card transition-all duration-300 relative z-10",
-                    isActive
-                      ? "size-[3.25rem] ring-1 ring-[#e3342f] shadow-md text-[#e3342f]"
-                      : "size-10 shadow-sm border border-border/40 text-foreground/70 hover:shadow-md hover:border-border/60"
-                  )}
-                >
-                  {item.isAll ? (
-                    <Grip className={cn("size-[1.15rem]", isActive ? "text-[#e3342f]" : "")} />
-                  ) : (
-                    <span className={cn(isActive ? "text-[1.35rem]" : "text-base", "transition-all")}>
-                      {item.icon}
-                    </span>
-                  )}
+                  {/* Circular Icon Container */}
+                  <div
+                    className={cn(
+                      "flex items-center justify-center rounded-full bg-card relative z-10 transition-transform duration-200",
+                      isActive
+                        ? "size-[3.25rem] ring-1.5 ring-[#e3342f] shadow-md text-[#e3342f] scale-100"
+                        : "size-10 shadow-sm border border-border/40 text-foreground/70 scale-95 hover:border-border/60"
+                    )}
+                  >
+                    {item.isAll ? (
+                      <Grip className={cn("size-[1.15rem]", isActive ? "text-[#e3342f]" : "")} />
+                    ) : (
+                      <span className={cn(isActive ? "text-[1.35rem]" : "text-base", "transition-all")}>
+                        {item.icon}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                {/* Label & Active Underline */}
-                <div className="flex flex-col items-center mt-2 h-6">
+                {/* Label & Active Underline with fixed height */}
+                <div className="flex flex-col items-center mt-1.5 h-6">
                   <span
                     className={cn(
-                      "text-[10px] sm:text-[11px] whitespace-nowrap transition-colors tracking-tight",
+                      "text-[10px] sm:text-[11px] whitespace-nowrap transition-colors tracking-tight leading-tight",
                       isActive
                         ? "font-bold text-foreground"
                         : "font-medium text-muted-foreground group-hover:text-foreground"
@@ -98,12 +105,12 @@ export function ArcCategoryNav({
                   >
                     {item.label}
                   </span>
-                  {isActive && (
-                    <motion.div
-                      layoutId="mobileArcActiveUnderline"
-                      className="w-5 h-[2px] rounded-full bg-foreground mt-1"
-                    />
-                  )}
+                  <span
+                    className={cn(
+                      "w-5 h-[2px] rounded-full mt-1 transition-all duration-200",
+                      isActive ? "bg-foreground opacity-100 scale-100" : "bg-transparent opacity-0 scale-50"
+                    )}
+                  />
                 </div>
               </button>
             );
