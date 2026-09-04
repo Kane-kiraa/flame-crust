@@ -2,11 +2,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { Flame, Instagram, Twitter, Facebook, ArrowRight, Heart } from "lucide-react";
+import { Flame, Instagram, Twitter, Facebook, ArrowRight, Heart, Mail, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fetchCategories } from "@/lib/food-api";
+
+function TelegramIcon({ className = "size-4" }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8-1.7 8.01c-.12.56-.46.7-.93.43l-2.58-1.9-1.25 1.2c-.14.14-.26.26-.52.26l.19-2.65 4.83-4.36c.21-.19-.05-.29-.32-.11l-5.97 3.76-2.57-.8c-.56-.17-.57-.56.12-.83l10.05-3.87c.47-.17.87.11.72.76z" />
+    </svg>
+  );
+}
 
 export function Footer({ hideNewsletter = false }) {
   const [categories, setCategories] = useState([]);
@@ -38,10 +46,11 @@ export function Footer({ hideNewsletter = false }) {
       { label: "Gift cards", to: "/menu", note: "Give Great Taste" },
     ],
     Support: [
-      { label: "Help center", to: "/profile" },
+      { label: "📞 088 863 1805", to: "tel:0888631805", isExternal: true },
+      { label: "✉️ Email Us", to: "mailto:chanthakhemara12@gmail.com", isExternal: true },
+      { label: "✈️ Telegram Chat", to: "https://t.me/+855888631805", isExternal: true },
       { label: "Track order", to: "/profile" },
-      { label: "Contact us", to: "tel:+855965755963", isExternal: true },
-      { label: "FAQs", to: "/#features" },
+      { label: "Help center", to: "/profile" },
     ],
     Legal: [
       { label: "Privacy Policy", to: "/menu" },
@@ -119,21 +128,57 @@ export function Footer({ hideNewsletter = false }) {
             <p className="mt-3 text-xs sm:text-sm text-muted-foreground max-w-xs leading-relaxed">
               Wood-fired sourdough pizzas, hand-rolled pizza bagels, and smashed Angus burgers. Crafted with care, delivered hot in 25 minutes.
             </p>
+
+            {/* Direct Contact Info */}
+            <div className="mt-4 space-y-2 text-xs">
+              <a
+                href="tel:0888631805"
+                className="flex items-center gap-2.5 text-foreground/90 hover:text-primary transition-colors group"
+              >
+                <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <Phone className="size-3" />
+                </div>
+                <span className="font-semibold tracking-wide">088 863 1805</span>
+              </a>
+
+              <a
+                href="mailto:chanthakhemara12@gmail.com"
+                className="flex items-center gap-2.5 text-foreground/80 hover:text-primary transition-colors group"
+              >
+                <div className="size-6 rounded-full bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                  <Mail className="size-3" />
+                </div>
+                <span className="font-medium text-xs break-all">chanthakhemara12@gmail.com</span>
+              </a>
+
+              <a
+                href="https://t.me/+855888631805"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2.5 text-sky-600 dark:text-sky-400 hover:opacity-80 transition-opacity group"
+              >
+                <div className="size-6 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
+                  <TelegramIcon className="size-3.5" />
+                </div>
+                <span className="font-semibold">Telegram: 088 863 1805</span>
+              </a>
+            </div>
             
             {/* Social Links */}
             <div className="mt-4 flex items-center gap-2">
               {[
-                { icon: Instagram, href: "https://instagram.com" },
-                { icon: Twitter, href: "https://twitter.com" },
-                { icon: Facebook, href: "https://facebook.com" }
+                { icon: TelegramIcon, href: "https://t.me/+855888631805", label: "Telegram", hover: "hover:bg-sky-500 hover:text-white" },
+                { icon: Instagram, href: "https://instagram.com", label: "Instagram", hover: "hover:bg-primary hover:text-white" },
+                { icon: Facebook, href: "https://facebook.com", label: "Facebook", hover: "hover:bg-blue-600 hover:text-white" },
+                { icon: Twitter, href: "https://twitter.com", label: "Twitter", hover: "hover:bg-foreground hover:text-background" }
               ].map((item, i) => (
                 <a
                   key={i}
                   href={item.href}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center justify-center size-8 sm:size-9 rounded-full bg-secondary/80 hover:bg-primary hover:text-white text-muted-foreground transition-all cursor-pointer shadow-2xs"
-                  aria-label="Social Link"
+                  className={`flex items-center justify-center size-8 sm:size-9 rounded-full bg-secondary/80 text-muted-foreground transition-all cursor-pointer shadow-2xs ${item.hover}`}
+                  aria-label={item.label}
                 >
                   <item.icon className="size-4" />
                 </a>
