@@ -20,10 +20,12 @@ jobs:
           host: ${{ secrets.ALIBABA_HOST }}
           username: ${{ secrets.ALIBABA_USER }}
           key: ${{ secrets.ALIBABA_SSH_KEY }}
-          port: 22
+          port: ${{ secrets.ALIBABA_PORT || 1202 }}
+          timeout: 60s
+          command_timeout: 30m
           script_stop: true
           script: |
-            echo "🚀 Connecting to Alibaba Cloud ECS..."
+            echo "🚀 Connected to Alibaba Cloud ECS on Port 1202!"
             cd ~/flame-crust
             
             echo "📥 Fetching latest code..."
@@ -36,9 +38,14 @@ jobs:
             if command -v docker-compose &> /dev/null; then
               docker-compose down || true
               docker-compose up -d --build
-            else
+            elif command -v docker &> /dev/null; then
               docker compose down || true
               docker compose up -d --build
+            else
+              echo "⚠️ Docker not found, building with maven..."
+              ./mvnw clean package -DskipTests
+              pkill -f "spring-boot:run" || true
+              nohup ./mvnw spring-boot:run > backend.log 2>&1 &
             fi
             
             echo "🧹 Cleaning up unused Docker images..."
