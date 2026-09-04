@@ -8,12 +8,13 @@ import { Features } from "@/components/food/features";
 import { Testimonials } from "@/components/food/testimonials";
 import { Footer } from "@/components/food/footer";
 import { PageTransition } from "@/components/shared/page-transition";
+import "./home.css";
 
 function Home() {
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="home-container">
       <Navbar />
-      <main className="flex-1">
+      <main className="home-main">
         <PageTransition>
           <Hero />
           <Featured />
@@ -29,3 +30,4 @@ function Home() {
 }
 
 export default Home;
+

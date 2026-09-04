@@ -1,13 +1,14 @@
 "use client";
 import { motion } from "framer-motion";
 import { Flame, Leaf, Timer, Truck, Award, ChefHat, Sparkles } from "lucide-react";
+import "./features.css";
 
 const features = [
   {
     icon: Flame,
     title: "Wood-fired oven",
     body: "Our 800°F brick oven chars the crust in 90 seconds for that perfect leopard-spot finish and airy chew.",
-    color: "bg-orange-500/10 text-orange-600"
+    color: "bg-orange-500/10 text-orange-600" // Kept color utilities here since they are dynamic
   },
   {
     icon: Leaf,
@@ -43,9 +44,9 @@ const features = [
 
 export function Features() {
   return (
-    <section id="features" className="pt-6 pb-12 sm:pt-14 sm:pb-20 relative overflow-hidden bg-background text-foreground">
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-[1fr_1.3fr] gap-8 lg:gap-14 items-start">
+    <section id="features" className="features-section">
+      <div className="features-container">
+        <div className="features-grid">
           
           {/* Left Column: Heading, Subtitle & Live Oven Image */}
           <motion.div
@@ -53,42 +54,42 @@ export function Features() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-60px" }}
             transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
-            className="lg:sticky lg:top-24"
+            className="features-header-content"
           >
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/25 px-3 py-0.5 text-xs font-bold text-primary uppercase tracking-wider">
+            <span className="features-badge">
               <Flame className="size-3.5" />
               Why Flame & Crust
             </span>
-            <h2 className="mt-2.5 font-serif text-2xl sm:text-4xl lg:text-5xl font-bold leading-tight text-foreground">
+            <h2 className="features-title">
               We sweat the <span className="text-gradient-warm italic">little things</span> so you don't have to.
             </h2>
-            <p className="mt-2 text-xs sm:text-base text-muted-foreground max-w-md leading-relaxed">
+            <p className="features-subtitle">
               From a 48-hour dough fermentation to a smidge of hot honey on the pepperoni — every detail is intentional.
             </p>
 
             {/* Oven Image with Live Firing Badge */}
-            <div className="mt-4 sm:mt-6 relative rounded-2xl sm:rounded-3xl overflow-hidden aspect-[16/9] sm:aspect-[4/3] shadow-warm-lg ring-1 ring-border/60">
+            <div className="features-oven-image-wrapper">
               <img
                 src="/images/library/pizza3.1.jpg"
                 alt="Wood-fired pizza oven at Flame & Crust"
-                className="w-full h-full object-cover"
+                className="features-oven-image"
                 loading="lazy"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-              <div className="absolute bottom-3 left-3 right-3 sm:bottom-4 sm:left-4 sm:right-4">
-                <div className="flex items-center gap-1.5 text-white">
-                  <Flame className="size-4 text-amber-500 animate-flicker" />
-                  <span className="text-[10px] sm:text-xs uppercase tracking-widest font-bold opacity-90">Now firing</span>
+              <div className="features-oven-overlay" />
+              <div className="features-oven-caption">
+                <div className="features-oven-status">
+                  <Flame className="animate-flicker" />
+                  <span>Now firing</span>
                 </div>
-                <p className="mt-0.5 font-serif text-sm sm:text-lg font-semibold text-white">
+                <p className="features-oven-caption-text">
                   Margherita Classica, fresh out the oven
                 </p>
               </div>
             </div>
           </motion.div>
 
-          {/* Right Column: 6 Feature Cards (2-Col on Mobile & Desktop) */}
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+          {/* Right Column: 6 Feature Cards */}
+          <div className="features-cards-grid">
             {features.map((f, i) => (
               <motion.div
                 key={f.title}
@@ -100,16 +101,16 @@ export function Features() {
                   delay: Math.min(i * 0.08, 0.35),
                   ease: [0.16, 1, 0.3, 1]
                 }}
-                className="group relative rounded-2xl bg-card border border-border/70 p-3 sm:p-5 transition-all hover:border-primary/40 hover:shadow-warm flex flex-col justify-between"
+                className="feature-card group"
               >
-                <div>
-                  <span className={`inline-flex items-center justify-center size-8 sm:size-10 rounded-xl ${f.color} mb-2`}>
-                    <f.icon className="size-4 sm:size-5" />
+                <div className="feature-card-inner">
+                  <span className={`feature-icon-wrapper ${f.color}`}>
+                    <f.icon />
                   </span>
-                  <h3 className="font-serif text-sm sm:text-lg font-bold text-foreground leading-tight">
+                  <h3 className="feature-card-title">
                     {f.title}
                   </h3>
-                  <p className="mt-1 text-[11px] sm:text-xs text-muted-foreground leading-relaxed">
+                  <p className="feature-card-body">
                     {f.body}
                   </p>
                 </div>

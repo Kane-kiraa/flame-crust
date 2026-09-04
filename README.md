@@ -164,7 +164,7 @@ docker run -p 8080:8080 \
 | :--- | :--- | :--- |
 | **Database** | [Aiven MySQL](https://aiven.io) | MySQL 8.4 Free Tier ជាមួយ SSL |
 | **Backend** | [Render](https://render.com) | Docker Web Service + Cron-Job Keep-Alive Ping |
-| **Frontend** | [Vercel](https://vercel.com) | React/Vite Preset with `VITE_API_URL` env |
+| **Frontend** | [cloudflared](https://cloudflare.com) | React/Vite Preset with `VITE_API_URL` env |
 
 > 📖 សម្រាប់មេរៀន និងជំហានលម្អិតអំពីការ Deploy សូមមើលឯកសារ [deploy.md](deploy.md)។
 

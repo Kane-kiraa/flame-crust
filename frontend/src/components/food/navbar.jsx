@@ -18,13 +18,13 @@ let cachedActiveOrders = [];
 try {
   const stored = localStorage.getItem("flame_active_orders_cache");
   if (stored) cachedActiveOrders = JSON.parse(stored);
-} catch (e) {}
+} catch (e) { }
 
 let cachedCategories = [];
 try {
   const stored = localStorage.getItem("flame_categories_cache");
   if (stored) cachedCategories = JSON.parse(stored);
-} catch (e) {}
+} catch (e) { }
 
 function Navbar() {
   const [scrolled, setScrolled] = useState(false);
@@ -79,7 +79,7 @@ function Navbar() {
     const loadAllConversations = async () => {
       try {
         const allDrivers = (await list("drivers").catch(() => [])) || [];
-        
+
         const rawConvos = await Promise.all(
           activeOrders.map(async (ord) => {
             const driverId = ord.driverId || ord.driver_id;
@@ -94,11 +94,11 @@ function Navbar() {
             let msgs = [];
             try {
               msgs = await getOrderMessages(ord.id);
-            } catch (e) {}
+            } catch (e) { }
 
             const lastMsg = Array.isArray(msgs) && msgs.length > 0 ? msgs[msgs.length - 1] : null;
-            const unreadCount = Array.isArray(msgs) 
-              ? msgs.filter(m => m.sender_type !== "CUSTOMER" && !m.is_read).length 
+            const unreadCount = Array.isArray(msgs)
+              ? msgs.filter(m => m.sender_type !== "CUSTOMER" && !m.is_read).length
               : 0;
 
             return {
@@ -147,9 +147,9 @@ function Navbar() {
                 setSelectedChatOrder(convo);
               }
             }
-          } catch (e) {}
+          } catch (e) { }
         }
-      } catch (e) {}
+      } catch (e) { }
     };
 
     loadAllConversations();
@@ -175,11 +175,11 @@ function Navbar() {
         const activeList = orders
           .filter(o => String(o.customer_id) === String(c.id) && o.status !== "DELIVERED" && o.status !== "CANCELLED")
           .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-        
+
         cachedActiveOrders = activeList;
         try {
           localStorage.setItem("flame_active_orders_cache", JSON.stringify(activeList));
-        } catch (e) {}
+        } catch (e) { }
         setActiveOrders(activeList);
       } catch (e) {
         // preserve cached if network error
@@ -209,7 +209,7 @@ function Navbar() {
         const { getProducts } = await import("@/lib/api");
         const data = await getProducts();
         setAllProducts(Array.isArray(data) ? data : (data.products || []));
-      } catch (e) {}
+      } catch (e) { }
     };
     loadProducts();
   }, []);
@@ -248,17 +248,17 @@ function Navbar() {
 
   const filteredProducts = searchQuery.trim().length > 0
     ? allProducts.filter(p =>
-        p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' && p.tags ? p.tags.split(',').map(s => s.trim()) : [])).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
-      )
+      p.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (Array.isArray(p.tags) ? p.tags : (typeof p.tags === 'string' && p.tags ? p.tags.split(',').map(s => s.trim()) : [])).some(t => t.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
     : [];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
-    
+
     const handleAuthChange = () => {
       try {
         const auth = localStorage.getItem("customerAuth");
@@ -296,11 +296,11 @@ function Navbar() {
           cachedCategories = data;
           try {
             localStorage.setItem("flame_categories_cache", JSON.stringify(data));
-          } catch (e) {}
+          } catch (e) { }
           setCategories(data);
         }
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       active = false;
     };
@@ -326,15 +326,15 @@ function Navbar() {
     { label: "Menu", href: "/menu" },
     ...(categories.length > 0
       ? categories.map((c) => ({
-          label: c.name,
-          href: `/menu?category=${c.slug}`,
-        }))
+        label: c.name,
+        href: `/menu?category=${c.slug}`,
+      }))
       : [
-          { label: "Pizza", href: "/menu?category=pizza" },
-          { label: "Pizza Bagels", href: "/menu?category=pizza-bagels" },
-          { label: "Burgers", href: "/menu?category=burgers" },
-          { label: "Sides", href: "/menu?category=sides" },
-        ]),
+        { label: "Pizza", href: "/menu?category=pizza" },
+        { label: "Pizza Bagels", href: "/menu?category=pizza-bagels" },
+        { label: "Burgers", href: "/menu?category=burgers" },
+        { label: "Sides", href: "/menu?category=sides" },
+      ]),
   ];
 
   const isLinkActive = (l) => {
@@ -377,7 +377,7 @@ function Navbar() {
 
           {/* Mobile Page Titles in Top Navbar (Hidden when menu open or search focused) */}
           {(location.pathname === "/cart" || location.pathname === "/checkout") && !searchFocused && !mobileOpen && (
-            <div 
+            <div
               key={location.pathname}
               className="sm:hidden flex-1 flex items-center justify-center text-center pointer-events-none px-2"
             >
@@ -390,12 +390,12 @@ function Navbar() {
           {/* Centered Top Navbar Search Input (Shown only when triggered/searchFocused) */}
           <AnimatePresence>
             {searchFocused && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.15 }}
-                ref={searchContainerRef} 
+                ref={searchContainerRef}
                 className="flex-1 max-w-sm sm:max-w-md mx-2 relative z-50"
               >
                 <div className="flex items-center gap-2 px-3 sm:px-4 py-1.5 rounded-full bg-background border border-primary ring-2 ring-primary/20 shadow-lg">
@@ -459,10 +459,10 @@ function Navbar() {
                         }}
                         className="flex items-center gap-3 p-2 rounded-xl hover:bg-secondary/70 cursor-pointer transition-colors"
                       >
-                        <img 
-                          src={product.image} 
-                          alt={product.name} 
-                          className="size-10 sm:size-12 rounded-lg object-cover bg-secondary shrink-0" 
+                        <img
+                          src={product.image}
+                          alt={product.name}
+                          className="size-10 sm:size-12 rounded-lg object-cover bg-secondary shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <p className="font-semibold text-xs sm:text-sm text-foreground truncate">{product.name}</p>
@@ -520,7 +520,7 @@ function Navbar() {
 
 
             {customer ? (
-              <button 
+              <button
                 type="button"
                 className="hidden sm:flex shrink-0 items-center gap-2 p-0.5 rounded-full border border-border/60 hover:border-primary/60 bg-secondary/40 transition-all cursor-pointer"
                 onClick={() => {
@@ -539,7 +539,7 @@ function Navbar() {
                 <span className="hidden md:inline text-xs font-semibold pr-2.5 truncate max-w-[100px]">{customer.name || customer.phone}</span>
               </button>
             ) : adminUser ? (
-              <button 
+              <button
                 type="button"
                 className="hidden sm:flex shrink-0 items-center gap-2 p-0.5 pr-3 rounded-full border border-border/60 hover:border-primary/50 bg-secondary/60 hover:bg-secondary transition-all cursor-pointer shadow-sm"
                 onClick={() => {
@@ -558,7 +558,7 @@ function Navbar() {
                 </span>
               </button>
             ) : location.pathname !== "/login" ? (
-              <Button 
+              <Button
                 className="hidden sm:flex rounded-full bg-primary text-primary-foreground hover:bg-primary/90 h-9 sm:h-11 px-4 sm:px-6 font-semibold text-xs sm:text-sm transition-all shadow-warm"
                 onClick={() => {
                   setMobileOpen(false);
@@ -650,7 +650,7 @@ function Navbar() {
               <div className="flex flex-col py-3 px-2 gap-1.5 max-h-[75vh] overflow-y-auto no-scrollbar">
                 {/* Mobile User Card */}
                 {customer ? (
-                  <div 
+                  <div
                     onClick={() => { setMobileOpen(false); navigate("/profile"); }}
                     className="p-3 mb-1 rounded-2xl bg-secondary/60 hover:bg-secondary border border-border/50 flex items-center justify-between cursor-pointer transition-all active:scale-[0.99]"
                   >
@@ -672,7 +672,7 @@ function Navbar() {
                     </span>
                   </div>
                 ) : adminUser ? (
-                  <div 
+                  <div
                     onClick={() => { setMobileOpen(false); navigate("/admin/dashboard"); }}
                     className="p-3 mb-1 rounded-2xl bg-primary/10 hover:bg-primary/15 border border-primary/30 flex items-center justify-between cursor-pointer transition-all active:scale-[0.99]"
                   >
@@ -697,7 +697,7 @@ function Navbar() {
                       <p className="font-bold text-sm text-foreground">Welcome to Flame & Crust</p>
                       <p className="text-xs text-muted-foreground">Sign in to manage orders</p>
                     </div>
-                    <Button 
+                    <Button
                       size="sm"
                       className="rounded-full bg-primary text-primary-foreground font-semibold text-xs px-4"
                       onClick={() => { setMobileOpen(false); navigate("/login"); }}
@@ -741,9 +741,9 @@ function Navbar() {
                     </Link>
                   ))}
                 </div>
-                
+
                 <div className="h-px bg-border/60 my-1 mx-2" />
-                
+
                 {/* Theme Switcher in Mobile Drawer */}
                 <button
                   type="button"
@@ -774,8 +774,8 @@ function Navbar() {
           </DialogHeader>
           <div className="flex flex-col gap-3 py-2 max-h-[60vh] overflow-y-auto no-scrollbar">
             {activeOrders.map((order, idx) => (
-              <motion.div 
-                key={order.id} 
+              <motion.div
+                key={order.id}
                 initial={{ opacity: 0, y: 16, scale: 0.96 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 transition={{ duration: 0.2, delay: idx * 0.06 }}
@@ -794,8 +794,8 @@ function Navbar() {
                 <div className="text-xs text-muted-foreground">
                   Time: {new Date(order.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </div>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   className="rounded-full w-full mt-1 bg-primary text-primary-foreground font-semibold gap-1.5 h-9.5 hover:bg-primary/90 transition-all"
                   onClick={() => {
                     setOrdersModalOpen(false);
@@ -844,10 +844,10 @@ function Navbar() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
                       {driverPhoto ? (
-                        <img 
-                          src={driverPhoto} 
-                          alt={driverName} 
-                          className="size-11 rounded-full object-cover border-2 border-primary/50" 
+                        <img
+                          src={driverPhoto}
+                          alt={driverName}
+                          className="size-11 rounded-full object-cover border-2 border-primary/50"
                         />
                       ) : (
                         <div className="size-11 rounded-full bg-gradient-to-tr from-amber-500 to-red-600 text-white flex items-center justify-center font-bold">
@@ -870,10 +870,10 @@ function Navbar() {
                         {hasLastMsg ? (
                           <span className={cn(convo.unreadCount > 0 ? "font-bold text-foreground" : "")}>
                             {convo.lastMessage.sender_type === "CUSTOMER" ? "You: " : `${driverName.split(" ")[0]}: `}
-                            {convo.lastMessage.message === "[DELETED]" 
-                              ? "🚫 Removed a message" 
-                              : convo.lastMessage.message.startsWith("[IMG]:") 
-                                ? "📷 Photo" 
+                            {convo.lastMessage.message === "[DELETED]"
+                              ? "🚫 Removed a message"
+                              : convo.lastMessage.message.startsWith("[IMG]:")
+                                ? "📷 Photo"
                                 : convo.lastMessage.message}
                           </span>
                         ) : (
@@ -889,8 +889,8 @@ function Navbar() {
                         {convo.unreadCount}
                       </span>
                     )}
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       className="rounded-full h-8 px-3 text-xs font-semibold bg-primary text-primary-foreground pointer-events-none"
                     >
                       Chat

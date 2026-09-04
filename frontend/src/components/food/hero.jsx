@@ -176,11 +176,10 @@ function Hero() {
           </motion.div>
         </div>
       </div>
-
-      <div className="mt-auto border-y border-border/60 bg-secondary/40 py-2.5 sm:py-3.5 overflow-hidden w-full">
+      <div className="mt-auto border-y border-border/60 bg-secondary/40 py-1.5 sm:py-2 overflow-hidden w-full">
         <div className="flex animate-marquee whitespace-nowrap">
           {Array.from({ length: 2 }).map((_, dup) => (
-            <div key={dup} className="flex items-center gap-8 px-4">
+            <div key={dup} className="flex items-center gap-6 px-3">
               {[
                 "🍕 Wood-fired sourdough crust",
                 "🥯 Hand-rolled pizza bagels",
@@ -190,7 +189,10 @@ function Hero() {
                 "👨‍🍳 Chef-crafted recipes",
                 "🔥 Baked fresh to order",
               ].map((item) => (
-                <span key={item + dup} className="text-sm sm:text-base font-medium text-foreground/70">
+                <span
+                  key={item + dup}
+                  className="text-xs sm:text-sm font-medium text-foreground/70"
+                >
                   {item}
                 </span>
               ))}

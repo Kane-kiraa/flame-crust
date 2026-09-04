@@ -4,7 +4,7 @@ import { Star, ArrowLeft, Loader2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Navbar } from "@/components/food/navbar";
-import { Footer } from "@/components/food/footer";
+
 import { PageTransition } from "@/components/shared/page-transition";
 import { getProducts, create } from "@/lib/api";
 import { toast } from "sonner";
@@ -168,7 +168,7 @@ export default function LeaveReviewPage() {
           </div>
         </PageTransition>
       </main>
-      <Footer />
+
     </div>
   );
 }

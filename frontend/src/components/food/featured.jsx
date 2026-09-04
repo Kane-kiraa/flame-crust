@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { TrendingUp, ArrowRight } from "lucide-react";
 import { fetchFoodItems, getCachedFoodItems } from "@/lib/food-api";
 import { FoodCard } from "./food-card";
+import "./featured.css";
 
 export function Featured() {
   const [featured, setFeatured] = useState(() => {
@@ -43,37 +44,37 @@ export function Featured() {
   }
 
   return (
-    <section className="pt-4 pb-5 sm:pt-10 sm:pb-8 relative overflow-hidden bg-background">
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section className="featured-section">
+      <div className="featured-container">
         
         {/* Compact Single-Row Header */}
-        <div className="flex items-center justify-between gap-2 mb-2 sm:mb-3">
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/25 px-2.5 py-0.5 text-[11px] sm:text-xs font-bold text-primary uppercase tracking-wider">
-            <TrendingUp className="size-3" />
+        <div className="featured-header-row">
+          <div className="trending-pill">
+            <TrendingUp className="trending-icon" />
             Trending this week
           </div>
           <Link 
             to="/menu" 
-            className="text-xs sm:text-sm font-semibold text-primary hover:underline inline-flex items-center gap-1 shrink-0"
+            className="see-menu-link"
           >
             <span>See full menu</span>
-            <ArrowRight className="size-3.5" />
+            <ArrowRight className="see-menu-icon" />
           </Link>
         </div>
 
-        <h2 className="font-serif text-xl sm:text-3xl lg:text-4xl font-bold text-foreground leading-tight mb-3.5 sm:mb-6">
+        <h2 className="featured-heading">
           The dishes our fans <span className="text-gradient-warm italic">can't stop ordering.</span>
         </h2>
 
-        {/* Product Cards Grid (Symmetrical 2x2 on Mobile with Heart Favorite Button & Trending Badges) */}
+        {/* Product Cards Grid */}
         {loading ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+          <div className="featured-grid">
             {[1, 2, 3, 4].map((n) => (
-              <div key={n} className="aspect-[4/3] bg-card border border-border/60 rounded-2xl animate-pulse shadow-warm" />
+              <div key={n} className="skeleton-item" />
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 lg:gap-5">
+          <div className="featured-grid">
             {featured.map((item, i) => (
               <FoodCard key={item.id} item={item} index={i} trendingRank={i + 1} />
             ))}
@@ -85,3 +86,4 @@ export function Featured() {
 }
 
 export default Featured;
+

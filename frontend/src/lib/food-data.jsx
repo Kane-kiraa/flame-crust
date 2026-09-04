@@ -330,8 +330,163 @@ const DEFAULT_FALLBACK_PRODUCTS = [
   }
 ];
 
+const DEFAULT_REVIEWS = [
+  {
+    id: 101,
+    product_id: 1,
+    customer_name: "Khemara",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787849244/gxbpcvwqzmdsi2pwuzyu.jpg",
+    rating: 5,
+    comment: "រសជាតិឆ្ងាញ់ខ្លាំងណាស់! ម្សៅនំបុ័ង sourdough បំពងឈ្ងុយ ក្លិនឈីស និងស្លឹក basil ស្រស់ល្អឥតខ្ចោះ។ ខ្ញុំនឹងកម្ម៉ង់ញ៉ាំទៀតច្បាស់ណាស់!",
+    created_at: "2026-08-25T10:15:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 102,
+    product_id: 1,
+    customer_name: "Sokleng",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787834892/ctkcvof8bskcurmrrryu.jpg",
+    rating: 5,
+    comment: "The authentic Neapolitan taste in town! Crust is airy, chewy, and light with perfectly balanced tomato sauce.",
+    created_at: "2026-08-26T14:30:20Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 103,
+    product_id: 1,
+    customer_name: "Chantha Khemara",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787833850/sn9trvzopyumdrlxqkl2.jpg",
+    rating: 4,
+    comment: "ភីហ្សាឆ្ងាញ់ ក្តៅៗស្រួយល្អ សេវាកម្មដឹកជញ្ជូនរហ័សទាន់ចិត្ត គ្រាន់តែថែម basil បន្តិចទៀតកាន់តែអែម។",
+    created_at: "2026-08-27T18:05:12Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 104,
+    product_id: 2,
+    customer_name: "Sokleng cute",
+    customer_avatar: null,
+    rating: 5,
+    comment: "Pepperoni ស្រួយឆ្ងាញ់ខ្លាំង ហឹរតិចៗត្រូវមាត់ជាមួយ hot honey ផ្អែមមុតស្រាល! ញ៉ាំជក់មាត់ណាស់។",
+    created_at: "2026-08-26T19:22:15Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 105,
+    product_id: 2,
+    customer_name: "Khemara",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787849244/gxbpcvwqzmdsi2pwuzyu.jpg",
+    rating: 5,
+    comment: "This is our go-to pizza every Friday night. Incredible cup & char pepperoni and cheese pull!",
+    created_at: "2026-08-27T20:10:45Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 106,
+    product_id: 3,
+    customer_name: "Chantha Khemara",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787833850/sn9trvzopyumdrlxqkl2.jpg",
+    rating: 5,
+    comment: "Pizza Bagel នេះប្លែកហើយឆ្ងាញ់ណាស់! Bagel ខាងក្រៅស្រួយ ខាងក្នុងទន់ ឈីសពេញៗមាត់។",
+    created_at: "2026-08-25T15:45:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 107,
+    product_id: 4,
+    customer_name: "Khemara",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787849244/gxbpcvwqzmdsi2pwuzyu.jpg",
+    rating: 5,
+    comment: "Burger សាច់ Angus ពីរជាន់ juicy ខ្លាំង! Caramelized onion និង bacon jam ធ្វើឱ្យរសជាតិដាច់គេតែម្តង។ 10/10!",
+    created_at: "2026-08-26T12:20:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 108,
+    product_id: 5,
+    customer_name: "Sokleng",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787834892/ctkcvof8bskcurmrrryu.jpg",
+    rating: 5,
+    comment: "ដំឡូងបារាំងបំពងក្លិន Truffle ឈ្ងុយសាយភាយ ជាមួយ Parmesan ម៉ត់ និង garlic aioli dip ឆ្ងាញ់ញៀន!",
+    created_at: "2026-08-27T17:35:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 109,
+    product_id: 6,
+    customer_name: "Chantha Khemara",
+    customer_avatar: "https://res.cloudinary.com/gdkctwwo/image/upload/v1787833850/sn9trvzopyumdrlxqkl2.jpg",
+    rating: 5,
+    comment: "អ្នកស្រឡាញ់ឈីសមិនគួររំលងទេ! Gorgonzola ជាមួយ Truffle honey ចូលគ្នាល្អឥតខ្ចោះ រសជាតិផ្អែមប្រៃបែប Premium។",
+    created_at: "2026-08-26T21:15:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 110,
+    product_id: 1,
+    customer_name: "Sarah K.",
+    customer_avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    comment: "I've ordered the Margherita Classica four times this month. The crust is the best I've had outside of Naples — airy, slightly charred, and delivered hot every single time.",
+    created_at: "2026-08-22T18:30:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 111,
+    product_id: 4,
+    customer_name: "Marcus T.",
+    customer_avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    comment: "The Flame & Crust Signature burger ruined every other burger for me. The bacon jam is criminally good and the patties are juicy without being greasy.",
+    created_at: "2026-08-23T19:15:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 112,
+    product_id: 3,
+    customer_name: "Priya R.",
+    customer_avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    comment: "Didn't know pizza bagels could be this good. The everything-bagel crust is genius. Ordered a tray for a party and they disappeared in five minutes flat.",
+    created_at: "2026-08-24T14:45:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 113,
+    product_id: 5,
+    customer_name: "David L.",
+    customer_avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    comment: "Consistently excellent. I order every Friday night for family movie night and the kids love it every time the box opens. The garlic knots are a must-order.",
+    created_at: "2026-08-25T20:10:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 114,
+    product_id: 6,
+    customer_name: "Jenna M.",
+    customer_avatar: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    comment: "Reviewed 40+ pizzerias this year — Flame & Crust is in my top three. The four-cheese with truffle honey is a religious experience. Highly recommend.",
+    created_at: "2026-08-26T21:00:00Z",
+    is_verified_purchase: true
+  },
+  {
+    id: 115,
+    product_id: 2,
+    customer_name: "Tom H.",
+    customer_avatar: "https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150&auto=format&fit=crop&q=80",
+    rating: 5,
+    comment: "Ordered 12 pizzas for a team lunch — arrived hot, on time, and everyone asked where it was from. The online ordering flow was the easiest I've used.",
+    created_at: "2026-08-27T12:20:00Z",
+    is_verified_purchase: true
+  }
+];
+
 export {
   categoryMeta,
   categoryOrder,
-  DEFAULT_FALLBACK_PRODUCTS
+  DEFAULT_FALLBACK_PRODUCTS,
+  DEFAULT_REVIEWS
 };
+

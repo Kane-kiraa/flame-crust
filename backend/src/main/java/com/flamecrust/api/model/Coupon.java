@@ -38,4 +38,16 @@ public class Coupon {
     @Column(name = "used_count")
     private Integer usedCount;
 
+    @PrePersist
+    public void prePersist() {
+        if (minOrderAmount == null) {
+            minOrderAmount = BigDecimal.ZERO;
+        }
+        if (usedCount == null) {
+            usedCount = 0;
+        }
+        if (active == null) {
+            active = true;
+        }
+    }
 }

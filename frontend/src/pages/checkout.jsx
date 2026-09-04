@@ -113,7 +113,38 @@ function CheckoutPage() {
     try {
       setLoadingCoupons(true);
       const data = await list("coupons");
-      setAllCoupons(data.filter(c => c.active));
+      let activeCoupons = data.filter(c => c.active && (c.usage_limit === null || c.used_count < c.usage_limit));
+
+      // Mark already used coupons for the current user
+      try {
+        let currentCustomerId = customer?.id;
+        if (!currentCustomerId) {
+           const formPhone = (getValues("phone") || "").trim();
+           if (formPhone) {
+              const customers = await list("customers");
+              const currentCust = customers.find((item) => item.phone === formPhone);
+              if (currentCust) currentCustomerId = currentCust.id;
+           }
+        }
+
+        if (currentCustomerId) {
+          const usages = await list("coupon_usages");
+          const usedCouponIds = usages
+            .filter(u => String(u.customer_id) === String(currentCustomerId))
+            .map(u => String(u.coupon_id));
+          
+          activeCoupons = activeCoupons.map(c => {
+            if (usedCouponIds.includes(String(c.id))) {
+              return { ...c, isUsed: true };
+            }
+            return c;
+          });
+        }
+      } catch(e) {
+        console.warn("Failed to check coupon usages", e);
+      }
+
+      setAllCoupons(activeCoupons);
     } catch (e) {
       console.error(e);
     } finally {
@@ -428,7 +459,39 @@ function CheckoutPage() {
         setCouponError("This code is no longer active");
       } else if (found.min_order_amount && grossSubtotal < Number(found.min_order_amount)) {
         setCouponError(`Minimum order amount is $${Number(found.min_order_amount).toFixed(2)}`);
+      } else if (found.usage_limit !== null && found.used_count >= found.usage_limit) {
+        setCouponError("This promo code has reached its usage limit");
       } else {
+        // Check if customer already used it
+        let alreadyUsed = false;
+        let checkCustomerId = customer?.id;
+        
+        if (!checkCustomerId) {
+          const formData = getValues();
+          const phone = (formData.phone || "").trim();
+          if (phone) {
+            try {
+              const customers = await list("customers");
+              const currentCust = customers.find((item) => item.phone === phone);
+              if (currentCust) {
+                checkCustomerId = currentCust.id;
+              }
+            } catch (e) {
+              console.warn("Failed to check customer by phone", e);
+            }
+          }
+        }
+
+        if (checkCustomerId) {
+           const usages = await list("coupon_usages");
+           alreadyUsed = usages.some(u => String(u.coupon_id) === String(found.id) && String(u.customer_id) === String(checkCustomerId));
+        }
+
+        if (alreadyUsed) {
+           setCouponError("You have already used this promo code");
+           return;
+        }
+
         applyCoupon(found);
         setCouponCode("");
         toast.success(`Promo code "${found.code}" applied!`);
@@ -513,6 +576,23 @@ function CheckoutPage() {
         }
       }
 
+      // Final strict coupon validation before order placement
+      if (coupon && customerId) {
+        try {
+          const usages = await list("coupon_usages");
+          const alreadyUsed = usages.some(u => String(u.coupon_id) === String(coupon.id) && String(u.customer_id) === String(customerId));
+          
+          if (alreadyUsed) {
+            toast.error("You have already used this promo code. It has been removed.");
+            if (typeof removeCoupon === "function") removeCoupon();
+            setSubmitting(false);
+            return;
+          }
+        } catch (e) {
+          console.warn("Final coupon validation failed", e);
+        }
+      }
+
       let addressId = selectedAddressId;
       if (!addressId || String(addressId).startsWith("local-")) {
         try {
@@ -573,6 +653,27 @@ function CheckoutPage() {
         amount: Number(total.toFixed(2)),
         status: paymentStatus,
       });
+
+      if (coupon && finalCustomerId) {
+        try {
+          await create("coupon_usages", {
+            coupon_id: coupon.id,
+            customer_id: finalCustomerId,
+            order_id: orderId,
+            used_at: new Date().toISOString()
+          });
+
+          // Increment global used_count
+          if (typeof update === "function") {
+            await update("coupons", coupon.id, {
+              ...coupon,
+              used_count: (coupon.used_count || 0) + 1
+            });
+          }
+        } catch(e) {
+          console.warn("Failed to record coupon usage", e);
+        }
+      }
 
       setIsSuccessRedirecting(true);
       const targetTotal = Number(total.toFixed(2));
@@ -1538,6 +1639,7 @@ function CheckoutPage() {
                 const isSelected = coupon?.id === c.id;
                 const minOrder = Number(c.min_order_amount || 0);
                 const isMinOrderNotMet = grossSubtotal > 0 && minOrder > 0 && grossSubtotal < minOrder;
+                const isUsed = c.isUsed;
 
                 return (
                   <div
@@ -1546,7 +1648,7 @@ function CheckoutPage() {
                       "rounded-2xl p-3.5 border transition-all flex items-center justify-between gap-3",
                       isSelected
                         ? "border-primary bg-primary/10 ring-2 ring-primary/30"
-                        : isMinOrderNotMet
+                        : (isMinOrderNotMet || isUsed)
                           ? "border-border/40 bg-muted/20 opacity-70"
                           : "border-border/60 bg-secondary/30 hover:border-primary/50 hover:bg-secondary/60 cursor-pointer"
                     )}
@@ -1575,7 +1677,7 @@ function CheckoutPage() {
                     <Button
                       type="button"
                       size="sm"
-                      disabled={isMinOrderNotMet || isSelected}
+                      disabled={isMinOrderNotMet || isSelected || isUsed}
                       onClick={() => {
                         applyCoupon(c);
                         setShowCouponModal(false);
@@ -1584,11 +1686,13 @@ function CheckoutPage() {
                       className={cn(
                         "rounded-full text-xs h-8 px-3 font-semibold shrink-0",
                         isSelected
-                          ? "bg-green-600 text-white hover:bg-green-600"
-                          : "bg-primary text-white hover:bg-primary/90"
+                          ? "bg-[#6BCF8E] text-white hover:bg-[#5bb87a]"
+                          : (isUsed || isMinOrderNotMet)
+                            ? "bg-muted-foreground/20 text-muted-foreground"
+                            : "bg-primary text-white hover:bg-primary/90"
                       )}
                     >
-                      {isSelected ? "Applied ✓" : "Apply"}
+                      {isSelected ? "Applied ✓" : isUsed ? "Used" : "Apply"}
                     </Button>
                   </div>
                 );

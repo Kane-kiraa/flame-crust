@@ -1238,7 +1238,7 @@ export default function DriverDashboardPage() {
             className="w-full h-full z-0" 
             zoomControl={false}
           >
-            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png" />
             
             {/* Store Central Kitchen Marker */}
             <Marker position={STORE_COORDS}>

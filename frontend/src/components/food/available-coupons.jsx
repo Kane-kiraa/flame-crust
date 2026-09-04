@@ -6,7 +6,7 @@ import { list } from "@/lib/api";
 import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
-export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
+export function AvailableCoupons({ onSelectCoupon, currentCoupon, subtotal = 0 }) {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
@@ -21,8 +21,32 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
     try {
       setLoading(true);
       const data = await list("coupons");
-      // Filter out completely inactive ones, but show active ones even if min_order or expiration is checked dynamically
-      const activeCoupons = data.filter(c => c.active);
+      // Filter out completely inactive ones, or those that reached global usage limit
+      let activeCoupons = data.filter(c => c.active && (c.usage_limit === null || c.used_count < c.usage_limit));
+
+      // Mark already used coupons for the current user instead of removing them
+      try {
+        const auth = localStorage.getItem("customerAuth");
+        if (auth) {
+          const customer = JSON.parse(auth);
+          if (customer && customer.id) {
+            const usages = await list("coupon_usages");
+            const usedCouponIds = usages
+              .filter(u => String(u.customer_id) === String(customer.id))
+              .map(u => String(u.coupon_id));
+            
+            activeCoupons = activeCoupons.map(c => {
+              if (usedCouponIds.includes(String(c.id))) {
+                return { ...c, isUsed: true };
+              }
+              return c;
+            });
+          }
+        }
+      } catch(e) {
+        console.warn("Failed to check coupon usages", e);
+      }
+
       setCoupons(activeCoupons);
     } catch (err) {
       console.error(err);
@@ -64,17 +88,26 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
                   const isExpired = coupon.expires_at && new Date(coupon.expires_at) <= new Date();
                   const minOrder = Number(coupon.min_order_amount || 0);
                   const isMinOrderNotMet = subtotal > 0 && minOrder > 0 && subtotal < minOrder;
-                  const isDisabled = isExpired || isMinOrderNotMet;
+                  const isCurrentlyApplied = currentCoupon && currentCoupon.code === coupon.code;
+                  const isUsed = coupon.isUsed;
+                  const isDisabled = isExpired || isMinOrderNotMet || isUsed || isCurrentlyApplied;
 
                   return (
                     <div 
                       key={coupon.id} 
                       className={`group border rounded-2xl p-3 sm:p-4 flex items-center justify-between gap-2 transition-colors ${
-                        isDisabled 
-                          ? "border-border/40 bg-muted/20 opacity-75 cursor-not-allowed" 
-                          : "border-border/60 bg-card hover:border-primary/50 cursor-pointer hover:shadow-xs"
+                        isCurrentlyApplied 
+                          ? "border-primary bg-primary/5"
+                          : (isUsed || isExpired || isMinOrderNotMet)
+                            ? "border-border/40 bg-muted/20 opacity-75 cursor-not-allowed" 
+                            : "border-border/60 bg-card hover:border-primary/50 cursor-pointer hover:shadow-xs"
                       }`}
                       onClick={() => {
+                        if (isCurrentlyApplied) return;
+                        if (isUsed) {
+                          toast.error("You have already used this coupon.");
+                          return;
+                        }
                         if (isExpired) {
                           toast.error("This coupon has expired.");
                           return;
@@ -114,12 +147,16 @@ export function AvailableCoupons({ onSelectCoupon, subtotal = 0 }) {
                       </div>
                       <Button 
                         type="button"
-                        variant={isDisabled ? "outline" : "secondary"} 
+                        variant={isCurrentlyApplied ? "default" : (isUsed || isExpired || isMinOrderNotMet) ? "outline" : "secondary"} 
                         size="sm" 
                         disabled={isDisabled}
-                        className={`rounded-full shrink-0 h-7 sm:h-8 text-xs px-2.5 sm:px-3.5 ${!isDisabled ? "group-hover:bg-primary group-hover:text-primary-foreground" : ""} transition-colors`}
+                        className={`rounded-full shrink-0 h-7 sm:h-8 text-xs px-2.5 sm:px-3.5 ${
+                          isCurrentlyApplied 
+                            ? "bg-[#6BCF8E] hover:bg-[#5bb87a] text-white" 
+                            : !isDisabled ? "group-hover:bg-primary group-hover:text-primary-foreground" : ""
+                        } transition-colors`}
                       >
-                        {isDisabled ? "Unavailable" : "Apply"}
+                        {isCurrentlyApplied ? "Applied ✓" : isUsed ? "Used" : (isExpired || isMinOrderNotMet) ? "Unavailable" : "Apply"}
                       </Button>
                     </div>
                   );

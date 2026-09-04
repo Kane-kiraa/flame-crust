@@ -29,23 +29,24 @@ export function Footer({ hideNewsletter = false }) {
           { label: "Pizza Bagels", to: "/menu?category=pizza-bagels" },
           { label: "Burgers", to: "/menu?category=burgers" },
           { label: "Sides", to: "/menu?category=sides" },
+          { label: "Drink", to: "/menu?category=Drink" },
         ],
     Company: [
       { label: "Our story", to: "/#features" },
-      { label: "Careers", to: "#" },
-      { label: "Franchising", to: "#" },
-      { label: "Gift cards", to: "#" },
+      { label: "Careers", to: "/profile", note: "Join our team" },
+      { label: "Franchising", to: "/menu", note: "Artisan Partner" },
+      { label: "Gift cards", to: "/menu", note: "Give Great Taste" },
     ],
     Support: [
-      { label: "Help center", to: "#" },
-      { label: "Track order", to: "#" },
-      { label: "Contact us", to: "#" },
-      { label: "FAQs", to: "#" },
+      { label: "Help center", to: "/profile" },
+      { label: "Track order", to: "/profile" },
+      { label: "Contact us", to: "tel:+855965755963", isExternal: true },
+      { label: "FAQs", to: "/#features" },
     ],
     Legal: [
-      { label: "Privacy Policy", to: "#" },
-      { label: "Terms of Service", to: "#" },
-      { label: "Cookie Policy", to: "#" },
+      { label: "Privacy Policy", to: "/menu" },
+      { label: "Terms of Service", to: "/menu" },
+      { label: "Cookie Policy", to: "/menu" },
     ],
   };
 
@@ -148,12 +149,21 @@ export function Footer({ hideNewsletter = false }) {
               <ul className="space-y-1.5 sm:space-y-2">
                 {links.map((link) => (
                   <li key={link.label}>
-                    <Link
-                      to={link.to}
-                      className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors inline-block"
-                    >
-                      {link.label}
-                    </Link>
+                    {link.isExternal ? (
+                      <a
+                        href={link.to}
+                        className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors inline-block"
+                      >
+                        {link.label}
+                      </a>
+                    ) : (
+                      <Link
+                        to={link.to}
+                        className="text-xs sm:text-sm text-muted-foreground hover:text-primary transition-colors inline-block"
+                      >
+                        {link.label}
+                      </Link>
+                    )}
                   </li>
                 ))}
               </ul>

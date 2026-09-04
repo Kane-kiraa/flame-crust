@@ -1,4 +1,4 @@
-function normalizeApiUrl(url) {
+export function normalizeApiUrl(url) {
   if (!url) return '';
   let clean = url.trim().replace(/\/$/, "");
   if (clean && !clean.endsWith('/api') && clean.startsWith('http')) {
@@ -7,43 +7,104 @@ function normalizeApiUrl(url) {
   return clean;
 }
 
-const API_URL = (() => {
-  const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+let runtimeConfigApiUrl = '';
 
+if (typeof window !== 'undefined') {
+  // Check URL query parameters on initial load (e.g. ?api=https://... or ?backend=https://...)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const queryApi = params.get('api') || params.get('backend');
+    if (queryApi) {
+      const normalized = normalizeApiUrl(queryApi);
+      localStorage.setItem("custom_api_url", normalized);
+      params.delete('api');
+      params.delete('backend');
+      const newSearch = params.toString() ? `?${params.toString()}` : '';
+      window.history.replaceState({}, '', `${window.location.pathname}${newSearch}${window.location.hash}`);
+    }
+  } catch (e) {}
+
+  // Fetch public/config.json asynchronously without caching
+  const loadRuntimeConfig = () => {
+    fetch('/config.json?t=' + Date.now(), { cache: 'no-store' })
+      .then(res => res.ok ? res.json() : null)
+      .then(cfg => {
+        if (cfg && cfg.apiUrl) {
+          runtimeConfigApiUrl = normalizeApiUrl(cfg.apiUrl);
+        }
+      })
+      .catch(() => {});
+  };
+
+  loadRuntimeConfig();
+  window.addEventListener("focus", loadRuntimeConfig);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") loadRuntimeConfig();
+  });
+}
+
+export function getApiUrl() {
   if (typeof window !== 'undefined') {
-    const { hostname, protocol, origin } = window.location;
-
-    // 1. Manual override from localStorage if provided
+    // 1. Manual override from localStorage
     try {
       const customApi = localStorage.getItem("custom_api_url");
       if (customApi) return normalizeApiUrl(customApi);
     } catch (e) {}
 
-    // 2. If VITE_API_URL is an explicit HTTPS URL, use it directly (auto-adding /api if omitted)
+    // 2. Dynamic runtime config from public/config.json
+    if (runtimeConfigApiUrl) {
+      return runtimeConfigApiUrl;
+    }
+
+    const { hostname, protocol, origin } = window.location;
+    const envUrl = (import.meta.env.VITE_API_URL || '').trim();
+
+    // 3. Explicit HTTPS URL in env
     if (envUrl && envUrl.startsWith('https://')) {
       return normalizeApiUrl(envUrl);
     }
 
-    // 3. When running under HTTPS (Cloudflare Pages, Cloudflare Tunnel, SSL Domain)
+    // 4. Running under HTTPS (Cloudflare Pages, Cloudflare Tunnel, custom domain)
     if (protocol === 'https:') {
       if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
         return normalizeApiUrl(envUrl);
       }
-      // Cloudflare / Same-origin reverse proxy: route through /api
       return `${origin}/api`;
     }
 
-    // 4. When running on HTTP via local network IP (e.g. http://192.168.1.15:5173)
+    // 5. Running on local network IP (e.g. http://192.168.1.15:3000)
     if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
       if (envUrl && !envUrl.includes('localhost') && !envUrl.includes('127.0.0.1')) {
         return normalizeApiUrl(envUrl);
       }
       return `http://${hostname}:8080/api`;
     }
+
+    if (envUrl) return normalizeApiUrl(envUrl);
   }
 
-  return normalizeApiUrl(envUrl) || 'http://localhost:8080/api';
-})();
+  return normalizeApiUrl(import.meta.env.VITE_API_URL) || 'http://localhost:8080/api';
+}
+
+export function setCustomApiUrl(url) {
+  if (typeof window === 'undefined') return;
+  if (url) {
+    localStorage.setItem("custom_api_url", normalizeApiUrl(url));
+  } else {
+    localStorage.removeItem("custom_api_url");
+  }
+}
+
+// Dynamic API_URL object for template strings `${API_URL}/path`
+export const API_URL = {
+  toString: () => getApiUrl(),
+  valueOf: () => getApiUrl(),
+  [Symbol.toPrimitive]: () => getApiUrl(),
+  replace: (...args) => getApiUrl().replace(...args),
+  startsWith: (...args) => getApiUrl().startsWith(...args),
+  endsWith: (...args) => getApiUrl().endsWith(...args),
+  includes: (...args) => getApiUrl().includes(...args),
+};
 
 async function request(path, options = {}) {
   let token = null;
@@ -71,7 +132,8 @@ async function request(path, options = {}) {
     ...options.headers
   };
 
-  const response = await globalThis.fetch(`${API_URL}${path}`, {
+  const currentApiUrl = getApiUrl();
+  const response = await globalThis.fetch(`${currentApiUrl}${path}`, {
     ...options,
     headers
   });
@@ -177,8 +239,6 @@ export const api = Object.freeze({
   admin: Object.freeze({ list, get, create, update, remove }),
   resources
 });
-
-export { API_URL };
 
 // ── Driver-specific API helpers ──
 

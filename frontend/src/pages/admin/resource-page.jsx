@@ -202,7 +202,16 @@ function AdminResourcePage({ resource }) {
             ? Number(formData[f.name])
             : null;
         } else if (f.type === "date" || f.type === "datetime-local") {
-          cleanData[f.name] = formData[f.name] === "" ? null : formData[f.name];
+          let val = formData[f.name];
+          if (!val) {
+            cleanData[f.name] = null;
+          } else {
+            // Append time for 'date' inputs to satisfy backend LocalDateTime
+            if (f.type === "date" && val.length === 10) {
+              val = val + "T23:59:59";
+            }
+            cleanData[f.name] = val;
+          }
         } else {
           cleanData[f.name] = formData[f.name] ?? "";
         }

@@ -1241,3 +1241,26 @@ VALUES (
         0.00,
         TRUE
     );
+
+-- Seed Initial Customer Reviews
+INSERT IGNORE INTO `reviews` (`product_id`, `customer_id`, `rating`, `comment`, `created_at`, `is_verified_purchase`)
+VALUES
+  (1, 2, 5, 'រសជាតិឆ្ងាញ់ខ្លាំងណាស់! ម្សៅនំបុ័ង sourdough បំពងឈ្ងុយ ក្លិនឈីស និងស្លឹក basil ស្រស់ល្អឥតខ្ចោះ។ ខ្ញុំនឹងកម្ម៉ង់ញ៉ាំទៀតច្បាស់ណាស់!', '2026-08-25 10:15:00', 1),
+  (1, 3, 5, 'The authentic Neapolitan taste in town! Crust is airy, chewy, and light with perfectly balanced tomato sauce.', '2026-08-26 14:30:20', 1),
+  (1, 5, 4, 'ភីហ្សាឆ្ងាញ់ ក្តៅៗស្រួយល្អ សេវាកម្មដឹកជញ្ជូនរហ័សទាន់ចិត្ត គ្រាន់តែថែម basil បន្តិចទៀតកាន់តែអែម។', '2026-08-27 18:05:12', 1),
+  (1, 8, 5, 'Best margherita pizza! Very fresh buffalo mozzarella and sourdough crust is unmatched.', '2026-08-28 12:40:00', 0),
+  (2, 3, 5, 'Pepperoni ស្រួយឆ្ងាញ់ខ្លាំង ហឹរតិចៗត្រូវមាត់ជាមួយ hot honey ផ្អែមមុតស្រាល! ញ៉ាំជក់មាត់ណាស់។', '2026-08-26 19:22:15', 1),
+  (2, 5, 5, 'This is our go-to pizza every Friday night. Incredible cup & char pepperoni and cheese pull!', '2026-08-27 20:10:45', 1),
+  (2, 12, 4, 'ឈីសច្រើន pepperoni ស្រួយឆ្ងាញ់ ដឹកមកដល់នៅក្តៅហុយៗ។ Recommend សម្រាប់អ្នកចូលចិត្តរសជាតិបែប American-Italian!', '2026-08-29 11:30:00', 1),
+  (3, 2, 5, 'Pizza Bagel នេះប្លែកហើយឆ្ងាញ់ណាស់! Bagel ខាងក្រៅស្រួយ ខាងក្នុងទន់ ឈីសពេញៗមាត់។', '2026-08-25 15:45:00', 1),
+  (3, 8, 5, 'Perfect snack size! The everything seasoning on the bagel combined with pizza toppings is genius.', '2026-08-27 09:12:33', 1),
+  (4, 5, 5, 'Burger សាច់ Angus ពីរជាន់ juicy ខ្លាំង! Caramelized onion និង bacon jam ធ្វើឱ្យរសជាតិដាច់គេតែម្តង។ 10/10!', '2026-08-26 12:20:00', 1),
+  (4, 2, 5, 'One of the juiciest smash burgers in Phnom Penh. Brioche bun toasted to perfection.', '2026-08-28 13:10:00', 1),
+  (5, 3, 5, 'ដំឡូងបារាំងបំពងក្លិន Truffle ឈ្ងុយសាយភាយ ជាមួយ Parmesan ម៉ត់ និង garlic aioli dip ឆ្ងាញ់ញៀន!', '2026-08-27 17:35:00', 1),
+  (6, 2, 5, 'អ្នកស្រឡាញ់ឈីសមិនគួររំលងទេ! Gorgonzola ជាមួយ Truffle honey ចូលគ្នាល្អឥតខ្ចោះ រសជាតិផ្អែមប្រៃបែប Premium។', '2026-08-26 21:15:00', 1),
+  (1, 20, 5, 'I''ve ordered the Margherita Classica four times this month. The crust is the best I''ve had outside of Naples — airy, slightly charred, and delivered hot every single time.', '2026-08-22 18:30:00', 1),
+  (4, 21, 5, 'The Flame & Crust Signature burger ruined every other burger for me. The bacon jam is criminally good and the patties are juicy without being greasy.', '2026-08-23 19:15:00', 1),
+  (3, 22, 5, 'Didn''t know pizza bagels could be this good. The everything-bagel crust is genius. Ordered a tray for a party and they disappeared in five minutes flat.', '2026-08-24 14:45:00', 1),
+  (5, 23, 5, 'Consistently excellent. I order every Friday night for family movie night and the kids love it every time the box opens. The garlic knots and fries are a must-order.', '2026-08-25 20:10:00', 1),
+  (6, 24, 5, 'Reviewed 40+ pizzerias this year — Flame & Crust is in my top three. The four-cheese with truffle honey is a religious experience. Highly recommend.', '2026-08-26 21:00:00', 1),
+  (2, 25, 5, 'Ordered 12 pizzas for a team lunch — arrived hot, on time, and everyone asked where it was from. The online ordering flow was the easiest I''ve used.', '2026-08-27 12:20:00', 1);

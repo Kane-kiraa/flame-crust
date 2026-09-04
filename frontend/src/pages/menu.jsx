@@ -16,10 +16,11 @@ import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 import { Flame, Sparkles, Filter, Check, Star, Leaf, LayoutGrid, TrendingUp } from "lucide-react";
+import "./menu.css";
 
 const FoodGrid = ({ items, topProducts = [] }) => {
   return (
-    <div className="mt-5 sm:mt-8 grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-5 lg:gap-6">
+    <div className="menu-food-grid">
       {items.map((item, idx) => {
         const topIndex = topProducts.findIndex((p) => p.id === item.id);
         const isTop = topIndex !== -1;
@@ -27,7 +28,7 @@ const FoodGrid = ({ items, topProducts = [] }) => {
         return (
           <div key={item.id} className="relative">
             {isTop && (
-              <div className="absolute top-3 left-3 z-20 flex items-center gap-1 bg-[#ff9800] text-black rounded-full font-black shadow-md border-2 border-[#ff9800] px-2 py-0.5 text-xs sm:text-sm">
+              <div className="menu-top-product-badge">
                 <TrendingUp className="size-3.5 sm:size-4 stroke-[3]" />
                 <span>#{topIndex + 1}</span>
               </div>
@@ -173,29 +174,29 @@ function MenuPage() {
   const currentCategoryOrder = categories.length > 0 ? ["all", ...categories.map(c => c.slug)] : defaultCategoryOrder;
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="menu-page-container">
       <Navbar />
-      <main className="flex-1 min-h-[calc(100vh-140px)] pt-[calc(3.5rem+env(safe-area-inset-top))] sm:pt-24">
+      <main className="menu-main">
         <PageTransition>
-          <section className="pt-2 pb-16 sm:pb-24">
-            <div className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8">
+          <section className="menu-section">
+            <div className="menu-content-container">
               
-              {/* Header Title (Compact on mobile, lavish on desktop) */}
-              <div className="text-center max-w-2xl mx-auto pb-2">
-                <span className="hidden sm:inline-flex items-center gap-1.5 rounded-full bg-secondary border border-border/60 px-4 py-1.5 text-xs sm:text-sm font-medium text-primary uppercase tracking-wider">
+              {/* Header Title */}
+              <div className="menu-header-wrapper">
+                <span className="menu-badge">
                   <Sparkles className="size-3.5" />
                   Our Menu
                 </span>
-                <h2 className="mt-0 sm:mt-4 font-serif text-2xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1]">
+                <h2 className="menu-title">
                   Pick your <span className="text-gradient-warm italic">flavor</span> of comfort
                 </h2>
-                <p className="hidden sm:block mt-2 sm:mt-4 text-xs sm:text-base text-muted-foreground max-w-xl mx-auto">
+                <p className="menu-subtitle">
                   Every dish is made-to-order with fresh sourdough & premium ingredients.
                 </p>
               </div>
 
               {/* Mobile & Desktop Search Bar */}
-              <div className="mt-2 sm:mt-4 max-w-md sm:max-w-xl mx-auto px-1">
+              <div className="menu-search-wrapper">
                 <SearchInput
                   value={search}
                   onChange={setSearch}
@@ -204,9 +205,8 @@ function MenuPage() {
                 />
               </div>
 
-
               {/* Curved / Arched Dome Category Selector */}
-              <div className="mt-2 sm:mt-5">
+              <div className="menu-nav-wrapper">
                 <ArcCategoryNav
                   categories={categories}
                   active={active}
@@ -216,9 +216,9 @@ function MenuPage() {
               </div>
 
               {/* Quick Dietary Filters & Count Bar */}
-              <div className="mt-2 sm:mt-5 flex flex-wrap items-center justify-between gap-2 border-y border-border/40 py-2 sm:py-3 text-[11px] sm:text-sm overflow-hidden">
-                <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-2 -my-2 px-1 w-full sm:w-auto">
-                  <span className="text-muted-foreground font-medium flex items-center gap-1 shrink-0 mr-1">
+              <div className="menu-filters-bar">
+                <div className="menu-filters-list">
+                  <span className="menu-filters-label">
                     <Filter className="size-3.5" /> Filter:
                   </span>
                   {[
@@ -250,20 +250,20 @@ function MenuPage() {
                   })}
                 </div>
 
-                <div className="text-[11px] sm:text-xs text-muted-foreground font-medium shrink-0">
+                <div className="menu-filters-count">
                   Showing <span className="font-bold text-foreground">{filteredItems.length}</span> {active === "all" ? "dishes" : meta.label}
                 </div>
               </div>
 
               {/* Category Description Banner */}
-              <div className="mt-3 min-h-[32px]">
-                <p className="text-center text-xs sm:text-sm text-muted-foreground italic max-w-lg mx-auto">
+              <div className="menu-desc-banner">
+                <p className="menu-desc-text">
                   {meta.description}
                 </p>
               </div>
 
-              {/* Food Items Grid with Bottom Padding for Mobile Nav */}
-              <div className="min-h-[70vh] flex flex-col justify-start pb-28 sm:pb-16">
+              {/* Food Items Grid */}
+              <div className="menu-food-items-container">
                 {error ? (
                   <ErrorState
                     title="Couldn't load the menu"
@@ -274,9 +274,9 @@ function MenuPage() {
                 ) : loading ? (
                   <CardGridSkeleton count={8} className="mt-6 sm:mt-8" />
                 ) : filteredItems.length === 0 ? (
-                  <div className="mt-10 text-center py-16">
-                    <p className="font-serif text-xl sm:text-2xl font-bold text-foreground">No dishes found</p>
-                    <p className="mt-2 text-xs sm:text-sm text-muted-foreground">
+                  <div className="menu-no-dishes">
+                    <p className="menu-no-dishes-title">No dishes found</p>
+                    <p className="menu-no-dishes-subtitle">
                       Try selecting a different category or clearing search & filters.
                     </p>
                     {(search || dietaryFilter !== "all" || active !== "all") && (
@@ -302,7 +302,7 @@ function MenuPage() {
                     />
 
                     {active === "all" && dietaryFilter === "all" && !search.trim() && visibleCount < filteredItems.length && (
-                      <div className="mt-10 sm:mt-12 text-center flex flex-col items-center gap-3">
+                      <div className="menu-load-more-container">
                         <Button
                           onClick={handleLoadMore}
                           size="lg"
