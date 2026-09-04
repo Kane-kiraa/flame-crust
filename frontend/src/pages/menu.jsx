@@ -22,14 +22,19 @@ const FoodGrid = ({ items, topProducts = [] }) => {
   return (
     <div className="menu-food-grid">
       {items.map((item, idx) => {
-        const topIndex = topProducts.findIndex((p) => p.id === item.id);
+        const topIndex = topProducts.findIndex((p) => String(p.id) === String(item.id));
         const isTop = topIndex !== -1;
 
         return (
           <div key={item.id} className="relative">
             {isTop && (
-              <div className="menu-top-product-badge">
-                <TrendingUp className="size-3.5 sm:size-4 stroke-[3]" />
+              <div
+                className={cn(
+                  "menu-top-product-badge",
+                  topIndex === 0 && "menu-top-product-badge-1"
+                )}
+              >
+                <TrendingUp className="size-3 sm:size-3.5 stroke-[3]" />
                 <span>#{topIndex + 1}</span>
               </div>
             )}
@@ -160,12 +165,21 @@ function MenuPage() {
       .slice(0, 4);
   }, [allItems]);
 
+  const orderedFilteredItems = useMemo(() => {
+    if (active === "all" && !search.trim() && dietaryFilter === "all" && topProducts.length > 0) {
+      const topIds = new Set(topProducts.map((p) => String(p.id)));
+      const remaining = filteredItems.filter((i) => !topIds.has(String(i.id)));
+      return [...topProducts, ...remaining];
+    }
+    return filteredItems;
+  }, [filteredItems, topProducts, active, search, dietaryFilter]);
+
   const visibleItems = useMemo(() => {
     if (active !== "all" && dietaryFilter === "all" && !search.trim()) {
-      return filteredItems;
+      return orderedFilteredItems;
     }
-    return filteredItems.slice(0, visibleCount);
-  }, [filteredItems, visibleCount, active, dietaryFilter, search]);
+    return orderedFilteredItems.slice(0, visibleCount);
+  }, [orderedFilteredItems, visibleCount, active, dietaryFilter, search]);
 
   const handleCategoryChange = (cat) => {
     if (active === cat) return;

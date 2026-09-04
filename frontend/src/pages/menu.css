@@ -285,25 +285,34 @@
 
 .menu-top-product-badge {
   position: absolute;
-  top: 0.75rem;
-  left: 0.75rem;
+  top: 0.625rem;
+  left: 0.625rem;
   z-index: 20;
   display: flex;
   align-items: center;
   gap: 0.25rem;
   background-color: #ff9800;
-  color: black;
+  color: #000000;
   border-radius: 9999px;
   font-weight: 900;
-  box-shadow: var(--shadow-md);
-  border: 2px solid #ff9800;
-  padding: 0.125rem 0.5rem;
+  box-shadow: 0 4px 12px rgba(255, 152, 0, 0.35);
+  border: 1.5px solid #ffb74d;
+  padding: 0.125rem 0.55rem;
   font-size: 0.75rem;
+  letter-spacing: 0.02em;
+}
+
+.menu-top-product-badge-1 {
+  background: linear-gradient(135deg, #f59e0b, #e11d48);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 4px 14px rgba(225, 29, 72, 0.45);
 }
 
 @media (min-width: 640px) {
   .menu-top-product-badge {
-    font-size: 0.875rem;
+    font-size: 0.8125rem;
+    padding: 0.15rem 0.65rem;
   }
 }
 
