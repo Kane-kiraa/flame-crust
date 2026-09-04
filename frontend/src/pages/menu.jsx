@@ -96,10 +96,35 @@ function MenuPage() {
     };
   }, []);
 
+  useEffect(() => {
+    const handleFoodsChanged = () => {
+      fetchFoodItems().then((items) => {
+        if (Array.isArray(items) && items.length > 0) setItemsFromApi(items);
+      });
+      fetchCategories().then((cats) => {
+        if (Array.isArray(cats) && cats.length > 0) setCategories(cats);
+      });
+    };
+    window.addEventListener("foodsChanged", handleFoodsChanged);
+    return () => window.removeEventListener("foodsChanged", handleFoodsChanged);
+  }, []);
+
   const allItems = itemsFromApi || [];
 
   const filteredItems = useMemo(() => {
-    let items = active === "all" ? allItems : allItems.filter((i) => i.category === active);
+    let items = active === "all" 
+      ? allItems 
+      : allItems.filter((i) => {
+          if (!i.category) return false;
+          const itemCat = String(i.category).toLowerCase().trim();
+          const actCat = String(active).toLowerCase().trim();
+          return (
+            itemCat === actCat ||
+            itemCat.replace(/\s+/g, "-") === actCat ||
+            itemCat === actCat.replace(/-/g, " ") ||
+            (actCat !== "all" && itemCat.includes(actCat))
+          );
+        });
     
     // Dietary filter
     if (dietaryFilter === "spicy") {
@@ -296,7 +321,12 @@ function MenuPage() {
                     )}
                   </div>
                 ) : (
-                  <>
+                  <motion.div
+                    key={active + "-" + dietaryFilter}
+                    initial={{ opacity: 0, y: 12 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                  >
                     <FoodGrid 
                       items={visibleItems} 
                       topProducts={active === "all" && !search.trim() && dietaryFilter === "all" ? topProducts : []} 
@@ -316,7 +346,7 @@ function MenuPage() {
                         </p>
                       </div>
                     )}
-                  </>
+                  </motion.div>
                 )}
               </div>
             </div>

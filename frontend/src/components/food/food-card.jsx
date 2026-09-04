@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Minus, Star, Flame, Leaf, Check, Heart, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useCart } from "@/lib/cart-store";
@@ -148,55 +148,78 @@ export function FoodCard({ item, index = 0, trendingRank = null }) {
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-1.5 pt-1">
-          <div className="flex flex-col shrink-0">
+        <div className="flex items-center justify-between gap-1.5 pt-1 h-8 sm:h-9">
+          <div className="flex flex-col shrink-0 min-w-0">
             <span className="text-[8px] sm:text-[9px] uppercase tracking-wider text-muted-foreground font-semibold leading-none">
               Price
             </span>
-            <span className="font-serif text-sm sm:text-lg font-bold text-foreground leading-tight mt-0.5">
+            <span className="font-serif text-sm sm:text-lg font-bold text-foreground leading-tight mt-0.5 whitespace-nowrap">
               {formatPrice(item.price)}
             </span>
           </div>
 
-          {inCart ? (
-            <div className="flex items-center justify-between gap-1 h-7 sm:h-9 w-[80px] sm:w-[96px] rounded-xl bg-emerald-600 text-white shadow-xs shrink-0 px-1 transition-all">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (inCart.qty > 1) decrement(inCart.id);
-                  else removeItem(inCart.id);
-                }}
-                className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+          <AnimatePresence mode="wait" initial={false}>
+            {inCart ? (
+              <motion.div
+                key="in-cart-pill"
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ duration: 0.15 }}
+                className="flex items-center justify-between gap-1 h-7 sm:h-9 w-[80px] sm:w-[96px] rounded-xl bg-emerald-600 text-white shadow-xs shrink-0 px-1"
               >
-                <Minus className="size-3" />
-              </button>
-              <span className="text-xs font-bold w-4 text-center tabular-nums">
-                {inCart.qty}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  increment(inCart.id);
-                }}
-                className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (inCart.qty > 1) decrement(inCart.id);
+                    else removeItem(inCart.id);
+                  }}
+                  className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-transform shrink-0 cursor-pointer active:scale-90"
+                >
+                  <Minus className="size-3" />
+                </button>
+                <motion.span
+                  key={inCart.qty}
+                  initial={{ scale: 1.25 }}
+                  animate={{ scale: 1 }}
+                  transition={{ duration: 0.12 }}
+                  className="text-xs font-bold w-4 text-center tabular-nums"
+                >
+                  {inCart.qty}
+                </motion.span>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    increment(inCart.id);
+                  }}
+                  className="size-5 sm:size-6 rounded-lg hover:bg-white/20 flex items-center justify-center transition-transform shrink-0 cursor-pointer active:scale-90"
+                >
+                  <Plus className="size-3" />
+                </button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="add-btn-wrapper"
+                initial={{ scale: 0.85, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.85, opacity: 0 }}
+                transition={{ duration: 0.15 }}
               >
-                <Plus className="size-3" />
-              </button>
-            </div>
-          ) : (
-            <Button
-              onClick={handleAdd}
-              size="sm"
-              className="h-7 sm:h-9 px-3 sm:px-4 rounded-xl font-bold shadow-xs transition-all active:scale-95 text-[11px] sm:text-xs shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 cursor-pointer"
-            >
-              <Plus className="size-3.5" />
-              <span>Add</span>
-            </Button>
-          )}
+                <Button
+                  onClick={handleAdd}
+                  size="sm"
+                  className="h-7 sm:h-9 px-3 sm:px-4 rounded-xl font-bold shadow-xs transition-all active:scale-95 text-[11px] sm:text-xs shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1 cursor-pointer"
+                >
+                  <Plus className="size-3.5" />
+                  <span>Add</span>
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </article>

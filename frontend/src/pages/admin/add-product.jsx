@@ -78,6 +78,12 @@ export default function AddProductForm() {
         active: true
       });
 
+      try {
+        localStorage.removeItem("flame_foods_cache");
+        localStorage.removeItem("flame_categories_cache");
+        window.dispatchEvent(new Event("foodsChanged"));
+      } catch (e) {}
+
       toast.success("បានបន្ថែម និងរក្សាទុកផលិតផលក្នុង Database ដោយជោគជ័យ!");
       setFormData({ name: "", price: "", category: "", description: "", imageUrl: "" });
     } catch (err) {

@@ -28,6 +28,11 @@ export function clearResourceCache(resName) {
   } else {
     resourcePagesCache.clear();
   }
+  try {
+    localStorage.removeItem("flame_foods_cache");
+    localStorage.removeItem("flame_categories_cache");
+    window.dispatchEvent(new Event("foodsChanged"));
+  } catch (e) {}
 }
 
 function AdminResourcePage({ resource }) {
