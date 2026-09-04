@@ -16,19 +16,19 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
     if (newTheme === theme || isTransitioning) return;
     setIsTransitioning(true);
 
-    // Apply theme change smoothly
+    // Apply theme change exactly midway through the 360° rotation
     setTimeout(() => {
       setThemeState(newTheme);
       if (typeof document !== "undefined") {
         document.documentElement.classList.toggle("dark", newTheme === "dark");
         localStorage.setItem("flame-crust-theme", newTheme);
       }
-    }, 180);
+    }, 240);
 
-    // Complete transition smoothly & quickly
+    // Fade out right as the single 360° spin finishes
     setTimeout(() => {
       setIsTransitioning(false);
-    }, 550);
+    }, 520);
   };
 
   useEffect(() => {
@@ -44,22 +44,29 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.2, ease: "easeInOut" }}
-            className="fixed inset-0 z-[99999] flex items-center justify-center backdrop-blur-md bg-black/25 dark:bg-black/45 pointer-events-none select-none"
+            exit={{ opacity: 0, scale: 0.92 }}
+            transition={{ duration: 0.22, ease: "easeInOut" }}
+            className="fixed inset-0 z-[99999] flex items-center justify-center backdrop-blur-md bg-black/20 dark:bg-black/40 pointer-events-none select-none"
           >
-            {/* Minimalist Floating Frosted Glass Card with Spinning Pizza */}
+            {/* Minimalist Frosted Card */}
             <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
+              initial={{ scale: 0.7, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: "spring", stiffness: 400, damping: 25 }}
-              className="relative flex items-center justify-center w-24 h-24 rounded-3xl bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]"
+              exit={{ scale: 0.85, opacity: 0 }}
+              transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="relative flex items-center justify-center w-24 h-24 rounded-3xl bg-white/85 dark:bg-zinc-900/85 backdrop-blur-2xl border border-white/40 dark:border-white/10 shadow-[0_12px_36px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.5)]"
             >
-              {/* Smooth Spinning Pizza */}
+              {/* Exactly ONE smooth 360° rotation that flips the theme */}
               <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 0.7, repeat: Infinity, ease: "linear" }}
+                initial={{ rotate: 0, scale: 0.8 }}
+                animate={{ 
+                  rotate: 360, 
+                  scale: [0.8, 1.15, 1] 
+                }}
+                transition={{ 
+                  duration: 0.48, 
+                  ease: [0.4, 0, 0.2, 1] 
+                }}
                 className="text-5xl drop-shadow-[0_8px_16px_rgba(249,115,22,0.35)] flex items-center justify-center"
               >
                 🍕
