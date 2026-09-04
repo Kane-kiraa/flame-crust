@@ -150,6 +150,13 @@ export function Footer({ hideNewsletter = false }) {
                 </div>
                 <span className="font-medium text-xs break-all">chanthakhemara12@gmail.com</span>
               </a>
+
+              <a
+                href="https://t.me/kanekira12"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-2.5 text-sky-600 dark:text-sky-400 hover:opacity-80 transition-opacity group"
+              >
                 <div className="size-6 rounded-full bg-sky-500/10 flex items-center justify-center text-sky-500 group-hover:scale-110 transition-transform">
                   <TelegramIcon className="size-3.5" />
                 </div>
@@ -160,7 +167,7 @@ export function Footer({ hideNewsletter = false }) {
             {/* Social Links */}
             <div className="mt-4 flex items-center gap-2">
               {[
-                { icon: TelegramIcon, href: "https://t.me/@kanekira12", label: "Telegram", hover: "hover:bg-sky-500 hover:text-white" },
+                { icon: TelegramIcon, href: "https://t.me/kanekira12", label: "Telegram", hover: "hover:bg-sky-500 hover:text-white" },
                 { icon: Facebook, href: "https://facebook.com", label: "Facebook", hover: "hover:bg-blue-600 hover:text-white" },
               ].map((item, i) => (
                 <a
