@@ -140,72 +140,64 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
     <TooltipProvider delayDuration={100}>
       <aside 
         className={cn(
-          "h-full bg-card/60 backdrop-blur-3xl border-r border-border/40 flex flex-col transition-all duration-300 relative",
-          isCollapsed ? "w-[72px]" : "w-[240px]"
+          "h-full bg-card/85 dark:bg-zinc-900/90 backdrop-blur-2xl border-r border-border/50 flex flex-col transition-all duration-300 relative shadow-sm select-none z-20",
+          isCollapsed ? "w-[72px]" : "w-[256px]"
         )}
       >
         
         {/* Brand Header */}
-        <div className="h-[calc(68px+env(safe-area-inset-top))] pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 px-3 border-b border-border/40 flex items-center relative group shrink-0">
-          <Link to="/admin" onClick={handleNav} className="flex items-center gap-3 w-full">
-            <div className={cn(
-              "size-8 shrink-0 rounded-xl bg-gradient-to-br from-primary via-orange-500 to-amber-500 text-white flex items-center justify-center font-black text-sm shadow-md shadow-primary/30 transition-all duration-300",
-              isCollapsed && "group-hover:opacity-0"
-            )}>
-              FC
+        <div className="h-[calc(68px+env(safe-area-inset-top))] pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 px-3 border-b border-border/50 flex items-center justify-between relative group shrink-0">
+          <Link to="/admin" onClick={handleNav} className="flex items-center gap-3 overflow-hidden min-w-0">
+            <div className="size-9 shrink-0 rounded-xl bg-gradient-to-tr from-primary via-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-sm shadow-md shadow-primary/25">
+              🔥
             </div>
-            <div className={cn("min-w-0 overflow-hidden transition-all duration-300 flex flex-col justify-center", isCollapsed ? "w-0 opacity-0 ml-0" : "w-[120px] opacity-100")}>
-              <h2 className="font-serif text-sm font-black text-foreground tracking-tight group-hover:text-primary transition-colors whitespace-nowrap">Flame & Crust</h2>
-              <p className="text-[10px] text-muted-foreground flex items-center gap-1 font-bold tracking-widest uppercase mt-0.5 whitespace-nowrap">
-                <ShieldCheck className="size-3 text-primary shrink-0" /> Admin Base
+            <div className={cn("overflow-hidden transition-all duration-300 flex flex-col justify-center", isCollapsed ? "w-0 opacity-0 ml-0" : "w-[130px] opacity-100")}>
+              <h2 className="font-serif text-sm font-extrabold text-foreground tracking-tight group-hover:text-primary transition-colors whitespace-nowrap">Flame & Crust</h2>
+              <p className="text-[9px] text-muted-foreground flex items-center gap-1 font-black tracking-widest uppercase mt-0.5 whitespace-nowrap">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Command Base
               </p>
             </div>
           </Link>
 
-          {/* Expand Toggle (Appears on Hover when Collapsed) */}
-          {isCollapsed && (
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleCollapse}
-              className="absolute left-3 size-8 rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 bg-secondary/80 border-border shadow-sm backdrop-blur-sm"
-              title="Expand Sidebar"
-            >
-              <PanelLeft className="size-4" />
-            </Button>
-          )}
-
-          {/* Collapse Toggle (Visible on Right when Expanded) */}
-          {!isCollapsed && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleCollapse}
-              className="absolute right-3 size-8 rounded-xl text-muted-foreground hover:text-foreground hidden lg:flex bg-background/50 hover:bg-secondary"
-              title="Collapse Sidebar"
-            >
-              <PanelLeftClose className="size-4" />
-            </Button>
-          )}
+          {/* Dedicated Collapse/Expand Toggle (Always Visible & Accessible!) */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleCollapse}
+            className={cn(
+              "size-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-secondary/70 transition-all shrink-0",
+              isCollapsed && "mx-auto mt-1"
+            )}
+            title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+          >
+            {isCollapsed ? <PanelLeft className="size-4 text-primary" /> : <PanelLeftClose className="size-4" />}
+          </Button>
         </div>
 
-        <nav className="flex-1 px-3 py-2 space-y-3 overflow-y-auto scrollbar-none hover:scrollbar-thin scrollbar-thumb-secondary">
+        {/* Navigation Groups */}
+        <nav className="flex-1 px-2.5 py-3 space-y-3.5 overflow-y-auto scrollbar-none hover:scrollbar-thin scrollbar-thumb-secondary">
           {navGroups.map((group) => (
-            <div key={group.title} className="space-y-0.5 relative">
-              <div className="relative h-5 flex items-center mb-0.5">
-                <div className={cn("absolute inset-y-0 left-0 overflow-hidden transition-all duration-300 flex items-center", isCollapsed ? "w-0 opacity-0" : "w-full opacity-100")}>
-                  <h3 className="px-3 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60 whitespace-nowrap">
+            <div key={group.title} className="space-y-1 relative">
+              <div className="relative h-4 flex items-center px-2 mb-1">
+                <div className={cn("overflow-hidden transition-all duration-300 flex items-center", isCollapsed ? "w-0 opacity-0" : "w-full opacity-100")}>
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.18em] text-muted-foreground/70 whitespace-nowrap">
                     {group.title}
                   </h3>
                 </div>
-                <div className={cn("absolute inset-0 flex items-center px-4 transition-all duration-300", isCollapsed ? "opacity-100 delay-100" : "opacity-0 pointer-events-none")}>
-                  <div className="w-full h-px bg-border/80 rounded-full" />
-                </div>
+                {isCollapsed && (
+                  <div className="w-full h-px bg-border/60 rounded-full" />
+                )}
               </div>
-              <div className="space-y-0.5 relative z-10">
+              <div className="space-y-1 relative z-10">
                 {group.items.map(({ key, label }) => {
                   const IconComponent = iconMap[key] || LayoutDashboard;
                   const isActive = currentPath === key || currentPath.startsWith(key + "/");
+
+                  // Specific badges for key operational links
+                  const badgeText = key === "kitchen" ? "KDS" : key === "orders" ? "LIVE" : null;
+                  const badgeColor = key === "kitchen" 
+                    ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20" 
+                    : "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
 
                   return (
                     <Tooltip key={key}>
@@ -214,32 +206,34 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                           to={`/admin/${key}`}
                           onClick={handleNav}
                           className={cn(
-                            "flex items-center rounded-xl text-xs font-bold transition-all duration-300 group relative overflow-hidden w-full py-1.5 px-3",
+                            "flex items-center rounded-xl text-xs transition-all duration-200 group relative overflow-hidden w-full py-2 px-3",
                             isActive
-                              ? "text-primary shadow-sm shadow-primary/10"
-                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/60"
+                              ? "bg-primary/10 text-primary font-bold border border-primary/20 shadow-xs shadow-primary/5"
+                              : "text-muted-foreground hover:text-foreground hover:bg-secondary/50 font-medium"
                           )}
                         >
-                          {isActive && (
-                            <div className="absolute inset-0 bg-primary/10 rounded-2xl border border-primary/20" />
-                          )}
                           <IconComponent
                             className={cn(
                               "size-4 shrink-0 transition-transform duration-200 group-hover:scale-110 relative z-10",
-                              isActive ? "text-primary" : "opacity-70 group-hover:opacity-100 group-hover:text-primary"
+                              isActive ? "text-primary" : "opacity-80 group-hover:opacity-100 group-hover:text-primary"
                             )}
                           />
-                          <div className={cn("overflow-hidden transition-all duration-300 relative z-10", isCollapsed ? "w-0 opacity-0 ml-0" : "w-[150px] opacity-100 ml-3")}>
-                            <span className="truncate whitespace-nowrap block">{label}</span>
+                          <div className={cn("overflow-hidden transition-all duration-300 relative z-10", isCollapsed ? "w-0 opacity-0 ml-0" : "w-[140px] opacity-100 ml-3")}>
+                            <span className="truncate whitespace-nowrap block text-[13px]">{label}</span>
                           </div>
+                          {!isCollapsed && badgeText && !isActive && (
+                            <span className={cn("ml-auto text-[9px] font-black px-1.5 py-0.5 rounded-md border", badgeColor)}>
+                              {badgeText}
+                            </span>
+                          )}
                           {!isCollapsed && isActive && (
-                            <div className="size-1.5 rounded-full bg-primary relative z-10 shadow-[0_0_8px_rgba(var(--primary),0.8)] ml-auto" />
+                            <div className="size-2 rounded-full bg-primary relative z-10 shadow-[0_0_8px_rgba(239,68,68,0.9)] ml-auto animate-pulse" />
                           )}
                         </Link>
                       </TooltipTrigger>
                       {isCollapsed && (
-                        <TooltipContent side="right" className="font-bold">
-                          {label}
+                        <TooltipContent side="right" className="font-bold bg-card border-border shadow-xl">
+                          {label} {badgeText ? `(${badgeText})` : ""}
                         </TooltipContent>
                       )}
                     </Tooltip>
