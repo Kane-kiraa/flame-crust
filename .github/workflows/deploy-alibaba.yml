@@ -32,7 +32,14 @@ jobs:
             git fetch origin main
             git reset --hard origin/main
             
-            echo "🐳 Deploying backend containers..."
+            echo "🛑 Stopping any local Docker MySQL container (now using Aiven Cloud MySQL)..."
+            if command -v docker-compose &> /dev/null; then
+              docker-compose down || true
+            elif command -v docker &> /dev/null; then
+              docker compose down || true
+            fi
+            
+            echo "⚙️ Configuring backend environment variables..."
             cd backend
             
             # Setup environment variables for Aiven MySQL
@@ -46,26 +53,51 @@ jobs:
             echo "MYSQL_HOST=spring-mysql-db-flame-crust.k.aivencloud.com" >> .env
             echo "MYSQL_PORT=25875" >> .env
             echo "MYSQL_DATABASE=defaultdb" >> .env
+            echo "JWT_SECRET=8f9b4c7d9a1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a" >> .env
+            echo "FLYWAY_ENABLED=false" >> .env
+            echo "PORT=8080" >> .env
+            echo "FRONTEND_URL=https://flame-crust-pizza.duckdns.org" >> .env
             mkdir -p src/main/resources
             cp .env src/main/resources/.env || true
             
-            if command -v docker-compose &> /dev/null; then
-              docker-compose down || true
-              docker-compose up -d --build
-            elif command -v docker &> /dev/null; then
-              docker compose down || true
-              docker compose up -d --build
+            echo "🔨 Building backend with Maven..."
+            chmod +x ./mvnw
+            ./mvnw clean package -DskipTests
+            
+            echo "🔄 Updating & Restarting Spring Boot service..."
+            cd ~/flame-crust
+            chmod +x setup-service.sh || true
+            if [ -f /etc/systemd/system/flame-crust.service ]; then
+              sudo sed -i 's/-Xmx180m -XX:MaxMetaspaceSize=96m/-Xmx256m -XX:MaxMetaspaceSize=160m/g' /etc/systemd/system/flame-crust.service || true
+              sudo systemctl daemon-reload || true
+              sudo systemctl restart flame-crust || true
             else
-              echo "⚠️ Docker not found, building with maven..."
-              ./mvnw clean package -DskipTests
-              if systemctl list-unit-files | grep -q "flame-crust.service"; then
-                echo "🔄 Restarting flame-crust systemd service..."
-                sudo systemctl restart flame-crust
-              else
-                echo "🚀 Starting optimized JAR..."
-                pkill -f "java.*flame-crust" || true
-                nohup java -XX:+UseSerialGC -Xms64m -Xmx180m -XX:MaxMetaspaceSize=96m -jar target/*.jar > backend.log 2>&1 &
+              ./setup-service.sh || true
+            fi
+            
+            sleep 3
+            if ! pgrep -f "flame-crust" > /dev/null; then
+              echo "⚠️ systemd service not running, starting via background nohup..."
+              pkill -f "java.*flame-crust" || true
+              cd ~/flame-crust/backend
+              nohup java -XX:+UseSerialGC -Xms64m -Xmx256m -XX:MaxMetaspaceSize=160m -jar target/flame-crust-api-1.0.0.jar > backend.log 2>&1 &
+            fi
+            
+            echo "🩺 Waiting for backend health check..."
+            HEALTH_SUCCESS=false
+            for i in $(seq 1 30); do
+              if curl -s -f http://localhost:8080/api/health > /dev/null 2>&1; then
+                echo "🎉 Backend is HEALTHY on attempt $i!"
+                HEALTH_SUCCESS=true
+                break
               fi
+              sleep 2
+            done
+            
+            if [ "$HEALTH_SUCCESS" = false ]; then
+              echo "❌ Backend health check timed out. Outputting backend.log:"
+              tail -n 80 ~/flame-crust/backend/backend.log || true
+              exit 1
             fi
             
             echo "🧹 Cleaning up unused Docker images..."

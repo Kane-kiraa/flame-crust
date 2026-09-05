@@ -6,7 +6,7 @@ spring:
   application:
     name: flame-crust-api
   flyway:
-    enabled: ${FLYWAY_ENABLED:true}
+    enabled: ${FLYWAY_ENABLED:false}
     baseline-on-migrate: true
     baseline-version: "0"
     validate-on-migrate: false
@@ -56,7 +56,7 @@ app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: ${JWT_SECRET:8f9b4c7d9a1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a}
   expiration: ${JWT_EXPIRATION:86400000}
 
 bakong:

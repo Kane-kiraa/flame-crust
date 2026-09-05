@@ -30,7 +30,7 @@ WorkingDirectory=$BACKEND_DIR
 EnvironmentFile=-$BACKEND_DIR/.env
 EnvironmentFile=-$BACKEND_DIR/src/main/resources/.env
 Environment="BAKONG_API_TOKEN=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiOTYzZjdiMDAxMTZjNDgxNCJ9LCJpYXQiOjE3ODc4MzE2NTcsImV4cCI6MTc5NTYwNzY1N30.WByYtYb4p6zAMEqTKOrRXOx4xPcLK1G2m_30KZOh660"
-ExecStart=$JAVA_PATH -XX:+UseSerialGC -Xms64m -Xmx180m -XX:MaxMetaspaceSize=96m -jar $BACKEND_DIR/target/flame-crust-api-1.0.0.jar
+ExecStart=$JAVA_PATH -XX:+UseSerialGC -Xms64m -Xmx256m -XX:MaxMetaspaceSize=160m -jar $BACKEND_DIR/target/flame-crust-api-1.0.0.jar
 Restart=always
 RestartSec=10
 StandardOutput=append:$BACKEND_DIR/backend.log
