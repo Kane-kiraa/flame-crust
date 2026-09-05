@@ -75,7 +75,7 @@ function AdminLayout() {
   return (
     <div className="h-screen overflow-hidden flex bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* Desktop Sidebar */}
-      <div className="hidden lg:block h-full">
+      <div className="hidden lg:block h-full shrink-0">
         <AdminSidebar isCollapsed={isCollapsed} toggleCollapse={() => setIsCollapsed(!isCollapsed)} />
       </div>
 

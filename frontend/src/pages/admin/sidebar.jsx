@@ -140,16 +140,12 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
     <TooltipProvider delayDuration={100}>
       <aside 
         className={cn(
-          "h-full bg-card/85 dark:bg-zinc-900/90 backdrop-blur-2xl border-r border-border/50 flex flex-col transition-all duration-300 relative shadow-sm select-none z-20",
-          isCollapsed ? "w-[60px]" : "w-[230px]"
+          "h-full bg-card/85 dark:bg-zinc-900/90 backdrop-blur-2xl border-r border-border/50 flex flex-col transition-[width] duration-300 ease-in-out relative shadow-sm select-none z-20 overflow-hidden",
+          isCollapsed ? "w-[64px]" : "w-[245px]"
         )}
       >
-        
         {/* Brand Header */}
-        <div className={cn(
-          "border-b border-border/50 flex items-center shrink-0 transition-all",
-          isCollapsed ? "h-11 justify-center px-1" : "h-11 px-2.5 justify-between"
-        )}>
+        <div className="h-14 border-b border-border/50 px-3 flex items-center justify-between shrink-0 overflow-hidden">
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -157,26 +153,26 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                   variant="ghost"
                   size="icon"
                   onClick={toggleCollapse}
-                  className="size-7 rounded-lg bg-gradient-to-tr from-primary via-orange-500 to-amber-500 text-white hover:opacity-90 shadow-xs shadow-primary/25 flex items-center justify-center group"
+                  className="size-10 rounded-xl bg-gradient-to-tr from-primary via-orange-500 to-amber-500 text-white hover:opacity-90 shadow-xs shadow-primary/25 flex items-center justify-center group mx-auto"
                 >
-                  <PanelLeft className="size-3.5 transition-transform group-hover:scale-110" />
+                  <PanelLeft className="size-4.5 transition-transform group-hover:scale-110" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="font-bold">
+              <TooltipContent side="right" sideOffset={12} className="font-bold">
                 Expand Sidebar
               </TooltipContent>
             </Tooltip>
           ) : (
             <div className="w-full flex items-center justify-between">
-              <Link to="/admin" onClick={handleNav} className="flex items-center gap-2 overflow-hidden min-w-0 group">
-                <div className="size-7 shrink-0 rounded-lg bg-gradient-to-tr from-primary via-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-xs shadow-xs shadow-primary/25 group-hover:scale-105 transition-transform">
+              <Link to="/admin" onClick={handleNav} className="flex items-center gap-2.5 overflow-hidden min-w-0 group">
+                <div className="size-9 shrink-0 rounded-xl bg-gradient-to-tr from-primary via-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-sm shadow-xs shadow-primary/25 group-hover:scale-105 transition-transform">
                   🔥
                 </div>
                 <div className="flex flex-col justify-center min-w-0">
-                  <h2 className="font-serif text-xs font-extrabold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
+                  <h2 className="font-serif text-sm font-extrabold text-foreground tracking-tight group-hover:text-primary transition-colors truncate leading-tight">
                     Flame & Crust
                   </h2>
-                  <p className="text-[8.5px] text-muted-foreground flex items-center gap-1 font-black tracking-wider uppercase">
+                  <p className="text-[9px] text-muted-foreground flex items-center gap-1 font-black tracking-wider uppercase">
                     <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" /> Command
                   </p>
                 </div>
@@ -186,30 +182,30 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                 variant="ghost"
                 size="icon"
                 onClick={toggleCollapse}
-                className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/70 shrink-0"
+                className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/70 shrink-0"
                 title="Collapse Sidebar"
               >
-                <PanelLeftClose className="size-3.5" />
+                <PanelLeftClose className="size-4" />
               </Button>
             </div>
           )}
         </div>
 
         {/* Navigation Groups */}
-        <nav className="flex-1 px-1.5 py-1 space-y-0.5 overflow-y-auto no-scrollbar flex flex-col justify-start">
+        <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto no-scrollbar flex flex-col justify-start">
           {navGroups.map((group, groupIdx) => (
-            <div key={group.title} className="space-y-0.5 relative">
+            <div key={group.title} className="space-y-1 relative">
               {isCollapsed ? (
-                groupIdx > 0 && <div className="w-4 h-px bg-border/40 mx-auto my-0.5 rounded-full" />
+                groupIdx > 0 && <div className="w-5 h-px bg-border/40 mx-auto my-1.5 rounded-full" />
               ) : (
-                <div className="h-3.5 flex items-center px-1.5 mt-1.5 mb-0.5 first:mt-0">
-                  <h3 className="text-[9px] font-black uppercase tracking-[0.14em] text-muted-foreground/60 whitespace-nowrap">
+                <div className="h-5 flex items-center px-1.5 mt-2 mb-0.5 first:mt-0">
+                  <h3 className="text-[10px] font-black uppercase tracking-[0.14em] text-muted-foreground/60 whitespace-nowrap">
                     {group.title}
                   </h3>
                 </div>
               )}
 
-              <div className="space-y-0.5 relative z-10">
+              <div className="space-y-1 relative z-10">
                 {group.items.map(({ key, label }) => {
                   const IconComponent = iconMap[key] || LayoutDashboard;
                   const isActive = currentPath === key || currentPath.startsWith(key + "/");
@@ -227,38 +223,40 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                           to={`/admin/${key}`}
                           onClick={handleNav}
                           className={cn(
-                            "flex items-center rounded-lg text-xs transition-all duration-150 group relative",
-                            isCollapsed
-                              ? "h-[clamp(22px,2.7vh,28px)] w-[clamp(22px,2.7vh,28px)] mx-auto justify-center p-0"
-                              : "w-full h-[clamp(24px,2.8vh,30px)] px-2 justify-start",
+                            "flex items-center h-10 w-full rounded-xl transition-colors duration-150 group relative overflow-hidden",
                             isActive
                               ? "bg-primary/15 text-primary font-bold border border-primary/25 shadow-xs shadow-primary/5"
                               : "text-muted-foreground hover:text-foreground hover:bg-secondary/60 font-medium"
                           )}
                         >
-                          <IconComponent
-                            className={cn(
-                              "size-3.5 shrink-0 transition-transform duration-150 group-hover:scale-110",
-                              isActive ? "text-primary" : "opacity-80 group-hover:opacity-100 group-hover:text-primary"
-                            )}
-                          />
+                          <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+                            <IconComponent
+                              className={cn(
+                                "size-4.5 shrink-0 transition-transform duration-150 group-hover:scale-110",
+                                isActive ? "text-primary" : "opacity-80 group-hover:opacity-100 group-hover:text-primary"
+                              )}
+                            />
+                          </div>
+
                           {!isCollapsed && (
-                            <>
-                              <span className="truncate whitespace-nowrap block text-[11.5px] ml-2">{label}</span>
+                            <div className="flex items-center justify-between flex-1 min-w-0 pr-2.5">
+                              <span className="truncate whitespace-nowrap text-[13px] font-medium ml-1">
+                                {label}
+                              </span>
                               {badgeText && !isActive && (
-                                <span className={cn("ml-auto text-[8px] font-black px-1 py-0.2 rounded border", badgeColor)}>
+                                <span className={cn("ml-auto text-[9px] font-black px-1.5 py-0.5 rounded border shrink-0", badgeColor)}>
                                   {badgeText}
                                 </span>
                               )}
                               {isActive && (
-                                <div className="size-1.5 rounded-full bg-primary shadow-[0_0_6px_rgba(239,68,68,0.9)] ml-auto animate-pulse" />
+                                <div className="size-2 rounded-full bg-primary shadow-[0_0_8px_rgba(239,68,68,0.9)] ml-auto shrink-0 animate-pulse" />
                               )}
-                            </>
+                            </div>
                           )}
                         </Link>
                       </TooltipTrigger>
                       {isCollapsed && (
-                        <TooltipContent side="right" sideOffset={8}>
+                        <TooltipContent side="right" sideOffset={12}>
                           {label} {badgeText ? `(${badgeText})` : ""}
                         </TooltipContent>
                       )}
@@ -271,63 +269,59 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
         </nav>
 
         {/* Quick Actions (Storefront) */}
-        <div className="px-1.5 pt-1 mt-auto shrink-0 flex justify-center">
+        <div className="px-3 pt-2 mt-auto shrink-0 flex justify-center">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="outline"
                 asChild
-                className={cn(
-                  "bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200 rounded-lg",
-                  isCollapsed ? "h-[clamp(22px,2.7vh,28px)] w-[clamp(22px,2.7vh,28px)] p-0 justify-center" : "w-full justify-start px-2.5 h-[clamp(24px,2.8vh,30px)]"
-                )}
+                className="w-full h-10 px-0 flex items-center justify-start bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-200 rounded-xl overflow-hidden"
               >
                 <Link to="/" replace>
-                  <Store className="size-3.5 shrink-0" />
-                  {!isCollapsed && <span className="font-bold text-[11px] uppercase tracking-wider ml-2">Storefront</span>}
+                  <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+                    <Store className="size-4.5 shrink-0" />
+                  </div>
+                  {!isCollapsed && (
+                    <span className="font-bold text-xs uppercase tracking-wider overflow-hidden whitespace-nowrap ml-1 flex-1 pr-2">
+                      Storefront
+                    </span>
+                  )}
                 </Link>
               </Button>
             </TooltipTrigger>
-            {isCollapsed && <TooltipContent side="right" className="font-bold">Visit Storefront</TooltipContent>}
+            {isCollapsed && <TooltipContent side="right" sideOffset={12} className="font-bold">Visit Storefront</TooltipContent>}
           </Tooltip>
         </div>
 
         {/* Admin Account Footer */}
-        <div className={cn(
-          "border-t border-border/40 bg-transparent shrink-0 flex justify-center",
-          isCollapsed ? "p-1 pb-[calc(0.5rem+env(safe-area-inset-bottom))]" : "p-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
-        )}>
+        <div className="p-3 border-t border-border/40 bg-transparent shrink-0 flex justify-center pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <DropdownMenu>
             <Tooltip>
               <TooltipTrigger asChild>
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    className={cn(
-                      "flex items-center group cursor-pointer transition-all duration-200 rounded-lg hover:bg-secondary/50 outline-none",
-                      isCollapsed ? "h-[clamp(22px,2.7vh,28px)] w-[clamp(22px,2.7vh,28px)] justify-center p-0" : "w-full p-1"
-                    )}
+                    className="w-full h-10 flex items-center justify-start rounded-xl hover:bg-secondary/50 outline-none transition-colors duration-150 overflow-hidden cursor-pointer"
                   >
-                    <div className={cn(
-                      "shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center font-black text-[10px] shadow-[inset_0_0_0_1px_rgba(var(--primary),0.2)] group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-200",
-                      isCollapsed ? "size-full" : "size-6.5"
-                    )}>
-                      {adminAuth?.name ? adminAuth.name.slice(0, 2).toUpperCase() : "AD"}
+                    <div className="w-10 h-10 shrink-0 flex items-center justify-center">
+                      <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-black text-xs shadow-[inset_0_0_0_1px_rgba(var(--primary),0.2)]">
+                        {adminAuth?.name ? adminAuth.name.slice(0, 2).toUpperCase() : "AD"}
+                      </div>
                     </div>
                     {!isCollapsed && (
-                      <div className="ml-2 flex flex-col items-start min-w-0 flex-1">
-                        <p className="text-[11px] font-bold text-foreground truncate group-hover:text-primary transition-colors whitespace-nowrap leading-tight">
+                      <div className="ml-1 flex flex-col items-start min-w-0 flex-1 overflow-hidden pr-2">
+                        <p className="text-[11.5px] font-bold text-foreground truncate group-hover:text-primary transition-colors whitespace-nowrap leading-tight">
                           {adminAuth?.name || "Administrator"}
                         </p>
-                        <p className="text-[8.5px] font-black tracking-wider text-muted-foreground uppercase flex items-center gap-1 mt-0.5 whitespace-nowrap">
-                          <KeyRound className="size-2 text-primary shrink-0" /> {adminAuth?.role || "ADMIN"}
+                        <p className="text-[9px] font-black tracking-wider text-muted-foreground uppercase flex items-center gap-1 mt-0.5 whitespace-nowrap">
+                          <KeyRound className="size-2.5 text-primary shrink-0" /> {adminAuth?.role || "ADMIN"}
                         </p>
                       </div>
                     )}
                   </button>
                 </DropdownMenuTrigger>
               </TooltipTrigger>
-              {isCollapsed && <TooltipContent side="right" className="font-bold">Admin Profile</TooltipContent>}
+              {isCollapsed && <TooltipContent side="right" sideOffset={12} className="font-bold">Admin Profile</TooltipContent>}
             </Tooltip>
 
             <DropdownMenuContent align={isCollapsed ? "start" : "center"} side={isCollapsed ? "right" : "top"} sideOffset={12} className="w-56 rounded-xl border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl p-2 z-[100]">
