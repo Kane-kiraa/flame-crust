@@ -67,6 +67,10 @@ jobs:
             echo "🔄 Updating & Restarting Spring Boot service..."
             cd ~/flame-crust
             chmod +x setup-service.sh || true
+            # Clean up obsolete duplicate service if present
+            sudo systemctl stop flame-backend || true
+            sudo systemctl disable flame-backend || true
+            sudo rm -f /etc/systemd/system/flame-backend.service || true
             if [ -f /etc/systemd/system/flame-crust.service ]; then
               sudo sed -i 's/-Xmx180m -XX:MaxMetaspaceSize=96m/-Xmx256m -XX:MaxMetaspaceSize=160m/g' /etc/systemd/system/flame-crust.service || true
               sudo systemctl daemon-reload || true
