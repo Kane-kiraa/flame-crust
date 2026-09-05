@@ -107,28 +107,26 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
     }
     return defaultTheme;
   });
-  const [pendingTheme, setPendingTheme] = useState(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
 
   const setTheme = (newTheme) => {
     if (newTheme === theme || isTransitioning) return;
-    setPendingTheme(newTheme);
     setIsTransitioning(true);
 
-    // Apply the theme change smoothly midway through the slow gentle rotation (at 650ms)
+    // 1. Immediately obscure screen with heavy blur.
+    // 2. Switch theme behind the heavy blur curtain at 260ms (fully concealed, no visible desync).
     setTimeout(() => {
       setThemeState(newTheme);
       if (typeof document !== "undefined") {
         document.documentElement.classList.toggle("dark", newTheme === "dark");
         localStorage.setItem("flame-crust-theme", newTheme);
       }
-    }, 650);
+    }, 260);
 
-    // Conclude the slow, elegant loading animation gracefully (at 1450ms)
+    // 3. Smoothly dismiss loading overlay after the slow silky pizza rotation completes
     setTimeout(() => {
       setIsTransitioning(false);
-      setPendingTheme(null);
-    }, 1450);
+    }, 1350);
   };
 
   useEffect(() => {
@@ -137,8 +135,6 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
       localStorage.setItem("flame-crust-theme", theme);
     }
   }, []);
-
-  const isTargetDark = (pendingTheme || theme) === "dark";
 
   return (
     <ThemeContext.Provider value={{ theme, setTheme }}>
@@ -149,55 +145,33 @@ export function ThemeProvider({ children, defaultTheme = "light" }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.35, ease: "easeInOut" }}
-            // Clean semi-transparent overlay WITHOUT any background blur
-            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/45 dark:bg-black/60 pointer-events-none select-none"
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            // Strong heavy backdrop blur + comfortable dark overlay to fully conceal page repaints
+            className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/60 dark:bg-black/75 backdrop-blur-2xl pointer-events-none select-none"
           >
-            {/* Elegant Clean Center Container - NO BLUR, Crisp & Fast */}
-            <motion.div
-              initial={{ scale: 0.85, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.9, opacity: 0, y: -10 }}
-              transition={{
-                duration: 0.4,
-                ease: [0.16, 1, 0.3, 1],
-              }}
-              className="flex flex-col items-center justify-center px-8 py-7 rounded-[32px] bg-zinc-900/90 dark:bg-zinc-950/95 border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.5)] transform-gpu min-w-[170px]"
-            >
-              {/* Ultra-Smooth, Slow, Gentle 360° Pizza Rotation */}
+            {/* Minimalist Floating Loading - NO UI Card/Box, Pure Pizza Art */}
+            <div className="relative flex items-center justify-center">
+              {/* Soft warm glow behind the pizza */}
+              <div className="absolute size-36 rounded-full bg-gradient-to-tr from-amber-500/30 to-orange-500/25 blur-2xl -z-10 animate-pulse" />
+
+              {/* Ultra-Smooth, Slow, Majestic 360° Pizza Rotation */}
               <motion.div
-                initial={{ rotate: 0, scale: 0.92 }}
+                initial={{ rotate: 0, scale: 0.88, opacity: 0 }}
                 animate={{
                   rotate: 360,
-                  scale: [0.92, 1.06, 1],
+                  scale: [0.88, 1.05, 1],
+                  opacity: 1,
                 }}
+                exit={{ scale: 0.9, opacity: 0 }}
                 transition={{
-                  duration: 1.35, // Slow, peaceful, and deliberate rotation
-                  ease: [0.25, 1, 0.5, 1], // Smooth organic deceleration
+                  duration: 1.25, // Slow, peaceful, and deliberate rotation
+                  ease: [0.25, 1, 0.45, 1], // Silky smooth fluid deceleration
                 }}
                 className="flex items-center justify-center transform-gpu"
               >
-                <PizzaIcon className="size-24 drop-shadow-[0_12px_24px_rgba(0,0,0,0.45)]" />
+                <PizzaIcon className="size-28 sm:size-32 drop-shadow-[0_16px_32px_rgba(0,0,0,0.5)]" />
               </motion.div>
-
-              {/* Clean Typography Label */}
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.25, duration: 0.4, ease: "easeOut" }}
-                className="flex flex-col items-center text-center mt-4 select-none"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="size-2 rounded-full bg-primary animate-pulse" />
-                  <span className="text-sm font-extrabold tracking-tight text-white">
-                    {isTargetDark ? "Dark Mode" : "Light Mode"}
-                  </span>
-                </div>
-                <span className="text-[11px] font-semibold text-zinc-400 tracking-wider uppercase mt-1">
-                  {isTargetDark ? "រាត្រី • Midnight" : "ពន្លឺ • Daylight"}
-                </span>
-              </motion.div>
-            </motion.div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
