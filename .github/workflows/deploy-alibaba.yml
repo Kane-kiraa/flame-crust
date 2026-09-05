@@ -99,7 +99,13 @@ jobs:
               exit 1
             fi
             
-            echo "🧹 Cleaning up unused Docker images..."
-            docker image prune -f || true
+            echo "🧹 Cleaning up unused Docker resources, logs, and system cache..."
+            docker system prune -a --volumes -f || true
+            sudo journalctl --vacuum-size=50M || true
+            sudo apt-get clean || true
+            # Truncate backend.log if larger than 20MB
+            if [ -f ~/flame-crust/backend/backend.log ] && [ $(stat -c%s ~/flame-crust/backend/backend.log) -gt 20971520 ]; then
+              tail -n 2000 ~/flame-crust/backend/backend.log > ~/flame-crust/backend/backend.log.tmp && mv ~/flame-crust/backend/backend.log.tmp ~/flame-crust/backend/backend.log || true
+            fi
             
             echo "✅ Deployment completed successfully!"
