@@ -71,20 +71,15 @@ jobs:
             sudo systemctl stop flame-backend || true
             sudo systemctl disable flame-backend || true
             sudo rm -f /etc/systemd/system/flame-backend.service || true
-            if [ -f /etc/systemd/system/flame-crust.service ]; then
-              sudo sed -i 's/-Xmx180m -XX:MaxMetaspaceSize=96m/-Xmx256m -XX:MaxMetaspaceSize=160m/g' /etc/systemd/system/flame-crust.service || true
-              sudo systemctl daemon-reload || true
-              sudo systemctl restart flame-crust || true
-            else
-              ./setup-service.sh || true
-            fi
+            # Always run setup-service.sh to ensure latest resource limits and JVM tuning are applied
+            ./setup-service.sh || true
             
             sleep 3
             if ! pgrep -f "flame-crust" > /dev/null; then
               echo "⚠️ systemd service not running, starting via background nohup..."
               pkill -f "java.*flame-crust" || true
               cd ~/flame-crust/backend
-              nohup java -XX:+UseSerialGC -Xms64m -Xmx256m -XX:MaxMetaspaceSize=160m -jar target/flame-crust-api-1.0.0.jar > backend.log 2>&1 &
+              nohup java -XX:+UseSerialGC -XX:TieredStopAtLevel=1 -XX:CICompilerCount=1 -Xss256k -Xms48m -Xmx220m -XX:MaxMetaspaceSize=140m -jar target/flame-crust-api-1.0.0.jar > backend.log 2>&1 &
             fi
             
             echo "🩺 Waiting for backend health check..."
