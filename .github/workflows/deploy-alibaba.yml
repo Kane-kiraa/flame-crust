@@ -66,13 +66,7 @@ jobs:
             
             echo "🔄 Updating & Restarting Spring Boot service..."
             cd ~/flame-crust
-            chmod +x setup-service.sh || true
-            # Clean up obsolete duplicate service if present
-            sudo systemctl stop flame-backend || true
-            sudo systemctl disable flame-backend || true
-            sudo rm -f /etc/systemd/system/flame-backend.service || true
-            # Always run setup-service.sh to ensure latest resource limits and JVM tuning are applied
-            ./setup-service.sh || true
+            sudo systemctl restart flame-crust || true
             
             sleep 3
             if ! pgrep -f "flame-crust" > /dev/null; then
@@ -83,28 +77,15 @@ jobs:
             fi
             
             echo "🩺 Waiting for backend health check..."
-            HEALTH_SUCCESS=false
-            for i in $(seq 1 45); do
+            for i in $(seq 1 35); do
               if curl -s -f http://localhost:8080/api/health > /dev/null 2>&1; then
                 echo "🎉 Backend is HEALTHY on attempt $i!"
-                HEALTH_SUCCESS=true
                 break
               fi
-              sleep 3
+              sleep 2
             done
             
-            if [ "$HEALTH_SUCCESS" = false ]; then
-              echo "❌ Backend health check timed out. Outputting backend.log:"
-              tail -n 80 ~/flame-crust/backend/backend.log || true
-              exit 1
-            fi
-            
-            echo "🧹 Cleaning up unused Docker resources, logs, and system cache..."
-            sudo docker system prune -f || true
-            sudo journalctl --vacuum-size=50M || true
-            sudo apt-get clean || true
-            if [ -f ~/flame-crust/backend/backend.log ]; then
-              tail -n 2000 ~/flame-crust/backend/backend.log > /tmp/backend.log.tmp && mv /tmp/backend.log.tmp ~/flame-crust/backend/backend.log || true
-            fi
+            echo "🧹 Cleaning up unused Docker images..."
+            docker image prune -f || true
             
             echo "✅ Deployment completed successfully!"
