@@ -129,11 +129,12 @@ function AdminLayout() {
             <Button
               variant="outline"
               size="icon"
-              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
+              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer relative overflow-hidden"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="size-4 text-amber-400" /> : <Moon className="size-4" />}
+              <Sun className="size-4 text-amber-500 rotate-0 scale-100 transition-transform duration-300 dark:-rotate-90 dark:scale-0" />
+              <Moon className="size-4 absolute text-indigo-400 rotate-90 scale-0 transition-transform duration-300 dark:rotate-0 dark:scale-100" />
             </Button>
 
             {/* Sign Out Button */}
