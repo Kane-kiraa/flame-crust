@@ -16,7 +16,7 @@ export const resourceConfig = {
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
-      { name: "sku", label: "SKU", type: "text", required: true },
+      { name: "sku", label: "SKU", type: "text", required: true, autoSku: true },
       { name: "category", label: "Category", type: "select", required: true, optionsResource: "categories", optionsMap: { value: "slug", label: "name" }, options: [
         { value: "pizza", label: "Pizza" },
         { value: "pizza-bagels", label: "Pizza Bagels" },
@@ -28,9 +28,9 @@ export const resourceConfig = {
       { name: "image", label: "Image URL", type: "image", required: false },
       { name: "description", label: "Description", type: "textarea", required: false },
       { name: "tags", label: "Tags (comma-separated)", type: "text", required: false },
-      { name: "rating", label: "Rating", type: "number", required: false, step: "0.1" },
-      { name: "view_count", label: "View Count", type: "number", required: false },
-      { name: "sales_count", label: "Sales Count", type: "number", required: false },
+      { name: "rating", label: "Rating", type: "number", required: false, step: "0.1", readOnly: true },
+      { name: "view_count", label: "View Count", type: "number", required: false, readOnly: true },
+      { name: "sales_count", label: "Sales Count", type: "number", required: false, readOnly: true },
       { name: "active", label: "Active", type: "checkbox", required: false },
       { name: "spicy", label: "Spicy", type: "checkbox", required: false },
       { name: "vegetarian", label: "Vegetarian", type: "checkbox", required: false },

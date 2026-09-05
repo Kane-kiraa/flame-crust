@@ -155,6 +155,29 @@ public class AdminCrudController {
             }
             mutableBody.remove("password"); // Remove raw password so Jackson doesn't fail on unknown property
 
+            // Auto-defaults for products
+            if ("products".equalsIgnoreCase(resource)) {
+                if (!mutableBody.containsKey("sku") || mutableBody.get("sku") == null || mutableBody.get("sku").toString().trim().isEmpty()) {
+                    Long maxId = jdbc.queryForObject("SELECT COALESCE(MAX(id), 0) FROM products", Long.class);
+                    long nextId = (maxId != null ? maxId : 0) + 1;
+                    mutableBody.put("sku", String.format("FC-%06d", nextId));
+                }
+                if (!mutableBody.containsKey("base_price") || mutableBody.get("base_price") == null) {
+                    if (mutableBody.containsKey("price")) {
+                        mutableBody.put("base_price", mutableBody.get("price"));
+                    }
+                }
+                if (!mutableBody.containsKey("sales_count") || mutableBody.get("sales_count") == null) {
+                    mutableBody.put("sales_count", 0);
+                }
+                if (!mutableBody.containsKey("view_count") || mutableBody.get("view_count") == null) {
+                    mutableBody.put("view_count", 0);
+                }
+                if (!mutableBody.containsKey("rating") || mutableBody.get("rating") == null) {
+                    mutableBody.put("rating", 5.0);
+                }
+            }
+
             ObjectMapper copyMapper = mapper.copy().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             Object entity = copyMapper.convertValue(mutableBody, getEntityClass(resource));
             JpaRepository<Object, Long> repo = getRepository(resource);
@@ -218,6 +241,17 @@ public class AdminCrudController {
             }
             
             mutableBody.put("id", id);
+            
+            if ("products".equalsIgnoreCase(resource)) {
+                if (!mutableBody.containsKey("base_price") || mutableBody.get("base_price") == null) {
+                    if (mutableBody.containsKey("price")) {
+                        mutableBody.put("base_price", mutableBody.get("price"));
+                    }
+                }
+                if ((!mutableBody.containsKey("sku") || mutableBody.get("sku") == null || mutableBody.get("sku").toString().trim().isEmpty()) && id > 0) {
+                    mutableBody.put("sku", String.format("FC-%06d", id));
+                }
+            }
             
             ObjectMapper copyMapper = mapper.copy().configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
             String jsonBody = copyMapper.writeValueAsString(mutableBody);

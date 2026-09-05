@@ -62,5 +62,5 @@ jwt:
 bakong:
   api:
     url: ${BAKONG_API_URL:https://api-bakong.nbc.gov.kh/v1/check_transaction_by_md5}
-    token: ${BAKONG_API_TOKEN:}
+    token: ${BAKONG_API_TOKEN:eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkYXRhIjp7ImlkIjoiOTYzZjdiMDAxMTZjNDgxNCJ9LCJpYXQiOjE3ODc4MzE2NTcsImV4cCI6MTc5NTYwNzY1N30.WByYtYb4p6zAMEqTKOrRXOx4xPcLK1G2m_30KZOh660}
 

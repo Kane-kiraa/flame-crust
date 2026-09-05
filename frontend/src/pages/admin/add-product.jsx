@@ -67,6 +67,7 @@ export default function AddProductForm() {
       await create("products", {
         name: formData.name,
         price: Number(formData.price),
+        base_price: Number(formData.price),
         category: formData.category,
         description: formData.description,
         image: formData.imageUrl,

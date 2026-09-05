@@ -145,9 +145,34 @@ function AdminResourcePage({ resource }) {
     loadDynamicOptions();
   }, [config]);
 
+const generateNextSku = (items) => {
+  let maxNum = 0;
+  if (Array.isArray(items)) {
+    items.forEach((item) => {
+      if (item.sku && typeof item.sku === "string" && item.sku.startsWith("FC-")) {
+        const num = parseInt(item.sku.replace("FC-", ""), 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      }
+      if (item.id && typeof item.id === "number" && item.id > maxNum) {
+        maxNum = item.id;
+      }
+    });
+  }
+  const nextNum = Math.max(maxNum + 1, 1);
+  return `FC-${String(nextNum).padStart(6, "0")}`;
+};
+
   const openCreate = () => {
     setEditingId(null);
-    setFormData({});
+    const initial = {};
+    if (resource === "products") {
+      initial.sku = generateNextSku(data);
+      initial.active = true;
+      initial.rating = 5.0;
+      initial.view_count = 0;
+      initial.sales_count = 0;
+    }
+    setFormData(initial);
     setFormErrors({});
     setFormOpen(true);
   };
@@ -160,6 +185,14 @@ function AdminResourcePage({ resource }) {
       delete initialData.passwordHash;
       delete initialData.password_hash;
       initialData.password = "";
+      if (resource === "products") {
+        if (!initialData.sku || String(initialData.sku).trim() === "") {
+          initialData.sku = `FC-${String(id).padStart(6, "0")}`;
+        }
+        if (initialData.base_price == null || initialData.base_price === "") {
+          initialData.base_price = initialData.price;
+        }
+      }
       setFormData(initialData);
       setFormErrors({});
       setFormOpen(true);
@@ -251,7 +284,15 @@ function AdminResourcePage({ resource }) {
   };
 
   const updateField = (name, value) => {
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData((prev) => {
+      const updated = { ...prev, [name]: value };
+      if (resource === "products" && name === "price") {
+        if (!prev.base_price || prev.base_price === prev.price) {
+          updated.base_price = value;
+        }
+      }
+      return updated;
+    });
     setFormErrors((prev) => ({ ...prev, [name]: undefined }));
   };
 
@@ -627,24 +668,54 @@ function AdminResourcePage({ resource }) {
                     ) : (
 
                       <div className="space-y-1.5">
-                        <Label htmlFor={field.name} className="text-[13px] font-bold text-foreground/80 ml-1">
-                          {field.label}
-                          {field.required && <span className="text-destructive ml-0.5">*</span>}
-                        </Label>
+                        <div className="flex items-center justify-between ml-1">
+                          <Label htmlFor={field.name} className="text-[13px] font-bold text-foreground/80">
+                            {field.label}
+                            {field.required && !field.readOnly && <span className="text-destructive ml-0.5">*</span>}
+                          </Label>
+                          {field.name === "sku" && (
+                            <button
+                              type="button"
+                              onClick={() => updateField("sku", generateNextSku(data))}
+                              className="text-xs font-semibold text-primary hover:text-primary/80 transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Generate next sequential SKU"
+                            >
+                              ⚡ Auto
+                            </button>
+                          )}
+                          {field.readOnly && (
+                            <span className="text-[10px] font-semibold text-muted-foreground bg-secondary/80 px-2 py-0.5 rounded-full">
+                              Auto-managed
+                            </span>
+                          )}
+                        </div>
                         <Input
                           id={field.name}
                           type={field.type}
                           step={field.step}
+                          readOnly={field.readOnly}
+                          disabled={field.readOnly}
                           value={formData[field.name] ?? ""}
                           onChange={(e) => updateField(field.name, e.target.value)}
                           placeholder={field.label}
                           className={cn(
                             "h-11 rounded-[16px] border-border/40 bg-secondary/20 hover:bg-secondary/40 focus:bg-background px-4 text-sm text-foreground shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/30",
+                            field.readOnly && "opacity-70 bg-muted/40 cursor-not-allowed",
+                            field.name === "sku" && "font-mono font-semibold tracking-wider",
                             formErrors[field.name] && "border-destructive focus-visible:ring-destructive/30"
                           )}
                         />
+                        {field.name === "base_price" && (
+                          <p className="text-[11px] text-muted-foreground ml-1">Auto-syncs with Price unless changed</p>
+                        )}
+                        {field.name === "sku" && (
+                          <p className="text-[11px] text-muted-foreground ml-1">Unique Product Identifier (FC-XXXXXX)</p>
+                        )}
+                        {field.readOnly && (
+                          <p className="text-[11px] text-muted-foreground ml-1">Automatically computed by customer activity</p>
+                        )}
                         {formErrors[field.name] && (
-                          <p className="text-xs text-destructive">{formErrors[field.name]}</p>
+                          <p className="text-xs text-destructive font-medium ml-1">{formErrors[field.name]}</p>
                         )}
                       </div>
                     )}
