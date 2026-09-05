@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import { UtensilsCrossed, Store, Search, ShoppingBag, User, ShieldCheck } from "lucide-react";
+
 import { useCart } from "@/lib/cart-store";
 import { SearchModal } from "./search-modal";
 import { cn } from "@/lib/utils";
@@ -173,7 +175,16 @@ export function MobileBottomNav() {
                     {item.label}
                   </span>
 
-                  {/* Subtle Active Pill Indicator Glow */}
+                  {/* Animated Gliding Active Pill Backdrop */}
+                  {item.isActive && (
+                    <motion.div
+                      layoutId="mobileActiveTabPill"
+                      transition={{ type: "spring", stiffness: 450, damping: 32 }}
+                      className="absolute inset-0 rounded-full bg-primary/15 dark:bg-primary/25 shadow-2xs -z-10"
+                    />
+                  )}
+
+                  {/* Subtle Active Indicator Glow Dot */}
                   {item.isActive && (
                     <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-2.5 h-0.5 rounded-full bg-primary shadow-[0_0_6px_rgba(239,68,68,0.8)]" />
                   )}
