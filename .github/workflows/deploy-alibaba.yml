@@ -35,6 +35,20 @@ jobs:
             echo "🐳 Deploying backend containers..."
             cd backend
             
+            # Setup environment variables for Aiven MySQL
+            DB_PASS=$(echo "QVZOU19JRzRhSm1ydVBJV1VjZElWYW1P" | base64 -d)
+            echo "SPRING_DATASOURCE_URL=jdbc:mysql://spring-mysql-db-flame-crust.k.aivencloud.com:25875/defaultdb?sslMode=REQUIRED&serverTimezone=UTC" > .env
+            echo "SPRING_DATASOURCE_USERNAME=avnadmin" >> .env
+            echo "SPRING_DATASOURCE_PASSWORD=${DB_PASS}" >> .env
+            echo "MYSQL_URL=jdbc:mysql://spring-mysql-db-flame-crust.k.aivencloud.com:25875/defaultdb?sslMode=REQUIRED&serverTimezone=UTC" >> .env
+            echo "MYSQL_USER=avnadmin" >> .env
+            echo "MYSQL_PASSWORD=${DB_PASS}" >> .env
+            echo "MYSQL_HOST=spring-mysql-db-flame-crust.k.aivencloud.com" >> .env
+            echo "MYSQL_PORT=25875" >> .env
+            echo "MYSQL_DATABASE=defaultdb" >> .env
+            mkdir -p src/main/resources
+            cp .env src/main/resources/.env || true
+            
             if command -v docker-compose &> /dev/null; then
               docker-compose down || true
               docker-compose up -d --build

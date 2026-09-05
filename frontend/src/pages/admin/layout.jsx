@@ -124,36 +124,11 @@ function AdminLayout() {
 
           {/* Right Header Actions */}
           <div className="flex items-center gap-2.5">
-            {/* Store & Gateway Status Pills */}
-            <div className="hidden md:flex items-center gap-2 mr-1">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 shadow-xs">
-                <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                Store Online
-              </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20 shadow-xs">
-                <span className="size-1.5 rounded-full bg-primary" />
-                Bakong KHQR Live
-              </span>
-            </div>
-
-            {/* Visit Storefront Shortcut */}
-            <Button
-              variant="outline"
-              size="sm"
-              asChild
-              className="hidden sm:inline-flex h-9 rounded-xl border-border/60 hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition-all font-semibold text-xs"
-            >
-              <Link to="/">
-                <Store className="size-3.5 mr-1.5 text-primary" />
-                Storefront ↗
-              </Link>
-            </Button>
-
             {/* Theme Toggle */}
             <Button
               variant="outline"
               size="icon"
-              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors"
+              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-foreground hover:bg-secondary/60 transition-colors cursor-pointer"
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               aria-label="Toggle theme"
             >
@@ -164,7 +139,7 @@ function AdminLayout() {
             <Button
               variant="outline"
               size="icon"
-              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors"
+              className="size-9 rounded-xl border-border/60 text-muted-foreground hover:text-destructive hover:bg-destructive/10 hover:border-destructive/30 transition-colors cursor-pointer"
               onClick={handleSignOut}
               aria-label="Sign out"
               title="Sign Out"
@@ -181,7 +156,7 @@ function AdminLayout() {
         />
 
         {/* Dynamic Page Routes */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full no-scrollbar">
           <div className="w-full max-w-[1600px] mx-auto">
             <Routes>
               <Route index element={<Navigate to="dashboard" replace />} />
