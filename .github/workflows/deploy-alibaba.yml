@@ -84,13 +84,13 @@ jobs:
             
             echo "🩺 Waiting for backend health check..."
             HEALTH_SUCCESS=false
-            for i in $(seq 1 30); do
+            for i in $(seq 1 45); do
               if curl -s -f http://localhost:8080/api/health > /dev/null 2>&1; then
                 echo "🎉 Backend is HEALTHY on attempt $i!"
                 HEALTH_SUCCESS=true
                 break
               fi
-              sleep 2
+              sleep 3
             done
             
             if [ "$HEALTH_SUCCESS" = false ]; then
@@ -100,12 +100,11 @@ jobs:
             fi
             
             echo "🧹 Cleaning up unused Docker resources, logs, and system cache..."
-            docker system prune -a --volumes -f || true
+            sudo docker system prune -f || true
             sudo journalctl --vacuum-size=50M || true
             sudo apt-get clean || true
-            # Truncate backend.log if larger than 20MB
-            if [ -f ~/flame-crust/backend/backend.log ] && [ $(stat -c%s ~/flame-crust/backend/backend.log) -gt 20971520 ]; then
-              tail -n 2000 ~/flame-crust/backend/backend.log > ~/flame-crust/backend/backend.log.tmp && mv ~/flame-crust/backend/backend.log.tmp ~/flame-crust/backend/backend.log || true
+            if [ -f ~/flame-crust/backend/backend.log ]; then
+              tail -n 2000 ~/flame-crust/backend/backend.log > /tmp/backend.log.tmp && mv /tmp/backend.log.tmp ~/flame-crust/backend/backend.log || true
             fi
             
             echo "✅ Deployment completed successfully!"
