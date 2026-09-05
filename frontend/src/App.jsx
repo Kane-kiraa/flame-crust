@@ -7,19 +7,13 @@ import { ActiveOrderWidget } from "@/components/food/active-order-widget.jsx";
 import { FlyToCart } from "@/components/shared/fly-to-cart.jsx";
 import { MobileBottomNav } from "@/components/food/mobile-bottom-nav.jsx";
 import { GlobalActiveCallManager } from "@/components/food/global-call-manager.jsx";
-import { SwipeableTabsLayout } from "@/components/food/swipeable-tabs-layout.jsx";
-
-
-
 import { SplashScreen } from "@/components/shared/splash-screen.jsx";
 import { API_URL } from "@/lib/api";
 
-import Home from "./pages/home.jsx";
-import MenuPage from "./pages/menu.jsx";
-import CartPage from "./pages/cart.jsx";
-import ProfilePage from "./pages/profile.jsx";
-
+const Home = lazy(() => import("./pages/home.jsx"));
+const MenuPage = lazy(() => import("./pages/menu.jsx"));
 const ProductDetailPage = lazy(() => import("./pages/product-detail.jsx"));
+const CartPage = lazy(() => import("./pages/cart.jsx"));
 const CheckoutPage = lazy(() => import("./pages/checkout.jsx"));
 const PaymentGatewayPage = lazy(() => import("./pages/payment.jsx"));
 const OrderConfirmationPage = lazy(() => import("./pages/order-confirmation.jsx"));
@@ -31,7 +25,15 @@ const DriverLoginPage = lazy(() => import("./pages/driver/login.jsx"));
 const DriverDashboardPage = lazy(() => import("./pages/driver/dashboard.jsx"));
 const DriverProfilePage = lazy(() => import("./pages/driver/profile.jsx"));
 const KitchenDashboardPage = lazy(() => import("./pages/kitchen/dashboard.jsx"));
+const ProfilePage = lazy(() => import("./pages/profile.jsx"));
 
+// Pre-fetch primary route chunks in background for instant smooth page transitions
+import("./pages/home.jsx");
+import("./pages/menu.jsx");
+import("./pages/product-detail.jsx");
+import("./pages/cart.jsx");
+import("./pages/profile.jsx");
+import("./pages/admin/layout.jsx");
 
 function PageLoader() {
   return (
@@ -78,7 +80,7 @@ function RequireAuth({ children }) {
   const kitchenAuth = localStorage.getItem("kitchenAuth");
   const driverAuth = localStorage.getItem("driverAuth");
   const location = useLocation();
-  
+
   if (!customerAuth && !adminAuth && !kitchenAuth && !driverAuth) {
     return <Navigate to={`/login?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   }
@@ -165,15 +167,10 @@ export default function App() {
       <MobileBottomNav />
       <RoleRedirectGuard>
         <Routes>
-          {/* Main Customer Tabs - Horizontal Swipeable on Mobile, Direct Pages on Desktop */}
-          <Route element={<SwipeableTabsLayout />}>
-            <Route path="/" element={<Home />} />
-            <Route path="/menu" element={<MenuPage />} />
-            <Route path="/cart" element={<CartPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-          </Route>
-
+          <Route path="/" element={<Home />} />
+          <Route path="/menu" element={<MenuPage />} />
           <Route path="/product/:id" element={<ProductDetailPage />} />
+          <Route path="/cart" element={<CartPage />} />
           <Route path="/checkout" element={<RequireAuth><CheckoutPage /></RequireAuth>} />
           <Route path="/payment" element={<PaymentGatewayPage />} />
           <Route path="/payment/:orderId" element={<PaymentGatewayPage />} />
@@ -181,6 +178,7 @@ export default function App() {
           <Route path="/track/:orderId" element={<OrderTrackingPage />} />
           <Route path="/review/:productId" element={<RequireAuth><LeaveReviewPage /></RequireAuth>} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/profile" element={<RequireAuth><ProfilePage /></RequireAuth>} />
           <Route path="/admin/login" element={<Navigate to="/login" replace />} />
           <Route path="/admin/*" element={<AdminLayout />} />
           <Route path="/driver/login" element={<Navigate to="/driver/dashboard" replace />} />
