@@ -26,7 +26,8 @@ import {
   UtensilsCrossed,
   KeyRound,
   PanelLeft,
-  PanelLeftClose
+  PanelLeftClose,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -140,12 +141,12 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
     <TooltipProvider delayDuration={100}>
       <aside 
         className={cn(
-          "h-full bg-card/85 dark:bg-zinc-900/90 backdrop-blur-2xl border-r border-border/50 flex flex-col transition-[width] duration-300 ease-in-out relative shadow-sm select-none z-20 overflow-hidden",
+          "h-full bg-card/85 dark:bg-zinc-900/90 backdrop-blur-2xl border-r border-border/50 flex flex-col transition-[width] duration-300 ease-in-out relative shadow-sm select-none z-20 overflow-hidden pt-[env(safe-area-inset-top,0px)] pb-[env(safe-area-inset-bottom,0px)]",
           isCollapsed ? "w-[60px]" : "w-[240px]"
         )}
       >
         {/* Brand Header */}
-        <div className="h-11 border-b border-border/50 px-2 flex items-center justify-between shrink-0 overflow-hidden relative">
+        <div className="h-12 border-b border-border/50 px-2.5 flex items-center justify-between shrink-0 overflow-hidden relative">
           {isCollapsed ? (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -169,7 +170,7 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
           ) : (
             <div className="w-full flex items-center justify-between px-0.5">
               <Link to="/admin" onClick={handleNav} className="flex items-center gap-2 overflow-hidden min-w-0 group">
-                <div className="size-7.5 shrink-0 rounded-lg bg-gradient-to-tr from-primary via-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-xs shadow-xs shadow-primary/25 group-hover:scale-105 transition-transform">
+                <div className="size-7 shrink-0 rounded-lg bg-gradient-to-tr from-primary via-orange-500 to-amber-400 text-white flex items-center justify-center font-black text-xs shadow-xs shadow-primary/25 group-hover:scale-105 transition-transform">
                   🔥
                 </div>
                 <div className="flex flex-col justify-center min-w-0">
@@ -182,15 +183,28 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                 </div>
               </Link>
 
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleCollapse}
-                className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/70 shrink-0 cursor-pointer"
-                title="Collapse Sidebar"
-              >
-                <PanelLeftClose className="size-3.5" />
-              </Button>
+              {onNavigate ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={onNavigate}
+                  className="size-7.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/70 shrink-0 cursor-pointer"
+                  title="Close Sidebar"
+                  aria-label="Close Sidebar"
+                >
+                  <X className="size-4" />
+                </Button>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={toggleCollapse}
+                  className="size-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-secondary/70 shrink-0 cursor-pointer"
+                  title="Collapse Sidebar"
+                >
+                  <PanelLeftClose className="size-3.5" />
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -312,7 +326,7 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                 asChild
                 className="w-full h-8 px-2.5 flex items-center justify-start bg-primary/10 border-primary/20 text-primary hover:bg-primary hover:text-primary-foreground transition-colors duration-200 rounded-lg overflow-hidden cursor-pointer"
               >
-                <Link to="/" replace>
+                <Link to="/" replace onClick={handleNav}>
                   <Store className="size-3.5 shrink-0" />
                   <span
                     className={cn(

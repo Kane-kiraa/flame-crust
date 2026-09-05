@@ -83,10 +83,11 @@ function AdminLayout() {
       {mobileOpen && (
         <>
           <div
-            className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden transition-opacity"
+            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden transition-opacity animate-in fade-in duration-200"
             onClick={() => setMobileOpen(false)}
+            aria-label="Close backdrop"
           />
-          <div className="fixed top-0 left-0 bottom-0 z-50 w-68 lg:hidden shadow-2xl">
+          <div className="fixed inset-y-0 left-0 z-50 w-[240px] max-w-[80vw] lg:hidden shadow-2xl animate-in slide-in-from-left duration-200 flex flex-col">
             <AdminSidebar onNavigate={() => setMobileOpen(false)} isCollapsed={false} />
           </div>
         </>
