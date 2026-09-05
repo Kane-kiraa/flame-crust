@@ -255,7 +255,7 @@ function AdminSidebar({ onNavigate, isCollapsed, toggleCollapse }) {
                         </Link>
                       </TooltipTrigger>
                       {isCollapsed && (
-                        <TooltipContent side="right" className="font-bold bg-card border-border shadow-xl">
+                        <TooltipContent side="right" sideOffset={8}>
                           {label} {badgeText ? `(${badgeText})` : ""}
                         </TooltipContent>
                       )}
