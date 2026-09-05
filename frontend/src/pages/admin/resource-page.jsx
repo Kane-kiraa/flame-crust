@@ -583,7 +583,7 @@ const generateNextSku = (items) => {
               <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-6 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-6 content-start [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
                 {config.fields.map((field) => (
                   <div key={field.name} className={cn(
-                    field.type === "textarea" || field.type === "image" || (field.type === "text" && (field.name === "name" || field.name === "tags")) ? "sm:col-span-2" : "sm:col-span-1"
+                    field.type === "textarea" || field.type === "image" || field.name === "icon" || (field.type === "text" && (field.name === "name" || field.name === "tags")) ? "sm:col-span-2" : "sm:col-span-1"
                   )}>
                     {field.type === "textarea" ? (
                       <div className="space-y-1.5">
@@ -690,22 +690,56 @@ const generateNextSku = (items) => {
                             </span>
                           )}
                         </div>
-                        <Input
-                          id={field.name}
-                          type={field.type}
-                          step={field.step}
-                          readOnly={field.readOnly}
-                          disabled={field.readOnly}
-                          value={formData[field.name] ?? ""}
-                          onChange={(e) => updateField(field.name, e.target.value)}
-                          placeholder={field.label}
-                          className={cn(
-                            "h-11 rounded-[16px] border-border/40 bg-secondary/20 hover:bg-secondary/40 focus:bg-background px-4 text-sm text-foreground shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/30",
-                            field.readOnly && "opacity-70 bg-muted/40 cursor-not-allowed",
-                            field.name === "sku" && "font-mono font-semibold tracking-wider",
-                            formErrors[field.name] && "border-destructive focus-visible:ring-destructive/30"
+                        <div className="relative flex items-center">
+                          <Input
+                            id={field.name}
+                            type={field.type === "icon" ? "text" : field.type}
+                            step={field.step}
+                            readOnly={field.readOnly}
+                            disabled={field.readOnly}
+                            value={formData[field.name] ?? ""}
+                            onChange={(e) => updateField(field.name, e.target.value)}
+                            placeholder={field.placeholder || field.label}
+                            className={cn(
+                              "h-11 rounded-[16px] border-border/40 bg-secondary/20 hover:bg-secondary/40 focus:bg-background px-4 text-sm text-foreground shadow-sm transition-all focus-visible:ring-2 focus-visible:ring-primary/30",
+                              field.name === "icon" && "pr-12",
+                              field.readOnly && "opacity-70 bg-muted/40 cursor-not-allowed",
+                              field.name === "sku" && "font-mono font-semibold tracking-wider",
+                              formErrors[field.name] && "border-destructive focus-visible:ring-destructive/30"
+                            )}
+                          />
+                          {field.name === "icon" && (
+                            <div className="absolute right-2.5 flex items-center justify-center size-7 rounded-lg bg-background/90 border border-border/50 text-base shadow-xs pointer-events-none">
+                              {formData[field.name] || "🍽️"}
+                            </div>
                           )}
-                        />
+                        </div>
+
+                        {field.name === "icon" && (
+                          <div className="mt-2 space-y-1.5">
+                            <span className="text-[11px] font-semibold text-muted-foreground ml-1">
+                              Choose quick preset icon or type custom emoji above:
+                            </span>
+                            <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl bg-secondary/20 border border-border/30">
+                              {["🍕", "🥯", "🍔", "🍟", "🥤", "🍗", "🥩", "🥗", "🥪", "🍝", "🍜", "🍣", "🌮", "🍰", "🍨", "☕", "🍽️"].map((emoji) => (
+                                <button
+                                  key={emoji}
+                                  type="button"
+                                  onClick={() => updateField(field.name, emoji)}
+                                  className={cn(
+                                    "size-8 rounded-lg text-base flex items-center justify-center transition-all cursor-pointer select-none",
+                                    formData[field.name] === emoji
+                                      ? "bg-primary text-primary-foreground scale-110 shadow-sm font-bold ring-2 ring-primary/40"
+                                      : "bg-background/80 hover:bg-secondary border border-border/40 hover:scale-105"
+                                  )}
+                                  title={`Select ${emoji}`}
+                                >
+                                  {emoji}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                         {field.name === "base_price" && (
                           <p className="text-[11px] text-muted-foreground ml-1">Auto-syncs with Price unless changed</p>
                         )}

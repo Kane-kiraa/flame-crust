@@ -23,7 +23,7 @@ export function ArcCategoryNav({
     return {
       key: catKey,
       label: catKey === "all" ? "All" : (m.label || (dbCat ? dbCat.name : catKey)),
-      icon: m.icon,
+      icon: catKey === "all" ? (categoryMeta.all?.icon || "🍽️") : (dbCat?.icon || m.icon || "🍽️"),
       isAll: catKey === "all",
     };
   });

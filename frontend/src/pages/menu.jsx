@@ -121,13 +121,13 @@ function MenuPage() {
       ? allItems 
       : allItems.filter((i) => {
           if (!i.category) return false;
-          const itemCat = String(i.category).toLowerCase().trim();
-          const actCat = String(active).toLowerCase().trim();
+          const normalize = (cat) => String(cat || "").toLowerCase().trim().replace(/[\s_]+/g, "-");
+          const itemCat = normalize(i.category);
+          const actCat = normalize(active);
           return (
             itemCat === actCat ||
-            itemCat.replace(/\s+/g, "-") === actCat ||
-            itemCat === actCat.replace(/-/g, " ") ||
-            (actCat !== "all" && itemCat.includes(actCat))
+            (itemCat.endsWith("s") && itemCat.slice(0, -1) === actCat) ||
+            (actCat.endsWith("s") && actCat.slice(0, -1) === itemCat)
           );
         });
     
@@ -210,7 +210,12 @@ function MenuPage() {
   };
 
   const dbActiveCat = categories.find(c => c.slug === active);
-  const meta = categoryMeta[active] || (dbActiveCat ? { label: dbActiveCat.name, description: `Explore our delicious ${dbActiveCat.name} made fresh to order.`, icon: "🍽️" } : categoryMeta.all);
+  const baseMeta = categoryMeta[active] || (dbActiveCat ? { label: dbActiveCat.name, description: `Explore our delicious ${dbActiveCat.name} made fresh to order.`, icon: "🍽️" } : categoryMeta.all);
+  const meta = {
+    ...baseMeta,
+    icon: (active === "all" ? (categoryMeta.all?.icon || "🍽️") : (dbActiveCat?.icon || baseMeta?.icon || "🍽️")),
+    label: dbActiveCat?.name || baseMeta?.label,
+  };
   const currentCategoryOrder = categories.length > 0 ? ["all", ...categories.map(c => c.slug)] : defaultCategoryOrder;
 
   return (

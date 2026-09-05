@@ -43,14 +43,31 @@ export const resourceConfig = {
     searchKeys: ["name", "slug"],
     columns: [
       { key: "_index", label: "No.", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
-      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm" },
-      { key: "slug", label: "Slug", sortable: true, className: "hidden sm:table-cell" },
+      {
+        key: "icon",
+        label: "Icon",
+        className: "w-16 text-center text-sm sm:text-base",
+        render: (v) => (
+          <span className="inline-flex items-center justify-center size-8 rounded-lg bg-secondary/50 text-base border border-border/40 shadow-xs">
+            {v || "🍽️"}
+          </span>
+        ),
+      },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm font-semibold" },
+      { key: "slug", label: "Slug", sortable: true, className: "hidden sm:table-cell text-muted-foreground" },
       { key: "sort_order", label: "Order", sortable: true, className: "hidden lg:table-cell" },
       { key: "active", label: "Active", className: "text-xs sm:text-sm", render: (v) => v ? "✅" : "❌" },
     ],
     fields: [
       { name: "name", label: "Name", type: "text", required: true },
       { name: "slug", label: "Slug", type: "text", required: true },
+      {
+        name: "icon",
+        label: "Icon (Emoji)",
+        type: "icon",
+        required: false,
+        placeholder: "e.g. 🍕, 🍔, 🥤, 🥗",
+      },
       { name: "sort_order", label: "Sort Order", type: "number", required: false },
       { name: "active", label: "Active", type: "checkbox", required: false },
     ],

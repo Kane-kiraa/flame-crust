@@ -323,17 +323,18 @@ function Navbar() {
   }, []);
 
   const navLinks = [
-    { label: "Menu", href: "/menu" },
+    { label: "Menu", href: "/menu", icon: "🍽️" },
     ...(categories.length > 0
       ? categories.map((c) => ({
         label: c.name,
         href: `/menu?category=${c.slug}`,
+        icon: c.icon || null,
       }))
       : [
-        { label: "Pizza", href: "/menu?category=pizza" },
-        { label: "Pizza Bagels", href: "/menu?category=pizza-bagels" },
-        { label: "Burgers", href: "/menu?category=burgers" },
-        { label: "Sides", href: "/menu?category=sides" },
+        { label: "Pizza", href: "/menu?category=pizza", icon: "🍕" },
+        { label: "Pizza Bagels", href: "/menu?category=pizza-bagels", icon: "🥯" },
+        { label: "Burgers", href: "/menu?category=burgers", icon: "🍔" },
+        { label: "Sides", href: "/menu?category=sides", icon: "🍟" },
       ]),
   ];
 
@@ -736,7 +737,10 @@ function Navbar() {
                           : "text-foreground/80 hover:text-primary hover:bg-secondary/60"
                       )}
                     >
-                      <span>{l.label}</span>
+                      <span className="flex items-center gap-2.5">
+                        {l.icon && <span className="text-base">{l.icon}</span>}
+                        <span>{l.label}</span>
+                      </span>
                       {isLinkActive(l) && <div className="size-1.5 rounded-full bg-primary" />}
                     </Link>
                   ))}
