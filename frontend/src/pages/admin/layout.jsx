@@ -73,7 +73,7 @@ function AdminLayout() {
   };
 
   return (
-    <div className="h-screen overflow-hidden flex bg-zinc-950 text-foreground selection:bg-primary selection:text-primary-foreground">
+    <div className="h-screen overflow-hidden flex bg-background text-foreground selection:bg-primary selection:text-primary-foreground">
       {/* Desktop Sidebar */}
       <div className="hidden lg:block h-full">
         <AdminSidebar isCollapsed={isCollapsed} toggleCollapse={() => setIsCollapsed(!isCollapsed)} />
@@ -93,7 +93,7 @@ function AdminLayout() {
       )}
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 bg-slate-50/70 dark:bg-zinc-950/85 relative overflow-hidden transition-colors">
+      <div className="flex-1 flex flex-col min-w-0 bg-secondary/15 dark:bg-zinc-950/90 relative overflow-hidden transition-colors">
         {/* Subtle Ambient Light Orbs for Depth */}
         <div className="absolute -top-24 right-1/4 size-96 bg-primary/5 dark:bg-primary/10 rounded-full blur-3xl pointer-events-none -z-0" />
         <div className="absolute top-1/3 -left-20 size-80 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-3xl pointer-events-none -z-0" />
@@ -182,7 +182,7 @@ function AdminLayout() {
 
         {/* Dynamic Page Routes */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full">
-          <div className="w-full">
+          <div className="w-full max-w-[1600px] mx-auto">
             <Routes>
               <Route index element={<Navigate to="dashboard" replace />} />
               <Route path="dashboard" element={<AdminDashboard />} />
