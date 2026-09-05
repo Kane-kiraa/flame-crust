@@ -7,9 +7,9 @@ export const resourceConfig = {
     icon: "📦",
     searchKeys: ["name", "category", "sku", "description", "tags"],
     columns: [
-      { key: "_index", label: "No.", sortable: true, className: "w-12 sm:w-16 text-xs sm:text-sm" },
-      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm max-w-[120px] sm:max-w-none truncate" },
-      { key: "price", label: "Price", sortable: true, className: "text-xs sm:text-sm", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
+      { key: "_index", label: "No.", sortable: true, className: "w-8 sm:w-14 text-xs sm:text-sm px-1 sm:px-3 text-muted-foreground" },
+      { key: "name", label: "Name", sortable: true, className: "text-xs sm:text-sm font-semibold whitespace-normal min-w-[120px] leading-snug" },
+      { key: "price", label: "Price", sortable: true, className: "text-xs sm:text-sm font-bold whitespace-nowrap px-1 sm:px-3 text-foreground", render: (v) => v != null ? `$${Number(v).toFixed(2)}` : "—" },
       { key: "category", label: "Category", sortable: true, className: "hidden sm:table-cell", render: (v) => v ? <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium">{v}</span> : "—" },
       { key: "rating", label: "Rating", sortable: true, className: "hidden lg:table-cell", render: (v) => v != null ? `⭐ ${v}` : "—" },
       { key: "popular", label: "Popular", className: "hidden lg:table-cell", render: (v) => v ? "✅" : "—" },

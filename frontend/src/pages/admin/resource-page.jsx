@@ -318,14 +318,15 @@ const generateNextSku = (items) => {
     })),
     {
       key: "actions",
-      label: "Actions",
+      label: "Action",
+      className: "w-16 sm:w-20 text-right pr-2 sm:pr-4 shrink-0",
       render: (_, row) => (
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-end gap-0.5 sm:gap-1.5 shrink-0">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => openEdit(row.id)}
-            className="size-8 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground"
+            className="size-7 sm:size-8 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
           >
             <Pencil className="size-3.5" />
           </Button>
@@ -334,7 +335,7 @@ const generateNextSku = (items) => {
               variant="ghost"
               size="icon"
               onClick={() => openDelete(row.id)}
-              className="size-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+              className="size-7 sm:size-8 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive shrink-0 cursor-pointer"
             >
               <Trash2 className="size-3.5" />
             </Button>
@@ -345,9 +346,9 @@ const generateNextSku = (items) => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Data Table Container */}
-      <div className="rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-3xl p-5 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden">
+      <div className="rounded-2xl sm:rounded-[32px] border border-border/40 bg-card/40 backdrop-blur-3xl p-3 sm:p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary/60 to-amber-500/60 opacity-80" />
         {error ? (
           <ErrorState
@@ -358,16 +359,16 @@ const generateNextSku = (items) => {
         ) : (
           <DataTable
             headerContent={
-              <div>
-                <div className="flex items-center gap-3">
-                  <h1 className="font-serif text-3xl sm:text-4xl font-black text-foreground tracking-tight">
+              <div className="mb-1">
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <h1 className="font-serif text-2xl sm:text-4xl font-black text-foreground tracking-tight">
                     {config.label}
                   </h1>
-                  <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 shadow-sm">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider bg-primary/10 text-primary border border-primary/20 shadow-xs">
                     {data.length} {data.length === 1 ? "item" : "items"}
                   </span>
                 </div>
-                <p className="mt-1.5 text-xs sm:text-sm font-medium text-muted-foreground line-clamp-1">
+                <p className="mt-1 text-xs sm:text-sm font-medium text-muted-foreground line-clamp-1">
                   Manage, search, and update {config.label.toLowerCase()}.
                 </p>
               </div>

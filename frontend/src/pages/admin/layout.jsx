@@ -100,7 +100,7 @@ function AdminLayout() {
         <div className="absolute top-1/3 -left-20 size-80 bg-amber-500/5 dark:bg-amber-500/10 rounded-full blur-3xl pointer-events-none -z-0" />
 
         {/* Admin Top Header */}
-        <header className="h-[calc(env(safe-area-inset-top)+4.25rem)] pt-[env(safe-area-inset-top)] border-b border-border/50 bg-card/70 dark:bg-zinc-900/60 backdrop-blur-2xl px-4 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
+        <header className="h-[calc(env(safe-area-inset-top)+3.5rem)] sm:h-[calc(env(safe-area-inset-top)+4.25rem)] pt-[env(safe-area-inset-top)] border-b border-border/50 bg-card/70 dark:bg-zinc-900/60 backdrop-blur-2xl px-3 sm:px-8 flex items-center justify-between sticky top-0 z-30 shadow-xs">
           <div className="flex items-center gap-3">
             {/* Mobile menu trigger */}
             <Button
@@ -157,7 +157,7 @@ function AdminLayout() {
         />
 
         {/* Dynamic Page Routes */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 w-full no-scrollbar">
+        <main className="flex-1 overflow-y-auto px-2 py-2.5 sm:px-6 sm:py-6 lg:p-8 w-full no-scrollbar">
           <div className="w-full max-w-[1600px] mx-auto">
             <Routes>
               <Route index element={<Navigate to="dashboard" replace />} />

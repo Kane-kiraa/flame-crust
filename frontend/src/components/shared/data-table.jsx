@@ -171,7 +171,7 @@ export function DataTable({
                         <TableHead
                           key={col.key}
                           className={cn(
-                            "text-[11px] font-black text-muted-foreground uppercase tracking-[0.15em] py-4",
+                            "text-[10px] sm:text-[11px] font-black text-muted-foreground uppercase tracking-wider py-3 sm:py-4 px-1.5 sm:px-4",
                             col.className
                           )}
                         >
@@ -179,7 +179,7 @@ export function DataTable({
                             <button
                               type="button"
                               onClick={() => handleSort(col.key)}
-                              className="flex items-center gap-1.5 hover:text-foreground transition-colors font-semibold"
+                              className="flex items-center gap-1 hover:text-foreground transition-colors font-semibold"
                             >
                               {col.label}
                               {sortKey === col.key ? (
@@ -206,7 +206,7 @@ export function DataTable({
                         className="border-border/40 hover:bg-secondary/40 transition-colors group"
                       >
                         {columns.map((col) => (
-                          <TableCell key={col.key} className={cn("py-4 text-sm font-medium", col.className)}>
+                          <TableCell key={col.key} className={cn("py-2.5 sm:py-4 px-1.5 sm:px-4 text-xs sm:text-sm font-medium", col.className)}>
                             {col.render ? col.render(row[col.key], row) : (row[col.key] ?? "—")}
                           </TableCell>
                         ))}
