@@ -1,55 +1,74 @@
 # 🍕 Flame & Crust — Food Ordering & Management Platform
 
 <p align="center">
+  <a href="https://flame-crust-4dw.pages.dev">
+    <img src="https://img.shields.io/badge/🌐_Live_Demo-flame--crust--4dw.pages.dev-FF5722?style=for-the-badge" alt="Live Demo" />
+  </a>
+  <img src="https://img.shields.io/badge/Cloudflare_Pages-Frontend-F38020?style=for-the-badge&logo=cloudflare" alt="Cloudflare Pages" />
+  <img src="https://img.shields.io/badge/Alibaba_Cloud-ECS_Backend-FF6A00?style=for-the-badge&logo=alibabacloud" alt="Alibaba Cloud" />
   <img src="https://img.shields.io/badge/Spring%20Boot-3.5.4-brightgreen?style=for-the-badge&logo=springboot" alt="Spring Boot" />
   <img src="https://img.shields.io/badge/Java-21-orange?style=for-the-badge&logo=openjdk" alt="Java 21" />
   <img src="https://img.shields.io/badge/React-19-blue?style=for-the-badge&logo=react" alt="React 19" />
   <img src="https://img.shields.io/badge/Vite-7-purple?style=for-the-badge&logo=vite" alt="Vite" />
-  <img src="https://img.shields.io/badge/TailwindCSS-v4-38bdf8?style=for-the-badge&logo=tailwindcss" alt="TailwindCSS" />
-  <img src="https://img.shields.io/badge/MySQL-8.4-00758f?style=for-the-badge&logo=mysql" alt="MySQL" />
-  <img src="https://img.shields.io/badge/Docker-Supported-2496ed?style=for-the-badge&logo=docker" alt="Docker" />
+  <img src="https://img.shields.io/badge/Aiven%20MySQL-8.4-00758f?style=for-the-badge&logo=mysql" alt="Aiven MySQL" />
+  <img src="https://img.shields.io/badge/CI%2FCD-GitHub_Actions-2088FF?style=for-the-badge&logo=githubactions" alt="GitHub Actions" />
 </p>
+
+---
+
+## 🔗 Live Demo & Links
+- **Live Demo (Frontend):** [https://flame-crust-4dw.pages.dev](https://flame-crust-4dw.pages.dev)
+- **GitHub Repository:** [https://github.com/Chantha-Khemara-dev/flame-crust](https://github.com/Chantha-Khemara-dev/flame-crust)
 
 ---
 
 ## 📖 Overview
 
-**Flame & Crust** គឺជាប្រព័ន្ធបញ្ជាទិញម្ហូប និងភីហ្សាទំនើប (Modern Food & Pizza Ordering E-Commerce Platform) ដែលត្រូវបានបង្កើតឡើងជាមួយ **React 19 + Vite** នៅលើ Frontend និង **Spring Boot 3 (Java 21) + MySQL** នៅលើ Backend រួមទាំងការតភ្ជាប់ប្រព័ន្ធទូទាត់ប្រាក់ **Bakong KHQR**។
+**Flame & Crust** គឺជាប្រព័ន្ធបញ្ជាទិញម្ហូប និងភីហ្សាទំនើប (Full-Stack Food & Pizza Ordering Platform) ដែលត្រូវបានអភិវឌ្ឍឡើងដោយប្រើបច្ចេកវិទ្យា **React 19 + Vite** នៅផ្នែក Frontend និង **Java Spring Boot 3.5.4 (Java 21)** នៅផ្នែក Backend រួមជាមួយនឹង Cloud Database លើ **Aiven MySQL**។ ប្រព័ន្ធនេះក៏រួមបញ្ចូលនូវការទូទាត់ប្រាក់ក្នុងស្រុកតាមរយៈ **Bakong KHQR** និងដំណើរការស្វ័យប្រវត្តិនៃការ Deploy តាម **GitHub Actions CI/CD** ទៅកាន់ **Alibaba Cloud ECS** និង **Cloudflare Pages**។
 
 ---
 
-## ✨ Features (លក្ខណៈពិសេស)
+## ✨ Key Features (លក្ខណៈពិសេសចម្បងៗ)
 
-- 🍕 **Product & Menu Management:** ម៉ឺនុយភីហ្សា និងម្ហូបច្រើនជម្រើស ជាមួយការកំណត់ទំហំ តម្លៃ និងការតុបតែង។
-- 🛒 **Interactive Cart & Ordering:** រទេះទំនិញងាយស្រួលប្រើ រៀបចំការកុម្ម៉ង់បានរហ័ស។
-- 🇰🇭 **Bakong KHQR Payment Integration:** បង្កើត និងផ្ទៀងផ្ទាត់ QR Code សម្រាប់ទូទាត់តាមប្រព័ន្ធធនាគារក្នុងស្រុកដោយស្វ័យប្រវត្តិ។
-- 🔐 **Authentication & Security:** ប្រើប្រាស់ **JWT (JSON Web Token)**, Spring Security និង Rate Limiting ជាមួយ Bucket4j។
-- 📧 **Email Notifications:** ផ្ញើសារបញ្ជាក់ការទិញ និងវិក្កយបត្រតាម Email ដោយស្វ័យប្រវត្តិ។
-- 📍 **Interactive Maps & Address:** ជ្រើសរើសទីតាំងដឹកជញ្ជូនតាមរយៈ Leaflet Map។
-- 🎨 **Modern & Responsive UI:** រចនាបទស្អាតទាក់ទាញ ដំណើរការរលូនលើគ្រប់ឧបករណ៍ (Mobile & Desktop) ដោយប្រើ Tailwind CSS និង Framer Motion Animations។
-- 🐳 **Docker & Cloud Ready:** គាំទ្រការ Deploy លើ Docker, Render, Vercel និង Aiven Cloud Database។
+- 🍕 **Product & Menu Management:** ម៉ឺនុយភីហ្សា និងម្ហូបច្រើនជម្រើស ជាមួយការកំណត់ទំហំ តម្លៃ ប្រភេទ និងការគ្រប់គ្រងតាមរយៈ Admin Dashboard។
+- 🛒 **Interactive Cart & Ordering:** រទេះទំនិញងាយស្រួលប្រើ រៀបចំការកុម្ម៉ង់បានរហ័ស និងគណនាតម្លៃច្បាស់លាស់។
+- 🇰🇭 **Bakong KHQR Payment Gateway:** បង្កើត និងផ្ទៀងផ្ទាត់ QR Code ស្ដង់ដារ KHQR សម្រាប់ទូទាត់តាមកម្មវិធីធនាគារក្នុងស្រុក (Bakong, ABA, etc.) ដោយស្វ័យប្រវត្តិ។
+- 🔐 **Authentication & Security:** ប្រើប្រាស់ **JWT (JSON Web Token)**, Spring Security និង Rate Limiting ការពារ API។
+- 📧 **Order & Email Notifications:** ផ្ញើសារបញ្ជាក់ការទិញ និងវិក្កយបត្រតាម Email។
+- 📍 **Interactive Maps & Location:** ជ្រើសរើសទីតាំងដឹកជញ្ជូនតាមរយៈ Leaflet Map។
+- 🎨 **Modern & Responsive UI:** រចនាបទបែបទំនើប ស្រស់ស្អាត ដំណើរការរលូនលើ Mobile និង Desktop ដោយប្រើ Tailwind CSS, Radix UI និង Framer Motion។
+- ☁️ **Full Cloud & DevOps Architecture:** 
+  - **Frontend:** Hosted លើ **Cloudflare Pages** (Global Edge CDN, High Speed)
+  - **Backend:** Hosted លើ **Alibaba Cloud ECS** ជាមួយ Docker & Reverse Proxy
+  - **Database:** Cloud-Managed MySQL លើ **Aiven Cloud** (SSL Encryption)
+  - **CI/CD:** Automated Deployment ជាមួយ **GitHub Actions** ពេល Push ទៅ branch `main`។
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-- **Framework:** React 19, Vite
-- **Styling:** Tailwind CSS v4, Radix UI Components, Lucide Icons
+- **Framework & Build Tool:** React 19, Vite
+- **UI & Styling:** Tailwind CSS, Radix UI Components, Lucide Icons
 - **State Management:** Zustand, TanStack Query
-- **Payment & Map:** `bakong-khqr`, `qrcode.react`, Leaflet / React-Leaflet
-- **Animations:** Framer Motion, Canvas Confetti
+- **Payment & QR:** `bakong-khqr`, `qrcode.react`
+- **Maps & Animation:** Leaflet / React-Leaflet, Framer Motion, Canvas Confetti
 
 ### Backend
 - **Framework:** Spring Boot 3.5.4 (Java 21)
 - **Security:** Spring Security, JWT (io.jsonwebtoken)
-- **Database / ORM:** MySQL 8.4, Spring Data JPA, Flyway Migration
-- **Tools & Libraries:** Lombok, Bucket4j (Rate Limiting), Spring Mail
+- **Database / ORM:** Spring Data JPA, Hibernate, Flyway DB Migration
+- **Database Engine:** MySQL 8.4 (Cloud Managed on Aiven)
+- **Tools:** Lombok, Bucket4j (Rate Limiting), Spring Mail
 
-### DevOps & Cloud
-- **Containerization:** Docker (Multi-stage build)
-- **Hosting:** Render (Backend API), Vercel (Frontend SPA), Aiven (Cloud MySQL)
-- **CI/CD:** GitHub Actions
+### DevOps & Cloud Infrastructure
+- **Frontend Hosting:** Cloudflare Pages
+- **Backend Host:** Alibaba Cloud ECS (Ubuntu Linux)
+- **Cloud Database:** Aiven Cloud MySQL (SSL enabled)
+- **Containerization:** Docker & Docker Compose
+- **CI/CD Pipelines:**
+  - `ci.yml`: Frontend build verification & testing
+  - `deploy-alibaba.yml`: Automated build, env config, and remote deployment to Alibaba Cloud ECS via SSH action
 
 ---
 
@@ -57,36 +76,37 @@
 
 ```text
 flame-crust/
-├── backend/                # Spring Boot Backend API
-│   ├── src/main/java/      # Java Controllers, Services, Repositories, Models
-│   ├── src/main/resources/ # application.properties, db/ migrations
-│   ├── pom.xml             # Maven dependencies
-│   └── Dockerfile          # Backend Dockerfile
-├── frontend/               # React + Vite Frontend
-│   ├── src/                # Components, Pages, Hooks, Context, Assets
-│   ├── package.json        # Frontend dependencies
-│   └── vite.config.js      # Vite Configuration
-├── .github/workflows/      # GitHub Actions CI/CD Pipeline
-├── Dockerfile              # Root multi-stage Docker build
-├── deploy.md               # 24/7 Deployment documentation
-└── README.md               # Project documentation
+├── .github/workflows/
+│   ├── ci.yml                  # Frontend test & build workflow
+│   └── deploy-alibaba.yml      # Automated CD to Alibaba Cloud ECS
+├── backend/                    # Spring Boot 3 (Java 21) API
+│   ├── src/main/java/          # Controllers, Services, Entities, Repositories
+│   ├── src/main/resources/     # application.yml, database migrations
+│   ├── pom.xml                 # Maven dependencies
+│   └── Dockerfile              # Backend container configuration
+├── frontend/                   # React 19 + Vite SPA
+│   ├── src/                    # Pages (Menu, Admin, Cart), Components, Context
+│   ├── package.json            # Node.js dependencies & scripts
+│   └── vite.config.js          # Vite config
+├── Dockerfile                  # Multi-stage root Dockerfile
+└── README.md                   # Project documentation
 ```
 
 ---
 
-## 🚀 Getting Started (ដំណើរការលើ Local Machine)
+## 🚀 Getting Started (Local Development)
 
 ### ១. Prerequisites
 - **Java:** JDK 21+
 - **Maven:** 3.9+
-- **Node.js:** 18+ ឬ 20+
-- **MySQL Database:** 8.0+ ឬ Aiven Cloud MySQL
+- **Node.js:** 20+
+- **MySQL Database:** Local MySQL 8.0+ ឬ Aiven Cloud MySQL instance
 
 ---
 
 ### ២. Clone Repository
 ```bash
-git clone https://github.com/Kane-kiraa/flame-crust.git
+git clone https://github.com/Chantha-Khemara-dev/flame-crust.git
 cd flame-crust
 ```
 
@@ -98,11 +118,11 @@ cd flame-crust
    ```bash
    cd backend
    ```
-2. បង្កើតឯកសារ `.env` (ឬកំណត់ក្នុង `application.properties`):
+2. បង្កើតឯកសារ `.env` (ឬកំណត់តាម Environment Variables):
    ```env
-   MYSQL_URL=jdbc:mysql://localhost:3306/flame_crust?createDatabaseIfNotExist=true&serverTimezone=UTC
-   MYSQL_USER=root
-   MYSQL_PASSWORD=your_mysql_password
+   SPRING_DATASOURCE_URL=jdbc:mysql://localhost:3306/flame_crust?createDatabaseIfNotExist=true&serverTimezone=UTC
+   SPRING_DATASOURCE_USERNAME=root
+   SPRING_DATASOURCE_PASSWORD=your_mysql_password
    JWT_SECRET=your_super_secret_jwt_key_at_least_256_bits_long
    JWT_EXPIRATION=86400000
    MAIL_USERNAME=your_email@gmail.com
@@ -110,7 +130,7 @@ cd flame-crust
    BAKONG_API_TOKEN=your_bakong_token
    PORT=8080
    ```
-3. ដំណើរការ Backend:
+3. ដំណើរការ Backend Server:
    ```bash
    ./mvnw spring-boot:run
    ```
@@ -140,47 +160,29 @@ cd flame-crust
 
 ---
 
-## 🐳 Docker Support
+## ☁️ Production & Deployment Architecture
 
-អ្នកអាច build និង run backend តាមរយៈ Docker:
-
-```bash
-# Build Docker Image
-docker build -t flame-crust-backend .
-
-# Run Docker Container
-docker run -p 8080:8080 \
-  -e MYSQL_URL="jdbc:mysql://host.docker.internal:3306/flame_crust" \
-  -e MYSQL_USER="root" \
-  -e MYSQL_PASSWORD="your_password" \
-  flame-crust-backend
-```
-
----
-
-## 🌐 Cloud Deployment (24/7 Free)
-
-| Component | Platform | Configuration Summary |
+| Layer | Technology / Platform | Description |
 | :--- | :--- | :--- |
-| **Database** | [Aiven MySQL](https://aiven.io) | MySQL 8.4 Free Tier ជាមួយ SSL |
-| **Backend** | [Render](https://render.com) | Docker Web Service + Cron-Job Keep-Alive Ping |
-| **Frontend** | [cloudflared](https://cloudflare.com) | React/Vite Preset with `VITE_API_URL` env |
-
-> 📖 សម្រាប់មេរៀន និងជំហានលម្អិតអំពីការ Deploy សូមមើលឯកសារ [deploy.md](deploy.md)។
+| **Frontend** | [Cloudflare Pages](https://pages.cloudflare.com/) | Deployed globally on Cloudflare Edge CDN (`flame-crust-4dw.pages.dev`) |
+| **Backend API** | [Alibaba Cloud ECS](https://www.alibabacloud.com/product/ecs) | Ubuntu Server ដំណើរការ Spring Boot Backend តាមរយៈ Docker/Service |
+| **Database** | [Aiven Cloud MySQL](https://aiven.io/) | Managed MySQL Database ជាមួយ SSL Encryption 24/7 |
+| **CI/CD** | [GitHub Actions](https://github.com/features/actions) | Auto-deploy ទៅកាន់ Alibaba Cloud ECS រាល់ពេល push កូដទៅ branch `main` |
 
 ---
 
-## ⚙️ CI/CD Workflow
+## ⚙️ Automated CI/CD Pipelines
 
-Repository នេះមានរៀបចំ GitHub Actions សម្រាប់ធ្វើការ Build និង Test ដោយស្វ័យប្រវត្តិ។
-- ប្រសិនបើអ្នកចង់ **Push** ដោយរំលង CI/CD pipeline គ្រាន់តែបន្ថែម `[skip ci]` ទៅក្នុង commit message:
-  ```bash
-  git commit -m "Update docs [skip ci]"
-  git push origin main
-  ```
+គម្រោងនេះត្រូវបានបំពាក់ដោយ GitHub Actions ចំនួន ២៖
+1. **Frontend CI (`ci.yml`):** ដំណើរការត្រួតពិនិត្យ Build Test របស់ React App លើគ្រប់ Pull Request និង Push។
+2. **Deploy to Alibaba Cloud (`deploy-alibaba.yml`):** 
+   - ភ្ជាប់ទៅកាន់ Server Alibaba Cloud តាមរយៈ SSH
+   - Fetch កូដចុងក្រោយបង្អស់ពី branch `main`
+   - រៀបចំ Environment សម្រាប់ Aiven Cloud MySQL
+   - Restart និង Compile Backend Service ដោយស្វ័យប្រវត្តិ។
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
+This project is open-source under the [MIT License](LICENSE).
